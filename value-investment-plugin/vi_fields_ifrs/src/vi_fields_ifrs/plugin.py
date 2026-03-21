@@ -54,6 +54,12 @@ IFRS_FIELDS = {
     "basic_eps",
     "diluted_eps",
     "book_value_per_share",
+    # Trading Data (价格/成交量)
+    "close",
+    "open",
+    "high",
+    "low",
+    "volume",
 }
 
 

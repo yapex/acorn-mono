@@ -151,8 +151,10 @@ class ViCorePlugin:
             "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
         }
 
+        # 市场数据 + 交易数据都通过 vi_fetch_market 获取
         market_fields = fields & {
             "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",
+            "close", "open", "high", "low", "volume",
         }
 
         financial_fields = fields - indicator_fields - market_fields

@@ -115,6 +115,11 @@ class TushareProvider:
         "circ_shares",
         "pe_ratio",
         "pb_ratio",
+        "close",              # 收盘价
+        "open",               # 开盘价
+        "high",               # 最高价
+        "low",                # 最低价
+        "volume",            # 成交量
     }
 
     # 字段映射
@@ -209,6 +214,13 @@ class TushareProvider:
             "pb": "pb_ratio",
             "total_share": "total_shares",
         },
+        "daily": {
+            "close": "close",
+            "open": "open",
+            "high": "high",
+            "low": "low",
+            "vol": "volume",
+        },
     }
 
     # 财务指标字段集合
@@ -228,6 +240,11 @@ class TushareProvider:
     # 市场数据字段
     _MARKET_FIELDS: set[str] = {
         "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio", "total_shares",
+    }
+
+    # 交易数据字段
+    _TRADING_FIELDS: set[str] = {
+        "close", "open", "high", "low", "volume",
     }
 
     def __init__(self, token: str | None = None):
@@ -349,7 +366,7 @@ class TushareProvider:
         return df if df is not None else pd.DataFrame()
 
     def _fetch_market(self, ts_code: str) -> dict[str, Any]:
-        """Fetch latest market data"""
+        """Fetch latest market data (daily_basic)"""
         df = self.api.daily_basic(ts_code=ts_code)
         if df is None or df.empty:
             return {}
@@ -369,6 +386,22 @@ class TushareProvider:
                         value = value.iloc[0] if not value.empty else None
                     if value is not None:
                         result[std] = float(value) if isinstance(value, (int, float)) else value
+
+        # Fetch trading data (daily)
+        try:
+            df_daily = self.api.daily(ts_code=ts_code)
+            if df_daily is not None and not df_daily.empty:
+                trading_mapping = self.FIELD_MAPPINGS.get("daily", {})
+                row_daily = df_daily.iloc[0]
+                for native, std in trading_mapping.items():
+                    if native in df_daily.columns:
+                        value = row_daily.get(native)
+                        if value is not None and not pd.isna(value):
+                            if hasattr(value, 'item'):
+                                value = value.item()
+                            result[std] = float(value) if isinstance(value, (int, float)) else value
+        except Exception:
+            pass  # Trading data may not be available
 
         return result
 
@@ -510,17 +543,19 @@ class TushareProvider:
 
         Args:
             symbol: Stock code
-            fields: Market field names
+            fields: Market/trading field names
 
         Returns:
             {field: value}
         """
-        market_fields = fields & self._MARKET_FIELDS
-        if not market_fields:
+        # 支持市场数据和交易数据字段
+        supported = self._MARKET_FIELDS | self._TRADING_FIELDS
+        requested_fields = fields & supported
+        if not requested_fields:
             return {}
 
         ts_code = self._to_ts_code(symbol)
         result = self._fetch_market(ts_code)
 
         # Filter to requested fields
-        return {k: v for k, v in result.items() if k in market_fields}
+        return {k: v for k, v in result.items() if k in requested_fields}
