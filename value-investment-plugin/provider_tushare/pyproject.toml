@@ -5,7 +5,7 @@ description = "Tushare Provider for Value Investment"
 requires-python = ">=3.12"
 dependencies = [
     "tushare>=1.4.0",
-    "vi-core",  # vi_core dependency
+    "vi-core>=0.1.0",  # 依赖 vi_core（pluggy 推荐方式）
 ]
 
 [build-system]
@@ -19,4 +19,4 @@ packages = ["src/provider_tushare"]
 packages = ["src/provider_tushare"]
 
 [project.entry-points."value_investment.providers"]
-tushare = "provider_tushare:provider"
+tushare = "provider_tushare:plugin"
