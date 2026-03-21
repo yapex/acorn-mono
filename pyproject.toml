@@ -12,4 +12,6 @@ stop = "bash stop-agent.sh"
 [dependency-groups]
 dev = [
     "poethepoet>=0.42.1",
+    "ruff>=0.9.0",
+    "pyright>=1.1.0",
 ]
