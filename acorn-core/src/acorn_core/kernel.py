@@ -12,9 +12,8 @@ from typing import Any
 
 import pluggy
 
-from .models import TaskContext
 from .specs import Genes
-from .types import Capabilities, Response, Task
+from .types import Response, Task
 
 
 class Acorn:
@@ -29,7 +28,7 @@ class Acorn:
 
     def load_plugins(self, plugin_path: str | Path | None = None):
         """加载插件
-        
+
         加载顺序：
         1. 内部插件 (通过 entry_points)
         2. 外部路径插件 (可选)
@@ -37,11 +36,11 @@ class Acorn:
         """
         # 1. 加载内部插件（内置 + 入口点）
         self.pm.load_setuptools_entrypoints("yapex.acorn.plugins")
-        
+
         # 2. 加载外部路径插件
         if plugin_path:
             self._load_from_path(plugin_path)
-        
+
         self.pm.hook.on_load()
 
     def _load_from_path(self, plugin_path: str | Path):
@@ -76,10 +75,10 @@ class Acorn:
     def install_plugin(self, namespace: dict[str, Any]) -> str:
         """
         动态安装插件
-        
+
         Args:
             namespace: 执行后的命名空间字典，由调用者负责执行代码
-            
+
         Returns:
             plugin_id: 插件唯一标识符
         """
@@ -116,26 +115,26 @@ class Acorn:
     def execute(self, task: Task) -> Response:
         """
         执行单个任务
-        
+
         Args:
             task: Task 对象
-            
+
         Returns:
             Response 对象
         """
         # 1. 查找能处理此命令的插件
         handler = self._find_handler(task.command)
-        
+
         if handler is None:
             return Response.err(
                 code="NOT_IMPLEMENTED",
                 message=f"No plugin handles command: {task.command}"
             )
-        
+
         # 2. 执行处理
         try:
             result = handler.handle(task)
-            
+
             # 处理返回格式
             if isinstance(result, dict):
                 if result.get("success"):
@@ -168,7 +167,7 @@ class Acorn:
                     )
             else:
                 return Response.ok(data=result)
-                
+
         except Exception as e:
             return Response.err(
                 code="PLUGIN_ERROR",
@@ -179,10 +178,10 @@ class Acorn:
     def execute_batch(self, tasks: list[Task]) -> list[Response]:
         """
         批量执行任务
-        
+
         Args:
             tasks: Task 对象列表
-            
+
         Returns:
             Response 对象列表
         """

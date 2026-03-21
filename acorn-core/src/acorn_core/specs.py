@@ -17,7 +17,7 @@ hookimpl = pluggy.HookimplMarker("evo")
 class CommandHandler:
     """
     命令处理 trait (核心)
-    
+
     实现此 trait 的插件可以处理命令。
     """
 
@@ -25,7 +25,7 @@ class CommandHandler:
     def commands(self) -> list[str]:
         """
         声明支持的命令列表
-        
+
         Returns:
             命令名列表，如 ["echo", "greet"]
         """
@@ -35,17 +35,20 @@ class CommandHandler:
     def handle(self, task) -> dict:
         """
         处理任务
-        
+
         Args:
             task: Task 对象
-            
+
         Returns:
             执行结果 dict，包含:
             - success: bool
             - data: Any (成功时)
             - error: dict (失败时), 包含 code 和 message
         """
-        return {"success": False, "error": {"code": "NOT_IMPLEMENTED", "message": "Not implemented"}}
+        return {
+            "success": False,
+            "error": {"code": "NOT_IMPLEMENTED", "message": "Not implemented"}
+        }
 
 
 class CapabilityProvider:
@@ -55,7 +58,7 @@ class CapabilityProvider:
     def get_capabilities(self) -> Optional[dict]:
         """
         声明能力清单
-        
+
         Returns:
             能力描述 dict，包含:
             - commands: list[str] - 命令列表

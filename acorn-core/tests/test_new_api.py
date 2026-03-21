@@ -2,7 +2,6 @@
 测试新的结构化 API
 """
 
-import pytest
 
 
 class TestTaskResponse:
@@ -46,10 +45,10 @@ class TestExecute:
         from acorn_core import Acorn, Task
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         task = Task(command="echo", args={"message": "hello"})
         result = acorn.execute(task)
-        
+
         assert hasattr(result, "success")
         assert hasattr(result, "data")
         assert hasattr(result, "error")
@@ -58,32 +57,32 @@ class TestExecute:
         from acorn_core import Acorn, Task
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         task = Task(command="unknown_command_xyz", args={})
         result = acorn.execute(task)
-        
+
         assert result.success is False
         assert result.error is not None
         assert result.error.code == "NOT_IMPLEMENTED"
 
     def test_execute_with_valid_command(self):
-        from acorn_core import Acorn, Task, hookimpl
+        from acorn_core import Acorn, Task
         from acorn_core.plugins.sandbox import NamespaceSandbox
-        
+
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         # 动态安装测试插件
         code = '''
 from acorn_core import hookimpl
 
 class TestPlugin:
     commands = ["test_cmd"]
-    
+
     @hookimpl
     def handle(self, task):
         return {"success": True, "data": f"test: {task.args.get('value', '')}"}
-    
+
     @hookimpl
     def get_capabilities(self):
         return {
@@ -96,13 +95,13 @@ plugin = TestPlugin()
         # 调用者负责执行代码（使用沙箱）
         sandbox = NamespaceSandbox()
         namespace = sandbox.execute(code, {})
-        
+
         # 传入执行后的 namespace
         acorn.install_plugin(namespace)
-        
+
         task = Task(command="test_cmd", args={"value": "hello"})
         result = acorn.execute(task)
-        
+
         assert result.success is True
         assert result.data == "test: hello"
 
@@ -114,13 +113,13 @@ class TestExecuteBatch:
         from acorn_core import Acorn, Task
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         tasks = [
             Task(command="echo", args={"message": "hello"}),
             Task(command="unknown", args={}),
         ]
         results = acorn.execute_batch(tasks)
-        
+
         assert len(results) == 2
         assert results[0].success is True   # echo 插件存在
         assert results[0].data == "hello"
@@ -134,7 +133,7 @@ class TestListCapabilities:
         from acorn_core import Acorn
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         caps = acorn.list_capabilities()
         assert isinstance(caps, list)
         # EvoManager 应该声明能力
@@ -144,7 +143,7 @@ class TestListCapabilities:
         from acorn_core import Acorn
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         caps = acorn.list_capabilities()
         # 至少有一个能力声明了 commands
         assert any("commands" in c for c in caps)
@@ -157,34 +156,34 @@ class TestErrorCodes:
         from acorn_core import Acorn, Task, ErrorInfo
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         task = Task(command="this_does_not_exist", args={})
         result = acorn.execute(task)
-        
+
         assert result.success is False
         assert result.error is not None
         assert result.error.code == ErrorInfo.NOT_IMPLEMENTED
 
     def test_invalid_argument_error_code(self):
-        from acorn_core import Acorn, Task, ErrorInfo, hookimpl
+        from acorn_core import Acorn, Task, ErrorInfo
         from acorn_core.plugins.sandbox import NamespaceSandbox
-        
+
         acorn = Acorn()
         acorn.load_plugins()
-        
+
         # 安装一个强制要求参数的插件
         code = '''
 from acorn_core import hookimpl
 
 class StrictPlugin:
     commands = ["strict"]
-    
+
     @hookimpl
     def handle(self, task):
         if "required_arg" not in task.args:
             return {"success": False, "error": "INVALID_ARGUMENT: required_arg is missing"}
         return {"success": True, "data": "ok"}
-    
+
     @hookimpl
     def get_capabilities(self):
         return {
@@ -198,11 +197,11 @@ plugin = StrictPlugin()
         sandbox = NamespaceSandbox()
         namespace = sandbox.execute(code, {})
         acorn.install_plugin(namespace)
-        
+
         # 不带必需参数
         task = Task(command="strict", args={})
         result = acorn.execute(task)
-        
+
         assert result.success is False
         assert result.error is not None
         assert result.error.code == ErrorInfo.INVALID_ARGUMENT

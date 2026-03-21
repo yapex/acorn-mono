@@ -14,7 +14,7 @@ from typing import Any
 class Task:
     """
     任务请求
-    
+
     Attributes:
         command: 命令名 (snake_case)
         args: 参数字典
@@ -25,7 +25,7 @@ class Task:
     args: dict[str, Any] = field(default_factory=dict)
     context: dict[str, Any] = field(default_factory=dict)
     options: dict[str, Any] = field(default_factory=dict)
-    
+
     def __post_init__(self):
         if not self.command:
             raise ValueError("command cannot be empty")
@@ -35,7 +35,7 @@ class Task:
 class ErrorInfo:
     """
     错误信息
-    
+
     错误码:
         NOT_IMPLEMENTED - 没有插件能处理此命令
         INVALID_ARGUMENT - 参数格式错误
@@ -46,7 +46,7 @@ class ErrorInfo:
     code: str
     message: str
     detail: str | None = None
-    
+
     # 错误码常量
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
     INVALID_ARGUMENT = "INVALID_ARGUMENT"
@@ -59,7 +59,7 @@ class ErrorInfo:
 class Response:
     """
     执行结果
-    
+
     Attributes:
         success: 是否成功
         data: 返回数据
@@ -70,12 +70,12 @@ class Response:
     data: Any = None
     error: ErrorInfo | None = None
     meta: dict[str, Any] = field(default_factory=dict)
-    
+
     @classmethod
     def ok(cls, data: Any = None, meta: dict | None = None) -> Response:
         """创建成功响应"""
         return cls(success=True, data=data, meta=meta or {})
-    
+
     @classmethod
     def err(cls, code: str, message: str, detail: str | None = None) -> Response:
         """创建错误响应"""
@@ -85,11 +85,11 @@ class Response:
         )
 
 
-@dataclass  
+@dataclass
 class Capabilities:
     """
     能力声明
-    
+
     Attributes:
         commands: 支持的命令列表
         args: 参数规范
