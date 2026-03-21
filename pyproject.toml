@@ -1,0 +1,15 @@
+[tool.uv]
+workspace = { members = ["acorn-core", "acorn-agent"] }
+
+[tool.uv.sources]
+acorn-core = { workspace = true }
+acorn-agent = { workspace = true }
+
+[tool.poe.tasks]
+start = "bash start-agent.sh"
+stop = "bash stop-agent.sh"
+
+[dependency-groups]
+dev = [
+    "poethepoet>=0.42.1",
+]

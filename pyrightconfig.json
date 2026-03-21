@@ -1,0 +1,19 @@
+{
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Darwin",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "acorn-core/src",
+    "acorn-core/tests"
+  ],
+  "extraPaths": [
+    "acorn-core/src"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "acorn-core",
+      "pythonVersion": "3.12"
+    }
+  ]
+}
