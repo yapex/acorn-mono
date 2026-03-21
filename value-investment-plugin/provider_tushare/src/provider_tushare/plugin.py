@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vi_core.spec import hookimpl
+from vi_core.spec import vi_hookimpl
 
 from .provider import TushareProvider
 
@@ -28,17 +28,17 @@ def _get_provider() -> TushareProvider:
 class TushareProviderPlugin:
     """Tushare data provider plugin"""
 
-    @hookimpl
+    @vi_hookimpl
     def vi_markets(self) -> list[str]:
         """Return supported markets"""
         return ["A"]
 
-    @hookimpl
+    @vi_hookimpl
     def vi_supported_fields(self) -> list[str]:
         """Return list of supported fields"""
         return list(TushareProvider.SUPPORTED_FIELDS)
 
-    @hookimpl
+    @vi_hookimpl
     def vi_fetch_financials(
         self,
         symbol: str,
@@ -50,7 +50,7 @@ class TushareProviderPlugin:
         provider = _get_provider()
         return provider.fetch_financials(symbol, fields, end_year, years)
 
-    @hookimpl
+    @vi_hookimpl
     def vi_fetch_indicators(
         self,
         symbol: str,
@@ -62,7 +62,7 @@ class TushareProviderPlugin:
         provider = _get_provider()
         return provider.fetch_indicators(symbol, fields, end_year, years)
 
-    @hookimpl
+    @vi_hookimpl
     def vi_fetch_market(
         self,
         symbol: str,

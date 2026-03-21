@@ -1,16 +1,16 @@
 """Value Investment Core
 
-Provides field registry, calculator registry, and query engine.
+Provides pluggy specs and query engine.
 """
 from __future__ import annotations
 
-from .spec import hookimpl, hookspec, ValueInvestmentSpecs
+from .spec import vi_hookspec, vi_hookimpl, ValueInvestmentSpecs
 from .plugin import plugin, ViCorePlugin
 
 __all__ = [
     # Spec
-    "hookspec",
-    "hookimpl",
+    "vi_hookspec",
+    "vi_hookimpl",
     "ValueInvestmentSpecs",
     # Plugin
     "plugin",

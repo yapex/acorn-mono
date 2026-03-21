@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
-from .spec import hookimpl
+from .spec import vi_hookimpl
 
 if TYPE_CHECKING:
     pass
@@ -29,12 +29,12 @@ class ViCorePlugin:
         """Set the plugin manager for field collection"""
         cls._pm = pm
 
-    @hookimpl
+    @vi_hookimpl
     def vi_commands(self) -> list[str]:
         """Return supported commands"""
         return ["list_fields", "query"]
 
-    @hookimpl
+    @vi_hookimpl
     def vi_fields(self) -> Any:
         """Return core fields (empty, fields come from plugins)"""
         return {
@@ -43,7 +43,7 @@ class ViCorePlugin:
             "description": "Core - fields defined by plugins",
         }
 
-    @hookimpl
+    @vi_hookimpl
     def vi_handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
         """Handle commands"""
         if command == "list_fields":
@@ -96,7 +96,8 @@ class ViCorePlugin:
             fields: Comma-separated field names or "all"
             end_year: End year (default current year)
             years: Number of years to fetch (default 10)
-            market: Market filter (e.g. "A", "HK", "US")
+            calculators: Comma-separated calculator names (e.g. "implied_growth")
+            calculator_config: Dict of {calculator_name: config_dict}
 
         Returns:
             {"success": True, "data": {...}}
@@ -108,7 +109,8 @@ class ViCorePlugin:
         fields_str = args.get("fields", "")
         end_year = args.get("end_year")
         years = args.get("years", 10)
-        # market = args.get("market")  # TODO: filter by market
+        calculators_str = args.get("calculators", "")
+        calculator_config = args.get("calculator_config", {})
 
         # Parse end_year
         if end_year is None:
@@ -117,6 +119,11 @@ class ViCorePlugin:
         else:
             end_year = int(end_year)
         years = int(years)
+
+        # Parse calculators
+        requested_calculators = set(
+            c.strip() for c in calculators_str.split(",") if c.strip()
+        )
 
         # Parse fields
         if not self._pm:
@@ -138,7 +145,7 @@ class ViCorePlugin:
                 # Log but continue
                 pass
 
-        if not fields:
+        if not fields and not requested_calculators:
             return {"success": False, "error": "No valid fields specified"}
 
         # Categorize fields
@@ -195,8 +202,66 @@ class ViCorePlugin:
                 if result:
                     results["data"].update(result)
 
+        # Run calculators
+        if requested_calculators:
+            self._run_calculators(results, requested_calculators, calculator_config)
+
         results["fields_fetched"] = list(results["data"].keys())
         return {"success": True, "data": results}
+
+    def _run_calculators(
+        self,
+        results: dict[str, Any],
+        calculator_names: set[str],
+        calculator_config: dict[str, Any],
+    ) -> None:
+        """Run calculators via hook and add results to data"""
+        if not self._pm:
+            return
+
+        # Get available calculators
+        calc_list = self._pm.hook.vi_list_calculators()
+        if not calc_list:
+            return
+
+        # Flatten if nested (pluggy returns [[...]])
+        if calc_list and isinstance(calc_list[0], list):
+            calc_list = calc_list[0]
+
+        # Build calculator registry
+        calc_registry: dict[str, dict] = {}
+        for calc in calc_list:
+            calc_registry[calc["name"]] = calc
+
+        # Run each requested calculator via hook
+        for calc_name in calculator_names:
+            if calc_name not in calc_registry:
+                continue
+
+            calc_spec = calc_registry[calc_name]
+            required_fields = set(calc_spec.get("required_fields", []))
+            optional_fields = set(calc_spec.get("optional_fields", []))
+
+            # Collect required data
+            calc_data: dict[str, dict] = {}
+            for field in required_fields | optional_fields:
+                if field in results["data"]:
+                    calc_data[field] = results["data"][field]
+
+            # Check if all required fields are available
+            missing = required_fields - set(calc_data.keys())
+            if missing:
+                continue  # Skip this calculator
+
+            # Call hook to run calculator (auto-discovery!)
+            config = calculator_config.get(calc_name, {})
+            calc_result = self._pm.hook.vi_run_calculator(
+                name=calc_name,
+                data=calc_data,
+                config=config,
+            )
+            if calc_result:
+                results["data"][calc_name] = calc_result
 
 
 # Plugin instance for pluggy registration

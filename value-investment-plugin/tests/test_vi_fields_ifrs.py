@@ -51,22 +51,10 @@ class TestViFieldsIfrsPlugin:
         for field in ratio_fields:
             assert field in IFRS_FIELDS, f"{field} should be in IFRS_FIELDS"
 
-    def test_ifrs_fields_contains_trading_data(self):
-        """Test IFRS fields contain trading data fields"""
-        trading_fields = {
-            "close",
-            "open",
-            "high",
-            "low",
-            "volume",
-        }
-        for field in trading_fields:
-            assert field in IFRS_FIELDS, f"{field} should be in IFRS_FIELDS"
-
     def test_ifrs_fields_is_set(self):
         """Test IFRS_FIELDS is a set"""
         assert isinstance(IFRS_FIELDS, set)
 
     def test_ifrs_fields_count(self):
         """Test IFRS fields count matches expected"""
-        assert len(IFRS_FIELDS) == 43, f"Expected 43 fields, got {len(IFRS_FIELDS)}"
+        assert len(IFRS_FIELDS) == 38, f"Expected 38 fields, got {len(IFRS_FIELDS)}"

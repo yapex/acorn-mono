@@ -1,50 +1,54 @@
-"""Implied Growth Rate Calculator based on DCF model
+"""Implied Growth Rate Calculator
 
-Based on DCF model, calculate implied annual growth rate from current market cap.
+基于 DCF 模型，用市值反推隐含的年增长率。
 """
 from typing import Any
 
-# 依赖字段
-required_fields = [
+REQUIRED_FIELDS = [
     "operating_cash_flow",
     "market_cap",
 ]
 
-# 可选配置参数
-optional_config = {
-    "wacc": 0.10,        # 加权平均资本成本
-    "g_terminal": 0.03, # 永续增长率
-    "n_years": 10,       # 预测期
+DEFAULT_CONFIG = {
+    "wacc": 0.10,
+    "g_terminal": 0.03,
+    "n_years": 10,
 }
 
 
-def calculate(results: dict[str, dict[int, Any]], config: dict = None) -> dict[int, float]:
-    """计算隐含增长率
-
-    Args:
-        results: {field: {year: value}}
-        config: 可选配置 {wacc, g_terminal, n_years}
-
-    Returns:
-        {year: implied_growth_rate}
-    """
-    # 合并默认配置
-    cfg = {**optional_config, **(config or {})}
+def calculate(
+    results: dict[str, dict[int, Any]],
+    config: dict[str, Any] | None = None,
+) -> dict[str | int, float]:
+    """计算隐含增长率"""
+    cfg = {**DEFAULT_CONFIG, **(config or {})}
     wacc = cfg["wacc"]
     g_terminal = cfg["g_terminal"]
     n_years = cfg["n_years"]
 
-    # 获取 FCF
-    fcf_data, is_approximated = _get_fcf(results)
+    fcf_data = _get_fcf(results)
     if not fcf_data:
         return {}
 
-    # 获取市值
-    market_cap_data: dict[int, Any] = results.get("market_cap", {})
+    market_cap_data = results.get("market_cap", {})
     if not market_cap_data:
         return {}
 
-    # 计算隐含增长率
+    # 处理 market_cap 可能是单个值的情况
+    if isinstance(market_cap_data, (int, float)):
+        # 当前市值（单个值），用于最新年份计算
+        # Tushare 返回的是万元，需要转换为元
+        current_market_cap = float(market_cap_data) * 10000
+        # 获取最新年份
+        latest_year = max(fcf_data.keys()) if fcf_data else None
+        if latest_year and current_market_cap > 0:
+            fcf = fcf_data.get(latest_year, 0)
+            if fcf > 0:
+                g = _calculate_implied_growth(fcf, current_market_cap, wacc, g_terminal, n_years)
+                if g is not None:
+                    return {"current": g}
+        return {}
+
     implied_growth = {}
     for year, fcf in fcf_data.items():
         if fcf <= 0:
@@ -61,29 +65,18 @@ def calculate(results: dict[str, dict[int, Any]], config: dict = None) -> dict[i
     return implied_growth
 
 
-def _get_fcf(results: dict[str, dict[int, Any]]) -> tuple[dict[int, float], bool]:
+def _get_fcf(results: dict[str, dict[int, Any]]) -> dict[int, float]:
     """获取自由现金流数据"""
-    # 优先使用 free_cash_flow
     if "free_cash_flow" in results:
-        fcf_data = results["free_cash_flow"]
-        return {year: val for year, val in fcf_data.items() if val > 0}, False
+        return {y: v for y, v in results["free_cash_flow"].items() if v > 0}
 
-    # 获取 OCF 和 CAPEX
-    ocf_data = results.get("operating_cash_flow", {})
-    capex_data = results.get("capital_expenditure", {})
+    ocf = results.get("operating_cash_flow", {})
+    capex = results.get("capital_expenditure", {})
 
-    if not capex_data:
-        return {year: val for year, val in ocf_data.items() if val > 0}, True
+    if not capex:
+        return {y: v for y, v in ocf.items() if v > 0}
 
-    fcf_data = {}
-    for year in ocf_data:
-        ocf = ocf_data.get(year, 0)
-        capex = capex_data.get(year, 0)
-        fcf = ocf - capex
-        if fcf > 0:
-            fcf_data[year] = fcf
-
-    return fcf_data, False
+    return {y: ocf.get(y, 0) - capex.get(y, 0) for y in ocf if ocf.get(y, 0) - capex.get(y, 0) > 0}
 
 
 def _calculate_implied_growth(
@@ -109,7 +102,6 @@ def _calculate_implied_growth(
 
         return pv
 
-    # 二分搜索 [-5%, 30%]
     low, high = -0.05, 0.30
     tolerance = 0.0001
 

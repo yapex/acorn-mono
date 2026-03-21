@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vi_core.spec import hookimpl
+from vi_core.spec import vi_hookimpl
 
 
 # IFRS Standard Fields
@@ -54,19 +54,13 @@ IFRS_FIELDS = {
     "basic_eps",
     "diluted_eps",
     "book_value_per_share",
-    # Trading Data (价格/成交量)
-    "close",
-    "open",
-    "high",
-    "low",
-    "volume",
 }
 
 
 class ViFieldsIfrsPlugin:
     """IFRS Fields plugin"""
 
-    @hookimpl
+    @vi_hookimpl
     def vi_fields(self) -> Any:
         """Return IFRS standard fields"""
         return {

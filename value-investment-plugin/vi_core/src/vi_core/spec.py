@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any
 
 import pluggy
 
-hookspec = pluggy.HookspecMarker("value_investment")
-hookimpl = pluggy.HookimplMarker("value_investment")
+vi_hookspec = pluggy.HookspecMarker("value_investment")
+vi_hookimpl = pluggy.HookimplMarker("value_investment")
 
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class FieldRegistrySpec:
     """Hook spec for field registry"""
 
-    @hookspec
+    @vi_hookspec
     def vi_fields(self) -> Any:
         """Return fields provided by this plugin
 
@@ -44,7 +44,7 @@ class FieldRegistrySpec:
 class FieldProviderSpec:
     """Hook spec for VI field providers"""
 
-    @hookspec
+    @vi_hookspec
     def vi_markets(self) -> list[str]:
         """Return list of supported markets
 
@@ -53,7 +53,7 @@ class FieldProviderSpec:
         """
         return []
 
-    @hookspec
+    @vi_hookspec
     def vi_supported_fields(self) -> list[str]:
         """Return list of field names this provider can fetch
 
@@ -62,7 +62,7 @@ class FieldProviderSpec:
         """
         return []
 
-    @hookspec
+    @vi_hookspec
     def vi_fetch_financials(
         self,
         symbol: str,
@@ -83,7 +83,7 @@ class FieldProviderSpec:
         """
         return None
 
-    @hookspec
+    @vi_hookspec
     def vi_fetch_indicators(
         self,
         symbol: str,
@@ -104,7 +104,7 @@ class FieldProviderSpec:
         """
         return None
 
-    @hookspec
+    @vi_hookspec
     def vi_fetch_market(
         self,
         symbol: str,
@@ -129,7 +129,7 @@ class FieldProviderSpec:
 class CalculatorSpec:
     """Hook spec for VI calculators"""
 
-    @hookspec
+    @vi_hookspec
     def vi_list_calculators(self) -> list[dict[str, Any]]:
         """Return list of available calculators
 
@@ -143,6 +143,25 @@ class CalculatorSpec:
         """
         return []
 
+    @vi_hookspec(firstresult=True)
+    def vi_run_calculator(
+        self,
+        name: str,
+        data: dict[str, dict[int, Any]],
+        config: dict[str, Any],
+    ) -> dict[int, Any] | None:
+        """Execute a calculator by name
+
+        Args:
+            name: Calculator name (e.g. "implied_growth")
+            data: Field data {field: {year: value}}
+            config: Calculator-specific config
+
+        Returns:
+            {year: value} or None if calculator not found/not implemented
+        """
+        return None
+
 
 # =============================================================================
 # Command Handler Hooks
@@ -151,7 +170,7 @@ class CalculatorSpec:
 class CommandHandlerSpec:
     """Hook spec for VI command handlers"""
 
-    @hookspec
+    @vi_hookspec
     def vi_commands(self) -> list[str]:
         """Return list of supported commands
 
@@ -160,7 +179,7 @@ class CommandHandlerSpec:
         """
         return []
 
-    @hookspec(firstresult=True)
+    @vi_hookspec(firstresult=True)
     def vi_handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
         """Handle a VI command
 

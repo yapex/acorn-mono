@@ -66,6 +66,9 @@ def clear() -> None:
 # =============================================================================
 
 _TUSHARE_FIELDS = {
+    # Trading Data
+    "close": "收盘价",
+    # Balance Sheet
     "goodwill": "商誉",
     "intangible_assets": "无形资产",
     "long_term_investment": "长期股权投资",

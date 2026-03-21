@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vi_core.spec import hookimpl
+from vi_core.spec import vi_hookimpl
 
 from . import get_fields, get_descriptions
 
@@ -14,7 +14,7 @@ from . import get_fields, get_descriptions
 class ViFieldsExtensionPlugin:
     """Extension Fields aggregator plugin"""
 
-    @hookimpl
+    @vi_hookimpl
     def vi_fields(self) -> Any:
         """Return all extension fields from registry"""
         all_fields = get_fields()

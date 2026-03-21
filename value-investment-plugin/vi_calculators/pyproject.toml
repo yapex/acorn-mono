@@ -1,0 +1,22 @@
+[project]
+name = "vi-calculators"
+version = "0.1.0"
+description = "Calculator Loader Plugin - Auto-load calculators from directories"
+requires-python = ">=3.12"
+dependencies = [
+    "vi-core>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.hatch.build.targets.editable]
+packages = ["."]
+
+# Pluggy entry point
+[project.entry-points."value_investment.calculators"]
+vi_calculators = "vi_calculators:plugin"

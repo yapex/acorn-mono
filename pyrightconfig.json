@@ -3,16 +3,18 @@
   "pythonPlatform": "Darwin",
   "venvPath": ".",
   "venv": ".venv",
-  "pythonPath": ".venv/bin/python",
   "include": [
     "acorn-core/src",
     "acorn-core/tests",
     "acorn-agent/src",
     "examples-plugin/src",
     "value-investment-plugin/vi_core/src",
+    "value-investment-plugin/vi_core/tests",
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",
     "value-investment-plugin/provider_tushare/src",
+    "value-investment-plugin/calculators/src",
+    "value-investment-plugin/calculators/tests",
     "value-investment-plugin/vi_cli/src"
   ],
   "exclude": [
@@ -24,6 +26,8 @@
     "value-investment-plugin/vi_core/src",
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",
-    "value-investment-plugin/provider_tushare/src"
+    "value-investment-plugin/provider_tushare/src",
+    "value-investment-plugin/calculators/src",
+    "value-investment-plugin/tests"
   ]
 }
