@@ -1,7 +1,6 @@
 """Tests for vi_core plugin"""
 from __future__ import annotations
 
-import pytest
 
 from vi_core import plugin as vi_core_plugin
 from vi_core import ValueInvestmentSpecs

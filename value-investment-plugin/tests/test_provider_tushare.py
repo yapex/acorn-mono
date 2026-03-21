@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from provider_tushare import plugin as tushare_plugin
-from provider_tushare import TushareProvider
 from provider_tushare.provider import TushareProvider
 
 
@@ -93,7 +92,7 @@ class TestTushareProvider:
         provider = TushareProvider.__new__(TushareProvider)
         provider._token = ""
         provider._api = None
-        
+
         result = provider._to_ts_code("000001")
         assert result == "000001.SZ"
 
@@ -102,7 +101,7 @@ class TestTushareProvider:
         provider = TushareProvider.__new__(TushareProvider)
         provider._token = ""
         provider._api = None
-        
+
         result = provider._to_ts_code("600519")
         assert result == "600519.SH"
 
@@ -111,7 +110,7 @@ class TestTushareProvider:
         provider = TushareProvider.__new__(TushareProvider)
         provider._token = ""
         provider._api = None
-        
+
         result = provider._to_ts_code("600519.SH")
         assert result == "600519.SH"
 

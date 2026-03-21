@@ -1,7 +1,6 @@
 """Tests for vi_fields_ifrs plugin"""
 from __future__ import annotations
 
-import pytest
 
 from vi_fields_ifrs import plugin as ifrs_plugin
 from vi_fields_ifrs.plugin import IFRS_FIELDS
