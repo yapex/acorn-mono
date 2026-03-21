@@ -19,14 +19,14 @@ class ViFieldsExtensionPlugin:
         """Return all extension fields from registry"""
         all_fields = get_fields()
         all_descriptions = get_descriptions()
-        
+
         if not all_fields:
             return {
                 "source": "extension",
                 "fields": set(),
                 "description": "Extension fields - use register_fields() to add",
             }
-        
+
         # Merge all fields
         merged_fields = set()
         descriptions = {}
@@ -34,7 +34,7 @@ class ViFieldsExtensionPlugin:
             merged_fields.update(fields)
             if source in all_descriptions:
                 descriptions.update(all_descriptions[source])
-        
+
         return {
             "source": "extension",
             "fields": merged_fields,

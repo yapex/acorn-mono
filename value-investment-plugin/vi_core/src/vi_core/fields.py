@@ -50,7 +50,7 @@ class IFRSFieldsMeta(type):
 
 class IFRSFields(metaclass=IFRSFieldsMeta):
     """International Financial Reporting Standards fields
-    
+
     These are standard fields provided directly by data sources.
     """
     _frozen: bool = False
@@ -121,10 +121,10 @@ IFRSFields._frozen = True
 
 class SourceFields:
     """Fields from data providers
-    
+
     These are raw fields that may need transformation.
     """
-    
+
     # Balance Sheet
     GOODWILL = "goodwill"
     INTANGIBLE_ASSETS = "intangible_assets"
@@ -266,23 +266,23 @@ def list_fields(
     prefix: str | None = None,
 ) -> list[str]:
     """List all available fields
-    
+
     Args:
         source: Filter by source ("ifrs", "provider", "calculator")
         prefix: Filter by name prefix
-    
+
     Returns:
         List of field names
     """
     fields = list(get_all_standard_fields())
-    
+
     if source:
         def match_source(f: str) -> bool:
             spec = get_field_spec(f)
             return spec is not None and spec.source == source
         fields = [f for f in fields if match_source(f)]
-    
+
     if prefix:
         fields = [f for f in fields if f.startswith(prefix)]
-    
+
     return sorted(fields)

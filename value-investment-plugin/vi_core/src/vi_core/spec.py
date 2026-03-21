@@ -13,7 +13,7 @@ hookimpl = pluggy.HookimplMarker("value_investment")
 
 
 if TYPE_CHECKING:
-    from pandas import DataFrame
+    pass
 
 
 # =============================================================================
@@ -26,7 +26,7 @@ class FieldRegistrySpec:
     @hookspec
     def vi_fields(self) -> Any:
         """Return fields provided by this plugin
-        
+
         Returns:
             {
                 "source": str,       # "ifrs", "custom", "provider_name"
@@ -47,7 +47,7 @@ class FieldProviderSpec:
     @hookspec
     def vi_markets(self) -> list[str]:
         """Return list of supported markets
-        
+
         Returns:
             List of market codes: ["A", "HK", "US"]
         """
@@ -56,7 +56,7 @@ class FieldProviderSpec:
     @hookspec
     def vi_provides(self) -> list[str]:
         """Return list of field names this provider can fetch
-        
+
         Returns:
             List of field names (e.g. ["total_revenue", "roe"])
         """
@@ -70,12 +70,12 @@ class FieldProviderSpec:
         years: int = 10,
     ) -> dict[int, float] | None:
         """Fetch a single field for a symbol
-        
+
         Args:
             symbol: Stock code (e.g. "600519", "00700", "AAPL")
             field: Field name (e.g. "total_revenue", "roe")
             years: Number of years to fetch
-        
+
         Returns:
             {year: value} or None if not supported
         """
@@ -92,7 +92,7 @@ class CalculatorSpec:
     @hookspec
     def vi_list_calculators(self) -> list[dict[str, Any]]:
         """Return list of available calculators
-        
+
         Returns:
             List of calculator specs:
             [{
@@ -114,7 +114,7 @@ class CommandHandlerSpec:
     @hookspec
     def vi_commands(self) -> list[str]:
         """Return list of supported commands
-        
+
         Returns:
             List of command names
         """
@@ -123,11 +123,11 @@ class CommandHandlerSpec:
     @hookspec(firstresult=True)
     def vi_handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
         """Handle a VI command
-        
+
         Args:
             command: Command name
             args: Command arguments
-        
+
         Returns:
             {"success": bool, "data": Any, "error": str}
         """

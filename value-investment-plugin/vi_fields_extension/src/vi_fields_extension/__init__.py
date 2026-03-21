@@ -3,7 +3,7 @@
 Simple way to register custom fields:
 
     from vi_fields_extension import register_fields
-    
+
     register_fields(
         source="my_plugin",
         fields={
@@ -23,11 +23,11 @@ _descriptions: dict[str, dict[str, str]] = {}
 
 def register_fields(source: str, fields: dict[str, str]) -> None:
     """Register custom fields
-    
+
     Args:
         source: Plugin/来源名称 (e.g. "tushare", "my_plugin")
         fields: Dict of {field_name: description}
-    
+
     Example:
         register_fields(
             source="tushare",
@@ -38,7 +38,7 @@ def register_fields(source: str, fields: dict[str, str]) -> None:
         )
     """
     global _custom_fields, _descriptions
-    
+
     field_names = set(fields.keys())
     _custom_fields[source] = field_names
     _descriptions[source] = fields

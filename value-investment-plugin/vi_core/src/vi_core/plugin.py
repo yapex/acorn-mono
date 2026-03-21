@@ -12,15 +12,15 @@ from typing import Any, TYPE_CHECKING
 from .spec import hookimpl
 
 if TYPE_CHECKING:
-    import pluggy
+    pass
 
 
 class ViCorePlugin:
     """VI Core plugin for pluggy
-    
+
     Provides commands for querying financial data.
     """
-    
+
     # Class-level plugin manager reference
     _pm: Any = None
 
@@ -55,7 +55,7 @@ class ViCorePlugin:
     def _list_fields(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available fields from all plugins"""
         all_fields: dict[str, dict] = {}
-        
+
         # Collect fields from all plugins via vi_fields hook
         if self._pm:
             for result in self._pm.hook.vi_fields():
@@ -73,10 +73,10 @@ class ViCorePlugin:
         prefix = args.get("prefix")
 
         fields = list(all_fields.keys())
-        
+
         if source:
             fields = [f for f in fields if all_fields[f]["source"] == source]
-        
+
         if prefix:
             fields = [f for f in fields if f.startswith(prefix)]
 
@@ -90,12 +90,12 @@ class ViCorePlugin:
 
     def _query(self, args: dict[str, Any]) -> dict[str, Any]:
         """Query financial data
-        
+
         Args:
             symbol: Stock code
             fields: Comma-separated field names
             years: Number of years
-        
+
         Returns:
             {"success": True, "data": DataFrame or dict}
         """
