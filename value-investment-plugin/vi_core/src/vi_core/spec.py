@@ -170,20 +170,22 @@ class CalculatorSpec:
         name: str,
         code: str,
         required_fields: list[str],
+        namespace: str,
         description: str = "",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """Register a calculator dynamically via code string
 
         Args:
             name: Calculator name
             code: Python code containing calculate(results, config) function
             required_fields: List of required field names
+            namespace: Namespace for the calculator (builtin, user, dynamic)
             description: Calculator description
 
         Returns:
-            {"success": bool, "data": {}, "error": str}
+            {"success": bool, "data": {}, "error": str} or None if not implemented
         """
-        return {"success": False, "error": "Not implemented"}
+        return None
 
 
 # =============================================================================

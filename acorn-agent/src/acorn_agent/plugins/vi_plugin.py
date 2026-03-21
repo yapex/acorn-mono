@@ -204,6 +204,7 @@ class VIPlugin:
         code = args.get("code")
         required_fields = args.get("required_fields", [])
         description = args.get("description", "")
+        namespace = args.get("namespace", "dynamic")
 
         if not name or not code:
             return {
@@ -216,6 +217,7 @@ class VIPlugin:
             code=code,
             required_fields=required_fields,
             description=description,
+            namespace=namespace,
         )
 
     @hookimpl
@@ -257,6 +259,7 @@ class VIPlugin:
                         "code": {"type": "string", "required": True, "description": "Python code with calculate(results, config) function"},
                         "required_fields": {"type": "array", "required": True, "description": "List of required field names"},
                         "description": {"type": "string", "required": False, "default": ""},
+                        "namespace": {"type": "string", "required": False, "default": "dynamic", "description": "Namespace: builtin, user, or dynamic"},
                     }
                 },
             ],
