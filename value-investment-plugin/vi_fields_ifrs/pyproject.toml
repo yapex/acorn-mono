@@ -3,6 +3,9 @@ name = "vi-fields-ifrs"
 version = "0.1.0"
 description = "IFRS Standard Fields for Value Investment"
 requires-python = ">=3.12"
+dependencies = [
+    "vi-core>=0.1.0",  # 依赖 vi_core
+]
 
 [build-system]
 requires = ["hatchling"]
