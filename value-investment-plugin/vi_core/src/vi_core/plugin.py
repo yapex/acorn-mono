@@ -89,21 +89,112 @@ class ViCorePlugin:
         }
 
     def _query(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Query financial data
+        """Query financial data from providers
 
         Args:
-            symbol: Stock code
-            fields: Comma-separated field names
-            years: Number of years
+            symbol: Stock code (e.g. "600519", "000001")
+            fields: Comma-separated field names or "all"
+            end_year: End year (default current year)
+            years: Number of years to fetch (default 10)
+            market: Market filter (e.g. "A", "HK", "US")
 
         Returns:
-            {"success": True, "data": DataFrame or dict}
+            {"success": True, "data": {...}}
         """
-        # TODO: Implement query engine
-        return {
-            "success": False,
-            "error": "Query engine not yet implemented",
+        symbol = args.get("symbol")
+        if not symbol:
+            return {"success": False, "error": "Missing required argument: symbol"}
+
+        fields_str = args.get("fields", "")
+        end_year = args.get("end_year")
+        years = args.get("years", 10)
+        # market = args.get("market")  # TODO: filter by market
+
+        # Parse end_year
+        if end_year is None:
+            from datetime import datetime
+            end_year = datetime.now().year
+        else:
+            end_year = int(end_year)
+        years = int(years)
+
+        # Parse fields
+        if not self._pm:
+            return {"success": False, "error": "Plugin manager not initialized"}
+
+        all_fields: set[str] = set()
+        for result in self._pm.hook.vi_supported_fields():
+            if result:
+                all_fields.update(result)
+
+        if fields_str.lower() == "all":
+            fields = all_fields
+        else:
+            requested = set(f.strip() for f in fields_str.split(",") if f.strip())
+            # Filter to supported fields only
+            fields = requested & all_fields
+            unsupported = requested - all_fields
+            if unsupported:
+                # Log but continue
+                pass
+
+        if not fields:
+            return {"success": False, "error": "No valid fields specified"}
+
+        # Categorize fields
+        indicator_fields = fields & {
+            "roe", "roa", "gross_margin", "net_profit_margin",
+            "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
+            "receivable_turnover", "roic", "basic_eps", "diluted_eps",
+            "book_value_per_share", "cash_ratio", "ocf_to_debt",
+            "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
+            "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
         }
+
+        market_fields = fields & {
+            "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",
+        }
+
+        financial_fields = fields - indicator_fields - market_fields
+
+        results: dict[str, Any] = {
+            "symbol": symbol,
+            "end_year": end_year,
+            "years": years,
+            "data": {},
+        }
+
+        # Fetch from providers
+        if financial_fields:
+            for result in self._pm.hook.vi_fetch_financials(
+                symbol=symbol,
+                fields=financial_fields,
+                end_year=end_year,
+                years=years,
+            ):
+                if result:
+                    results["data"].update(result)
+
+        if indicator_fields:
+            for result in self._pm.hook.vi_fetch_indicators(
+                symbol=symbol,
+                fields=indicator_fields,
+                end_year=end_year,
+                years=years,
+            ):
+                if result:
+                    results["data"].update(result)
+
+        if market_fields:
+            for result in self._pm.hook.vi_fetch_market(
+                symbol=symbol,
+                fields=market_fields,
+            ):
+                if result:
+                    results["data"].update(result)
+
+        results["fields_fetched"] = list(results["data"].keys())
+        return {"success": True, "data": results}
 
 
 # Plugin instance for pluggy registration

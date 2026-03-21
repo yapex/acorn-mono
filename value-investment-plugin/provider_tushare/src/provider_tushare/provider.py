@@ -362,7 +362,13 @@ class TushareProvider:
             if native in df.columns:
                 value = row.get(native)
                 if value is not None and not pd.isna(value):
-                    result[std] = value
+                    # Convert to scalar
+                    if hasattr(value, 'item'):
+                        value = value.item()
+                    elif isinstance(value, pd.Series):
+                        value = value.iloc[0] if not value.empty else None
+                    if value is not None:
+                        result[std] = float(value) if isinstance(value, (int, float)) else value
 
         return result
 
@@ -388,7 +394,13 @@ class TushareProvider:
                 value = row.get(col)
 
                 if value is not None and not (hasattr(value, '__float__') and pd.isna(value)):
-                    result[col][year] = float(value) if isinstance(value, (int, float)) else value
+                    # Convert to scalar
+                    if isinstance(value, pd.Series):
+                        value = value.iloc[0] if not value.empty else None
+                    elif hasattr(value, 'item'):
+                        value = value.item()
+                    if value is not None:
+                        result[col][year] = float(value) if isinstance(value, (int, float)) else value
 
         return result
 
