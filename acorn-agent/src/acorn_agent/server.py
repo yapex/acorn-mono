@@ -7,8 +7,7 @@ import socket
 import threading
 from pathlib import Path
 
-from acorn_core import Acorn, Task
-
+from acorn_core import Acorn, Task  # type: ignore[import]
 
 # Default socket path in user directory
 DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
@@ -21,7 +20,16 @@ class AcornServer:
         self.socket_path = socket_path or str(DEFAULT_SOCKET_PATH)
         self.acorn = Acorn()
         self.acorn.load_plugins()
+        self._register_local_plugins()
         self._running = False
+
+    def _register_local_plugins(self):
+        """Register local plugins (vi_plugin)"""
+        try:
+            from acorn_agent.plugins import plugin as vi_plugin
+            self.acorn.pm.register(vi_plugin, name="vi")
+        except Exception as e:
+            print(f"Warning: Failed to register vi_plugin: {e}")
 
     def start(self):
         """Start the server (blocking)"""
