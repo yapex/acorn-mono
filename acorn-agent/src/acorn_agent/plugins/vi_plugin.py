@@ -135,6 +135,7 @@ class VIPlugin:
             "vi_query",
             "vi_list_fields",
             "vi_list_calculators",
+            "vi_register_calculator",
         ]
 
     @hookimpl
@@ -160,8 +161,9 @@ class VIPlugin:
         elif command == "vi_list_fields":
             vi_command = "list_fields"
         elif command == "vi_list_calculators":
-            # Special handling - use vi_list_calculators hook directly
             return self._list_calculators(args, pm)
+        elif command == "vi_register_calculator":
+            return self._register_calculator(args, pm)
         else:
             return {
                 "success": False,
@@ -196,6 +198,26 @@ class VIPlugin:
             }
         }
 
+    def _register_calculator(self, args: dict, pm: Any) -> dict[str, Any]:
+        """Register a calculator dynamically via code string"""
+        name = args.get("name")
+        code = args.get("code")
+        required_fields = args.get("required_fields", [])
+        description = args.get("description", "")
+
+        if not name or not code:
+            return {
+                "success": False,
+                "error": {"code": "INVALID_ARGS", "message": "name and code are required"},
+            }
+
+        return pm.hook.vi_register_calculator(
+            name=name,
+            code=code,
+            required_fields=required_fields,
+            description=description,
+        )
+
     @hookimpl
     def get_capabilities(self) -> dict[str, Any]:
         """Declare capabilities for this plugin"""
@@ -226,6 +248,16 @@ class VIPlugin:
                     "name": "vi_list_calculators",
                     "description": "List all available calculators",
                     "args": {}
+                },
+                {
+                    "name": "vi_register_calculator",
+                    "description": "Register a calculator dynamically via code string",
+                    "args": {
+                        "name": {"type": "string", "required": True, "description": "Calculator name"},
+                        "code": {"type": "string", "required": True, "description": "Python code with calculate(results, config) function"},
+                        "required_fields": {"type": "array", "required": True, "description": "List of required field names"},
+                        "description": {"type": "string", "required": False, "default": ""},
+                    }
                 },
             ],
         }

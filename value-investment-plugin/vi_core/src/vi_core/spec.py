@@ -162,6 +162,27 @@ class CalculatorSpec:
         """
         return None
 
+    @vi_hookspec(firstresult=True)
+    def vi_register_calculator(
+        self,
+        name: str,
+        code: str,
+        required_fields: list[str],
+        description: str = "",
+    ) -> dict[str, Any]:
+        """Register a calculator dynamically via code string
+
+        Args:
+            name: Calculator name
+            code: Python code containing calculate(results, config) function
+            required_fields: List of required field names
+            description: Calculator description
+
+        Returns:
+            {"success": bool, "data": {}, "error": str}
+        """
+        return {"success": False, "error": "Not implemented"}
+
 
 # =============================================================================
 # Command Handler Hooks
