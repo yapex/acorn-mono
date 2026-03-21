@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import pluggy
+import pluggy  # type: ignore[import]
 
 vi_hookspec = pluggy.HookspecMarker("value_investment")
 vi_hookimpl = pluggy.HookimplMarker("value_investment")
@@ -159,6 +159,8 @@ class CalculatorSpec:
 
         Returns:
             {year: value} or None if calculator not found/not implemented
+            如果calculator运行时出错，返回:
+            {"__error__": True, "calculator": name, "error_type": type, "error_message": msg}
         """
         return None
 

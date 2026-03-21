@@ -108,11 +108,23 @@ class CalculatorLoaderPlugin(CalculatorSpec):
         name: str,
         data: dict[str, dict[int, Any]],
         config: dict[str, Any],
-    ) -> Any | None:
+    ) -> dict[str, Any] | None:
         """执行指定名称的计算器"""
         for calc in self._calculators:
             if calc["name"] == name:
-                return calc["module"].calculate(data, config)
+                try:
+                    result = calc["module"].calculate(data, config)
+                    return result
+                except Exception as e:
+                    # 返回错误信息而不是抛出异常
+                    error_type = type(e).__name__
+                    error_msg = str(e)
+                    return {
+                        "__error__": True,
+                        "calculator": name,
+                        "error_type": error_type,
+                        "error_message": error_msg,
+                    }
         return None
 
     @vi_hookimpl

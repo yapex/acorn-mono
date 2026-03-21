@@ -260,6 +260,23 @@ class ViCorePlugin:
                 data=calc_data,
                 config=config,
             )
+
+            if calc_result is None:
+                continue  # Calculator not found
+
+            # Check for calculator error
+            if isinstance(calc_result, dict) and calc_result.get("__error__"):
+                # Calculator运行时出错，记录错误信息
+                err_info = f"[{calc_result['calculator']}] {calc_result['error_type']}: {calc_result['error_message']}"
+                if "calculator_errors" not in results:
+                    results["calculator_errors"] = []
+                results["calculator_errors"].append({
+                    "calculator": calc_result["calculator"],
+                    "error_type": calc_result["error_type"],
+                    "error_message": calc_result["error_message"],
+                })
+                continue  # Skip this calculator, don't add error result
+
             if calc_result:
                 results["data"][calc_name] = calc_result
 
