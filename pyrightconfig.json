@@ -13,8 +13,9 @@
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",
     "value-investment-plugin/provider_tushare/src",
-    "value-investment-plugin/calculators/src",
+    "value-investment-plugin/calculators",
     "value-investment-plugin/calculators/tests",
+    "value-investment-plugin/vi_calculators",
     "value-investment-plugin/vi_cli/src"
   ],
   "exclude": [
@@ -27,7 +28,14 @@
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",
     "value-investment-plugin/provider_tushare/src",
-    "value-investment-plugin/calculators/src",
+    "value-investment-plugin/calculators",
+    "value-investment-plugin/vi_calculators",
     "value-investment-plugin/tests"
-  ]
+  ],
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ],
+  "typeCheckingMode": "basic"
 }
