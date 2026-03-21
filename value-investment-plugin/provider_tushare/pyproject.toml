@@ -5,6 +5,7 @@ description = "Tushare Provider for Value Investment"
 requires-python = ">=3.12"
 dependencies = [
     "tushare>=1.4.0",
+    "vi-core",  # vi_core dependency
 ]
 
 [build-system]
