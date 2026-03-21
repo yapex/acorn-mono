@@ -54,7 +54,7 @@ class FieldProviderSpec:
         return []
 
     @hookspec
-    def vi_provides(self) -> list[str]:
+    def vi_supported_fields(self) -> list[str]:
         """Return list of field names this provider can fetch
 
         Returns:
@@ -63,23 +63,63 @@ class FieldProviderSpec:
         return []
 
     @hookspec
-    def vi_fetch(
+    def vi_fetch_financials(
         self,
         symbol: str,
-        field: str,
+        fields: set[str],
+        end_year: int,
         years: int = 10,
-    ) -> dict[int, float] | None:
-        """Fetch a single field for a symbol
+    ) -> dict[str, dict[int, Any]] | None:
+        """Fetch financial statement data (balance sheet, income, cash flow)
 
         Args:
             symbol: Stock code (e.g. "600519", "00700", "AAPL")
-            field: Field name (e.g. "total_revenue", "roe")
+            fields: IFRS standard field names
+            end_year: End year
             years: Number of years to fetch
 
         Returns:
-            {year: value} or None if not supported
+            {field: {year: value}} or None if fields not supported
         """
         return None
+
+    @hookspec
+    def vi_fetch_indicators(
+        self,
+        symbol: str,
+        fields: set[str],
+        end_year: int,
+        years: int = 10,
+    ) -> dict[str, dict[int, Any]] | None:
+        """Fetch financial indicators (ROE, ROA, gross margin, etc.)
+
+        Args:
+            symbol: Stock code
+            fields: IFRS standard indicator field names
+            end_year: End year
+            years: Number of years to fetch
+
+        Returns:
+            {field: {year: value}} or None
+        """
+        return None
+
+    @hookspec
+    def vi_fetch_market(
+        self,
+        symbol: str,
+        fields: set[str],
+    ) -> dict[str, Any]:
+        """Fetch market data (market cap, PE, PB, etc.)
+
+        Args:
+            symbol: Stock code
+            fields: Market field names (market_cap, pe_ratio, pb_ratio)
+
+        Returns:
+            {field: value} single time point values
+        """
+        return {}
 
 
 # =============================================================================

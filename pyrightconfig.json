@@ -23,6 +23,7 @@
     ".venv/lib/python3.12/site-packages",
     "value-investment-plugin/vi_core/src",
     "value-investment-plugin/vi_fields_ifrs/src",
-    "value-investment-plugin/vi_fields_extension/src"
+    "value-investment-plugin/vi_fields_extension/src",
+    "value-investment-plugin/provider_tushare/src"
   ]
 }
