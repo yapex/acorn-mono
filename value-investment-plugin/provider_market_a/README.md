@@ -1,6 +1,6 @@
-# provider_tushare
+# provider_market_a
 
-Tushare 数据提供者插件，为 A 股市场提供财务数据。
+A 股数据提供者，使用 Tushare API 获取数据。
 
 ## 职责
 
@@ -11,13 +11,23 @@ Tushare 数据提供者插件，为 A 股市场提供财务数据。
 ## 架构
 
 ```
-provider_tushare
-├── src/provider_tushare/
+provider_market_a
+├── src/provider_market_a/
 │   ├── __init__.py
 │   ├── provider.py     # TushareProvider 类
 │   └── plugin.py       # Pluggy 插件包装
-└── tests/
+└── pyproject.toml
 ```
+
+## 数据源
+
+使用 [Tushare](https://tushare.pro/) API：
+
+- `balancesheet` - 资产负债表
+- `income` - 利润表
+- `cashflow` - 现金流量表
+- `fina_indicator` - 财务指标
+- `daily_basic` - 每日市场数据
 
 ## 字段映射
 
@@ -28,7 +38,6 @@ from vi_fields_extension import StandardFields
 
 FIELD_MAPPINGS = {
     "balance_sheet": {
-        # Tushare API 字段 -> 系统标准字段
         "total_assets": StandardFields.total_assets,
         "total_liab": StandardFields.total_liabilities,
         "total_hldr_eqy_exc_min_int": StandardFields.total_equity,
@@ -39,96 +48,20 @@ FIELD_MAPPINGS = {
         "n_income": StandardFields.net_profit,
         # ...
     },
-    "cash_flow": {
-        "n_cashflow_act": StandardFields.operating_cash_flow,
-        # ...
-    },
-    "indicators": {
-        "roe": StandardFields.roe,
-        "roa": StandardFields.roa,
-        "grossprofit_margin": StandardFields.gross_margin,
-        # ...
-    },
-    "market": {
-        "total_mv": StandardFields.market_cap,
-        "pe_ttm": StandardFields.pe_ratio,
-        "pb": StandardFields.pb_ratio,
-        # ...
-    },
+    # ...
 }
 ```
 
-### 使用 StandardFields 常量的好处
+## 代码格式
 
-1. **避免硬编码**：字段名变更只需修改 `vi_fields_extension`
-2. **IDE 支持**：`StandardFields.total_assets` 有自动补全
-3. **类型安全**：引用不存在的字段会报错
+A 股代码支持多种格式：
 
-## Hook 实现
-
-```python
-class TushareProvider:
-    @vi_hookimpl
-    def vi_markets(self) -> list[str]:
-        return ["A"]  # 只支持 A 股
-
-    @vi_hookimpl
-    def vi_supported_fields(self) -> list[str]:
-        # 从 FIELD_MAPPINGS 动态计算
-        return list(self.get_supported_fields())
-
-    @vi_hookimpl
-    def vi_fetch_financials(self, symbol, fields, end_year, years) -> dict | None:
-        # 获取资产负债表、利润表、现金流量表
-        ...
-
-    @vi_hookimpl
-    def vi_fetch_indicators(self, symbol, fields, end_year, years) -> dict | None:
-        # 获取财务指标
-        ...
-
-    @vi_hookimpl
-    def vi_fetch_market(self, symbol, fields) -> dict:
-        # 获取市场数据
-        ...
-```
-
-## 数据获取流程
-
-```
-vi_core.query(symbol="600519", fields=["total_assets", "roe"])
-        │
-        ▼
-┌───────────────────────────────────────────────────────────────┐
-│ 1. 字段分类                                                    │
-│    financial_fields = {"total_assets"}                        │
-│    indicator_fields = {"roe"}                                 │
-└───────────────────────────────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────────────────────────────┐
-│ 2. 调用 vi_fetch_financials(fields=financial_fields)          │
-│    TushareProvider:                                           │
-│    - 判断字段属于 balance_sheet                                │
-│    - 调用 Tushare API: balancesheet()                         │
-│    - 过滤年报 (end_date ends with "1231")                      │
-│    - 应用字段映射: "total_assets" -> "total_assets"            │
-└───────────────────────────────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────────────────────────────┐
-│ 3. 调用 vi_fetch_indicators(fields=indicator_fields)          │
-│    TushareProvider:                                           │
-│    - 调用 Tushare API: fina_indicator()                       │
-│    - 应用字段映射: "roe" -> "roe"                              │
-└───────────────────────────────────────────────────────────────┘
-        │
-        ▼
-返回: {
-    "total_assets": {2023: 1.2e12, 2022: 1.0e12},
-    "roe": {2023: 0.15, 2022: 0.12}
-}
-```
+| 输入 | 转换后 |
+|------|--------|
+| `600519` | `600519.SH` |
+| `000001` | `000001.SZ` |
+| `300750` | `300750.SZ` |
+| `600519.SH` | `600519.SH` (保持不变) |
 
 ## 配置
 
@@ -138,15 +71,69 @@ vi_core.query(symbol="600519", fields=["total_assets", "roe"])
 export TUSHARE_TOKEN="your_token_here"
 ```
 
-### 股票代码转换
+## 使用示例
 
-Provider 自动将 6 位股票代码转换为 Tushare 的 ts_code 格式：
+```python
+from provider_market_a import TushareProvider
 
-| 输入 | 转换后 |
-|------|--------|
-| `600519` | `600519.SH` |
-| `000001` | `000001.SZ` |
-| `300750` | `300750.SZ` |
+provider = TushareProvider()
+
+# 获取财务指标
+df = provider.fetch_indicators(
+    "600519",
+    fields={"roe", "roa", "gross_margin", "net_profit_margin"},
+    end_year=2024,
+    years=5,
+)
+
+# 获取财务报表
+df = provider.fetch_financials(
+    "600519",
+    fields={"total_assets", "total_revenue", "parent_net_profit"},
+    end_year=2024,
+    years=3,
+)
+
+# 获取市场数据
+df = provider.fetch_market(
+    "600519",
+    fields={"market_cap", "pe_ratio", "pb_ratio"},
+)
+```
+
+## A 股特定处理
+
+### 1. 年报过滤
+
+只保留年度财务报告（`end_date` 以 `1231` 结尾）：
+
+```python
+def _filter_annual_reports(self, df):
+    mask = df["end_date"].astype(str).str.endswith("1231")
+    return df[mask]
+```
+
+### 2. 数据去重
+
+按 `update_flag` 排序，保留最新记录：
+
+```python
+def _deduplicate(self, df):
+    # 按 update_flag 和日期排序
+    df = df.sort_values([date_col, "update_flag"], ascending=[False, False])
+    # 保留 update_flag 最新的记录
+    return df.drop_duplicates(subset=[date_col], keep="last")
+```
+
+## 依赖
+
+```toml
+dependencies = [
+    "tushare>=1.4.0",
+    "vi-core>=0.1.0",
+    "vi-fields-extension>=0.1.0",
+]
+```
 
 ## 开发规范
 
@@ -158,7 +145,7 @@ FIELD_DEFINITIONS = {
     "new_field": {"description": "新字段", "category": "...", "source": "custom"},
 }
 
-# 2. 在 provider_tushare/provider.py 中添加映射
+# 2. 在 provider_market_a/provider.py 中添加映射
 FIELD_MAPPINGS = {
     "balance_sheet": {
         "tushare_api_field": StandardFields.new_field,
@@ -168,38 +155,25 @@ FIELD_MAPPINGS = {
 
 ### 2. 返回值格式
 
-```python
-# 时间序列数据（财务报表、指标）
-{field: {year: value}}
-
-# 单点数据（市场数据）
-{field: value}
-```
-
-### 3. 错误处理
-
-- 字段不支持时返回 `None`（不是空字典）
-- API 调用失败时返回 `None`
-- 不要抛出异常
-
-### 4. 年报过滤
+`fetch_*` 方法返回 `pd.DataFrame`，只包含映射后的标准字段：
 
 ```python
-def _filter_annual_reports(self, df, date_col="end_date"):
-    """只保留年报（end_date 以 1231 结尾）"""
-    mask = df[date_col].astype(str).str.endswith("1231")
-    return df[mask]
+# 返回示例
+df = provider.fetch_indicators("600519", {"roe", "roa"}, 2024, 5)
+#    end_date      roe       roa
+# 0  20231231  0.2990  0.1523
+# 1  20221231  0.2834  0.1421
 ```
 
 ## 测试
 
 ```bash
 # 运行测试
-pytest provider_tushare/tests/
+pytest tests/
 
-# 测试需要设置 TUSHARE_TOKEN
+# 运行集成测试（需要 TUSHARE_TOKEN）
 export TUSHARE_TOKEN="your_token"
-pytest provider_tushare/tests/ -m integration
+pytest -m integration
 ```
 
 ## 相关文档

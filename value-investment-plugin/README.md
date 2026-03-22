@@ -10,7 +10,7 @@
 │                    (核心插件 + Plugin Manager)                   │
 │                                                                 │
 │  Commands: query, list_fields, list_calculators                 │
-│  Entry Points: value_investment.{fields,providers,calculators}  │
+│  Entry Points: value_investment.{fields,providers,calculators} │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
         ┌───────────────────┼───────────────────┐
@@ -19,28 +19,22 @@
 ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
 │    Fields     │   │   Providers   │   │  Calculators  │
 ├───────────────┤   ├───────────────┤   ├───────────────┤
-│ vi_fields_ifrs│   │provider_tushare│   │vi_calculators │
-│vi_fields_ext  │   │               │   │               │
-│ (第三方扩展)   │   │ (第三方扩展)   │   │ (第三方扩展)   │
+│ vi_fields_ifrs│   │provider_market_a│   │vi_calculators │
+│vi_fields_ext  │   │provider_market_hk│  │               │
+│ (第三方扩展)   │   │               │   │ (第三方扩展)   │
 └───────────────┘   └───────────────┘   └───────────────┘
-        │                   │                   │
-        └───────────────────┼───────────────────┘
-                            ▼
-                   ┌───────────────┐
-                   │vi_fields_ext  │
-                   │(StandardFields)│
-                   └───────────────┘
 ```
 
 ## 子项目
 
 | 项目 | 职责 | 文档 |
 |------|------|------|
-| [vi_core](./vi_core/README.md) | 核心 Hook Spec + 查询引擎 | [README](./vi_core/README.md) |
+| [vi_core](./vi_core/README.md) | 核心 Hook Spec + 查询引擎 + BaseDataProvider | [README](./vi_core/README.md) |
 | [vi_fields_extension](./vi_fields_extension/README.md) | 字段定义 + StandardFields 常量 | [README](./vi_fields_extension/README.md) |
 | [vi_fields_ifrs](./vi_fields_ifrs/README.md) | IFRS 标准字段插件 | [README](./vi_fields_ifrs/README.md) |
 | [vi_calculators](./vi_calculators/README.md) | 计算器加载器插件 | [README](./vi_calculators/README.md) |
-| [provider_tushare](./provider_tushare/README.md) | Tushare 数据提供者 | [README](./provider_tushare/README.md) |
+| [provider_market_a](./provider_market_a/README.md) | A 股数据提供者 (Tushare) | [README](./provider_market_a/README.md) |
+| [provider_market_hk](./provider_market_hk/README.md) | 港股数据提供者 (AKShare) | [README](./provider_market_hk/README.md) |
 | [calculators](./calculators/README.md) | 内置计算器脚本 | [README](./calculators/README.md) |
 
 ## 快速开始
@@ -53,9 +47,10 @@ cd value-investment-plugin
 uv sync
 ```
 
-### 配置 Tushare Token
+### 配置 API Token
 
 ```bash
+# A 股 (Tushare)
 export TUSHARE_TOKEN="your_token_here"
 ```
 
@@ -103,38 +98,66 @@ FIELD_DEFINITIONS = {
 
 ### 2. 添加新 Provider
 
+继承 `BaseDataProvider` 模板类：
+
 ```python
-# my_provider/plugin.py
-from vi_core.spec import FieldProviderSpec, vi_hookimpl
+# my_provider/provider.py
+from vi_core import BaseDataProvider
 from vi_fields_extension import StandardFields
 
-class MyProvider(FieldProviderSpec):
+class MyProvider(BaseDataProvider):
+    MARKET_CODE = "XX"
+    
     FIELD_MAPPINGS = {
-        "balance_sheet": {
-            "api_field": StandardFields.new_field,
-        }
+        "balance_sheet": {"api_field": StandardFields.total_assets},
+        "income_statement": {...},
     }
+    
+    def _normalize_symbol(self, symbol: str) -> str:
+        # 标准化股票代码
+        return symbol
+    
+    def _fetch_all_financials(self, symbol, start_year, end_year, fields):
+        # 调用 API，返回 DataFrame
+        return df
+    
+    def _fetch_indicators_impl(self, symbol, start_year, end_year):
+        return df
+    
+    def _fetch_market_impl(self, symbol):
+        return df
+```
 
+```python
+# my_provider/plugin.py
+from vi_core.spec import vi_hookimpl
+from .provider import MyProvider
+
+class MyProviderPlugin:
+    _provider = None
+    
+    def _get_provider(self):
+        if self._provider is None:
+            self._provider = MyProvider()
+        return self._provider
+    
     @vi_hookimpl
     def vi_markets(self):
-        return ["US"]
-
+        return ["XX"]
+    
     @vi_hookimpl
     def vi_supported_fields(self):
-        return ["new_field"]
+        return list(MyProvider.get_supported_fields())
+    
+    # ... vi_fetch_* hooks
 
-    @vi_hookimpl
-    def vi_fetch_financials(self, symbol, fields, end_year, years):
-        # 获取数据...
-        return {"new_field": {2023: 100}}
-
-plugin = MyProvider()
+plugin = MyProviderPlugin()
 ```
 
 ```toml
 # pyproject.toml
 [project.entry-points."value_investment.providers"]
-my_provider = "my_provider.plugin:plugin"
+my_provider = "my_provider:plugin"
 ```
 
 ### 3. 添加新 Calculator
@@ -165,20 +188,17 @@ FIELD_MAPPINGS = {"balance_sheet": {"api_field": StandardFields.total_assets}}
 FIELD_MAPPINGS = {"balance_sheet": {"api_field": "total_assets"}}
 ```
 
-### 2. Hook 返回值
+### 2. Provider 返回值
+
+Provider 的 `fetch_*` 方法返回 `pd.DataFrame`：
 
 ```python
-# ✅ 数据获取成功
-return {"field": {2023: 100}}
+# fetch_financials/indicators/market 返回 DataFrame
+# 只包含映射后的标准字段
+# 返回的是数据拷贝，与原始数据无关联
 
-# ✅ 不支持该字段
-return None
-
-# ✅ 命令执行成功
-return {"success": True, "data": {...}}
-
-# ✅ 命令执行失败
-return {"success": False, "error": "错误信息"}
+def fetch_financials(self, symbol, fields, end_year, years) -> pd.DataFrame | None:
+    """返回带字段映射的 DataFrame，index=年份或日期"""
 ```
 
 ### 3. 错误处理
@@ -208,9 +228,10 @@ pytest
 
 # 运行特定子项目测试
 pytest vi_core/tests/
-pytest provider_tushare/tests/
+pytest provider_market_a/tests/
+pytest provider_market_hk/tests/
 
-# 运行集成测试（需要 TUSHARE_TOKEN）
+# 运行集成测试（需要 API Token）
 pytest -m integration
 ```
 
@@ -221,7 +242,8 @@ value-investment-plugin/
 ├── vi_core/                 # 核心插件
 │   ├── src/vi_core/
 │   │   ├── spec.py         # Hook Specs
-│   │   └── plugin.py       # Plugin 实现
+│   │   ├── plugin.py       # Plugin 实现
+│   │   └── base_provider.py # Provider 模板基类
 │   └── tests/
 ├── vi_fields_extension/     # 字段定义
 │   └── src/vi_fields_extension/
@@ -234,11 +256,14 @@ value-investment-plugin/
 ├── vi_calculators/          # 计算器加载器
 │   └── src/vi_calculators/
 │       └── __init__.py
-├── provider_tushare/        # Tushare 提供者
-│   ├── src/provider_tushare/
-│   │   ├── provider.py     # TushareProvider
-│   │   └── plugin.py
-│   └── tests/
+├── provider_market_a/        # A 股提供者 (Tushare)
+│   └── src/provider_market_a/
+│       ├── provider.py     # TushareProvider
+│       └── plugin.py
+├── provider_market_hk/       # 港股提供者 (AKShare)
+│   └── src/provider_market_hk/
+│       ├── provider.py     # HKProvider
+│       └── plugin.py
 ├── calculators/             # 计算器脚本
 │   └── calc_implied_growth.py
 ├── vi_cli/                  # CLI 工具（可选）
