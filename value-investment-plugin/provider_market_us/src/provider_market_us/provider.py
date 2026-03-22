@@ -297,11 +297,16 @@ class USProvider(BaseDataProvider):
             adjust: 复权方式
                 - "": 不复权
                 - "qfq": 前复权 (美股主要使用前复权)
+                - "hfq": 后复权（美股不支持，自动转为 qfq）
             
         Returns:
             DataFrame with columns: date, open, high, low, close, volume
         """
         try:
+            # AKShare 美股接口只支持 "" 和 "qfq"，不支持 "hfq"
+            if adjust == "hfq":
+                adjust = "qfq"
+            
             df = ak.stock_us_daily(symbol=symbol, adjust=adjust)
             if df is None or df.empty:
                 return None
