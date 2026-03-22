@@ -13,8 +13,9 @@ from vi_fields_extension.standard_fields import IFRS_FIELDS, FIELD_DEFINITIONS
 
 
 # IFRS 字段描述（从标准定义中提取）
+# 格式: {field_name: {description: ...}} 与 _list_fields 期望一致
 IFRS_FIELD_DESCRIPTIONS = {
-    f: FIELD_DEFINITIONS[f]["description"]
+    f: {"description": FIELD_DEFINITIONS[f]["description"]}
     for f in IFRS_FIELDS
     if f in FIELD_DEFINITIONS
 }

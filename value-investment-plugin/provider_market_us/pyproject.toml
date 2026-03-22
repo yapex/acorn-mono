@@ -20,4 +20,4 @@ packages = ["src/provider_market_us"]
 packages = ["src/provider_market_us"]
 
 [project.entry-points."value_investment.providers"]
-provider_market_us = "provider_market_us:plugin"
+provider_market_us = "provider_market_us.plugin:plugin"

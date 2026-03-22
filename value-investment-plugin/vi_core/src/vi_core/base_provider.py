@@ -1,10 +1,8 @@
 """Base Data Provider - Provider 模板基类
 
-提供公共逻辑：
-- 字段映射（FIELD_MAPPINGS → 系统标准字段）
-- 数据去重（按 update_flag 保留最新）
-- 模板方法（子类实现 _fetch_*）
-- 缓存支持（可选，通过 SmartCache）
+Provider 输出规范：
+- 必须包含 fiscal_year 列（整数年份）
+- 可选包含 report_date 列（YYYY-MM-DD 格式）
 
 使用方式：
     class MyProvider(BaseDataProvider):
@@ -16,28 +14,19 @@
         }
         
         def _normalize_symbol(self, symbol: str) -> str:
-            # 实现代码转换
             return symbol
         
         def _fetch_all_financials(self, symbol, start_year, end_year, fields) -> pd.DataFrame:
-            # 调用 API，返回合并后的 DataFrame
+            # 必须返回包含 fiscal_year 列的 DataFrame
             return df
-        
-        def _fetch_indicators_impl(self, symbol, start_year, end_year) -> pd.DataFrame:
-            return df
-        
-        def _fetch_market_impl(self, symbol) -> pd.DataFrame:
-            return df
-        
-        def _get_financial_ttl(self, end_year: int) -> int:
-            # 自定义 TTL，例如到次年4月底（A股）
-            return get_ttl_until_april_next_year(end_year)
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+
+from vi_fields_extension import StandardFields
 
 import pandas as pd
 
@@ -490,10 +479,6 @@ class BaseDataProvider(ABC):
     # 子类可覆盖的方法
     # ========================================================================
 
-    def _get_date_column(self) -> str:
-        """获取日期列名"""
-        return "report_date"
-
     def _apply_mapping(self, df: pd.DataFrame) -> pd.DataFrame:
         """应用字段映射
         
@@ -520,20 +505,16 @@ class BaseDataProvider(ABC):
         return df
 
     def _deduplicate(self, df: pd.DataFrame) -> pd.DataFrame:
-        """数据去重
-        
-        子类可覆盖实现特定市场的去重逻辑。
-        默认实现：按日期去重，保留最新记录。
-        """
+        """数据去重 - 按 fiscal_year 去重，保留最新记录"""
         if df is None or df.empty:
             return df
 
-        date_col = self._get_date_column()
-        if date_col not in df.columns:
+        fiscal_year = StandardFields.fiscal_year
+        if fiscal_year not in df.columns:
             return df
 
-        df = df.sort_values(date_col, ascending=False)
-        df = df.drop_duplicates(subset=[date_col], keep="first")
+        df = df.sort_values(fiscal_year, ascending=False)
+        df = df.drop_duplicates(subset=[fiscal_year], keep="first")
 
         return df
 
@@ -545,16 +526,9 @@ class BaseDataProvider(ABC):
         """过滤到只保留映射后的字段
         
         只保留：
-        1. 日期列
-        2. 在 FIELD_MAPPINGS 中定义的标准字段
-        3. 已被映射的列（那些值存在于映射表中的列）
+        1. fiscal_year 列
+        2. 请求的字段
         
-        返回一个拷贝，与原始数据无关联。
-        
-        Args:
-            df: DataFrame（已应用映射）
-            requested_fields: 请求的字段集合
-            
         Returns:
             过滤后的 DataFrame 拷贝，或 None
         """
@@ -564,17 +538,15 @@ class BaseDataProvider(ABC):
         # 获取所有映射后的标准字段名
         mapped_standard_fields = self.get_supported_fields()
 
-        # 日期列
-        date_col = self._get_date_column()
-
-        # 要保留的列 = 日期列 + 请求的且在映射中的字段
+        # 要保留的列
         cols_to_keep = set()
 
-        # 添加日期列（如果存在）
-        if date_col in df.columns:
-            cols_to_keep.add(date_col)
+        # 添加 fiscal_year 列（必须保留）
+        fiscal_year = StandardFields.fiscal_year
+        if fiscal_year in df.columns:
+            cols_to_keep.add(fiscal_year)
 
-        # 添加请求的字段（必须在映射表中定义）
+        # 添加请求的字段
         for field in requested_fields:
             if field in mapped_standard_fields:
                 cols_to_keep.add(field)
@@ -584,7 +556,6 @@ class BaseDataProvider(ABC):
         if not available_cols:
             return None
 
-        # 返回拷贝，只包含需要的列
         return df[list(available_cols)].copy()
 
     # ========================================================================

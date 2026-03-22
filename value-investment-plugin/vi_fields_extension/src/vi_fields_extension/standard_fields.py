@@ -8,7 +8,7 @@
     # Provider 映射
     FIELD_MAPPINGS = {
         "balance_sheet": {
-            "total_assets": StandardFields.total_assets,
+            "总资产": StandardFields.total_assets,
         }
     }
 
@@ -24,6 +24,12 @@ from __future__ import annotations
 # =============================================================================
 
 FIELD_DEFINITIONS: dict[str, dict] = {
+    # =====================================================================
+    # 元数据字段（所有 Provider 输出必须包含）
+    # =====================================================================
+    "fiscal_year": {"description": "财年（整数，如2024）", "category": "meta", "source": "system"},
+    "report_date": {"description": "报告日期（YYYY-MM-DD，可选）", "category": "meta", "source": "system"},
+
     # =====================================================================
     # IFRS 标准字段
     # =====================================================================

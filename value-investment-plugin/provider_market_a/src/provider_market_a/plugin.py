@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
+
 from vi_core.spec import vi_hookimpl
 
 from .provider import TushareProvider
@@ -51,7 +53,7 @@ class ProviderAPlugin:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
+    ) -> pd.DataFrame | None:
         """Fetch financial statement data"""
         provider = _get_provider()
         return provider.fetch_financials(symbol, fields, end_year, years)
@@ -63,7 +65,7 @@ class ProviderAPlugin:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
+    ) -> pd.DataFrame | None:
         """Fetch financial indicators"""
         provider = _get_provider()
         return provider.fetch_indicators(symbol, fields, end_year, years)
@@ -73,7 +75,7 @@ class ProviderAPlugin:
         self,
         symbol: str,
         fields: set[str],
-    ) -> dict[str, Any]:
+    ) -> pd.DataFrame | None:
         """Fetch market data"""
         provider = _get_provider()
         return provider.fetch_market(symbol, fields)
@@ -85,37 +87,10 @@ class ProviderAPlugin:
         start_date: str | None = None,
         end_date: str | None = None,
         adjust: str = "hfq",
-    ) -> dict[str, Any] | None:
-        """Fetch historical trading data (OHLCV) for A-share
-        
-        Args:
-            symbol: Stock code (e.g. "600519", "000001")
-            start_date: Start date in "YYYY-MM-DD" format (optional)
-            end_date: End date in "YYYY-MM-DD" format (optional)
-            adjust: Price adjustment method (default: "hfq" 后复权)
-                - "": No adjustment (不复权)
-                - "qfq": Forward adjustment (前复权)
-                - "hfq": Backward adjustment (后复权)
-        
-        Returns:
-            {
-                "date": [...],
-                "open": [...],
-                "high": [...],
-                "low": [...],
-                "close": [...],
-                "volume": [...],
-                "amount": [...],
-            }
-            or None if not supported
-        """
+    ) -> pd.DataFrame | None:
+        """Fetch historical trading data (OHLCV) for A-share"""
         provider = _get_provider()
-        df = provider.fetch_historical(symbol, start_date, end_date, adjust)
-        if df is None or df.empty:
-            return None
-        
-        # 转换 DataFrame 为 dict
-        return df.to_dict(orient="list")
+        return provider.fetch_historical(symbol, start_date, end_date, adjust)
 
 
 # Plugin instance for pluggy registration

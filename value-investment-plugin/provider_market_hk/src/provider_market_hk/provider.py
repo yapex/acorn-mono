@@ -114,8 +114,8 @@ class HKProvider(BaseDataProvider):
         },
         "market": {
             # 市值
-            "总市值(港元)": StandardFields.hk_market_cap,
-            "港股市值(港元)": StandardFields.hk_market_cap,
+            "总市值(港元)": StandardFields.market_cap,
+            "港股市值(港元)": StandardFields.market_cap,
             # 估值
             "市盈率": StandardFields.pe_ratio,
             "市净率": StandardFields.pb_ratio,
@@ -138,10 +138,6 @@ class HKProvider(BaseDataProvider):
         if len(digits) < 5:
             digits = digits.zfill(5)
         return digits
-
-    def _get_date_column(self) -> str:
-        """HK 使用 year 列作为日期列"""
-        return "year"
 
     def _get_financial_ttl(self, end_year: int) -> int:
         """港股财务数据缓存到次年6月底
@@ -190,7 +186,7 @@ class HKProvider(BaseDataProvider):
         # 按 year 合并
         result = dfs[0]
         for df in dfs[1:]:
-            result = result.merge(df, on="year", how="outer", suffixes=("", "_dup"))
+            result = result.merge(df, on=StandardFields.fiscal_year, how="outer", suffixes=("", "_dup"))
             dup_cols = [c for c in result.columns if c.endswith("_dup")]
             result = result.drop(columns=dup_cols)
 
@@ -212,7 +208,7 @@ class HKProvider(BaseDataProvider):
             # 假设每行代表一个财年，按数据顺序分配年份
             n_rows = len(df)
             df = df.copy()
-            df["year"] = list(range(end_year, end_year - n_rows, -1))
+            df[StandardFields.fiscal_year] = list(range(end_year, end_year - n_rows, -1))
             
             return df
         except Exception:
@@ -222,6 +218,13 @@ class HKProvider(BaseDataProvider):
         """获取市场数据"""
         try:
             df = ak.stock_hk_financial_indicator_em(symbol=symbol)
+            if df is None or df.empty:
+                return None
+            
+            # 添加 year 列（用于与其他数据合并）
+            df = df.copy()
+            df[StandardFields.fiscal_year] = pd.to_datetime(df["REPORT_DATE"]).dt.year if "REPORT_DATE" in df.columns else 2024
+            
             return df
         except Exception:
             return None
@@ -331,11 +334,11 @@ class HKProvider(BaseDataProvider):
 
         if "REPORT_DATE" in df.columns:
             df = df.copy()
-            df["year"] = pd.to_datetime(df["REPORT_DATE"]).dt.year
+            df[StandardFields.fiscal_year] = pd.to_datetime(df["REPORT_DATE"]).dt.year
 
         try:
             wide_df = df.pivot_table(
-                index="year",
+                index=StandardFields.fiscal_year,
                 columns=item_col,
                 values="AMOUNT",
                 aggfunc="first",

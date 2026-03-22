@@ -20,4 +20,4 @@ packages = ["src/provider_market_hk"]
 packages = ["src/provider_market_hk"]
 
 [project.entry-points."value_investment.providers"]
-provider_market_hk = "provider_market_hk:plugin"
+provider_market_hk = "provider_market_hk.plugin:plugin"

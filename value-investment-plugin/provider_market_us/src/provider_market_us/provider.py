@@ -118,6 +118,9 @@ class USProvider(BaseDataProvider):
             "close": StandardFields.close,
             "volume": StandardFields.volume,
         },
+        "market": {
+            "market_cap": StandardFields.market_cap,
+        },
     }
 
     # ========================================================================
@@ -143,10 +146,6 @@ class USProvider(BaseDataProvider):
         直接返回大写形式。
         """
         return symbol.upper()
-
-    def _get_date_column(self) -> str:
-        """US 使用 REPORT_DATE 作为日期列"""
-        return "REPORT_DATE"
 
     def _get_financial_ttl(self, end_year: int) -> int:
         """美股财务数据缓存到次年6月底
@@ -221,6 +220,10 @@ class USProvider(BaseDataProvider):
             dup_cols = [c for c in result.columns if c.endswith("_dup")]
             result = result.drop(columns=dup_cols)
 
+        # 转换 REPORT_DATE 为 fiscal_year
+        result[StandardFields.fiscal_year] = pd.to_datetime(result["REPORT_DATE"]).dt.year
+        result = result.drop(columns=["REPORT_DATE"])
+
         return result
 
     def _pivot_financial_df(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -289,6 +292,10 @@ class USProvider(BaseDataProvider):
             df = df[cols_to_keep].copy()
             df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
             
+            # 转换 REPORT_DATE 为 fiscal_year
+            df[StandardFields.fiscal_year] = df["REPORT_DATE"].dt.year
+            df = df.drop(columns=["REPORT_DATE"])
+            
             return df
         except Exception:
             return None
@@ -296,9 +303,28 @@ class USProvider(BaseDataProvider):
     def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
         """获取市场数据
         
-        美股市场数据暂时不支持。
+        使用 yfinance 获取市值数据。
         """
-        return None
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            
+            market_cap = info.get("marketCap")
+            if market_cap is None:
+                return None
+            
+            # 返回包含 year 和 market_cap 的 DataFrame
+            from datetime import datetime
+            current_year = datetime.now().year
+            
+            df = pd.DataFrame({
+                StandardFields.fiscal_year: [current_year],
+                "market_cap": [market_cap],
+            })
+            return df
+        except Exception:
+            return None
 
     def _fetch_historical_impl(
         self,

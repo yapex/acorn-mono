@@ -169,10 +169,6 @@ class TushareProvider(BaseDataProvider):
 
         return symbol
 
-    def _get_date_column(self) -> str:
-        """A 股使用 year 作为日期列"""
-        return "year"
-
     def _get_financial_ttl(self, end_year: int) -> int:
         """A 股财务数据缓存到次年4月底
         
@@ -197,7 +193,7 @@ class TushareProvider(BaseDataProvider):
             "balancesheet", symbol, today
         )
         if df is not None and not df.empty:
-            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
             dfs.append(df)
 
         # 利润表
@@ -205,7 +201,7 @@ class TushareProvider(BaseDataProvider):
             "income", symbol, today
         )
         if df is not None and not df.empty:
-            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
             dfs.append(df)
 
         # 现金流量表
@@ -213,7 +209,7 @@ class TushareProvider(BaseDataProvider):
             "cashflow", symbol, today
         )
         if df is not None and not df.empty:
-            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
             dfs.append(df)
 
         if not dfs:
@@ -222,7 +218,7 @@ class TushareProvider(BaseDataProvider):
         # 按 year 合并
         result = dfs[0]
         for df in dfs[1:]:
-            result = result.merge(df, on="year", how="outer", suffixes=("", "_dup"))
+            result = result.merge(df, on=StandardFields.fiscal_year, how="outer", suffixes=("", "_dup"))
             dup_cols = [c for c in result.columns if c.endswith("_dup")]
             result = result.drop(columns=dup_cols)
 
@@ -271,7 +267,7 @@ class TushareProvider(BaseDataProvider):
             df = df.reset_index(drop=True)
             
             # 提取年份
-            df["year"] = pd.to_datetime(df["end_date"]).dt.year
+            df[StandardFields.fiscal_year] = pd.to_datetime(df["end_date"]).dt.year
             
             return df
         except Exception:
@@ -307,7 +303,7 @@ class TushareProvider(BaseDataProvider):
             
             # 提取年份
             df = df.copy()
-            df["year"] = pd.to_datetime(df["end_date"]).dt.year
+            df[StandardFields.fiscal_year] = pd.to_datetime(df["end_date"]).dt.year
             
             # Tushare fina_indicator 同时返回 gross_margin(毛利润金额) 和
             # grossprofit_margin(毛利率)。我们只需要毛利率，需要在映射前
@@ -331,7 +327,7 @@ class TushareProvider(BaseDataProvider):
             
             # 添加 year 列（用于与其他数据合并）
             df = df.copy()
-            df["year"] = pd.to_datetime(df["trade_date"]).dt.year
+            df[StandardFields.fiscal_year] = pd.to_datetime(df["trade_date"]).dt.year
             
             return df
         except Exception:

@@ -14,11 +14,21 @@ uv run acorn-agent
 
 ## RPC Interface
 
-The agent listens on Unix Socket at `~/.acorn/agent.sock`. Send JSON commands via `socat`:
+The agent listens on Unix Socket at `~/.acorn/agent.sock`. Send JSON commands via `nc` (netcat) or `socat`:
+
+### Using nc (netcat)
+
+```bash
+echo '{"command": "<cmd>", "args": {}}' | nc -U ~/.acorn/agent.sock
+```
+
+### Using socat
 
 ```bash
 echo '{"command": "<cmd>", "args": {}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
 ```
+
+> **Note:** `nc` is preferred as it's available by default on most Unix systems.
 
 ## Available Commands
 

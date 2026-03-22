@@ -13,8 +13,10 @@ from typing import Any, TYPE_CHECKING
 
 import pandas as pd
 import pluggy  # type: ignore[import]
+from loguru import logger
 
 from .spec import vi_hookimpl, ValueInvestmentSpecs
+from vi_fields_extension import StandardFields
 
 if TYPE_CHECKING:
     from acorn_events import EventBus
@@ -41,145 +43,85 @@ def _get_entry_points(group: str) -> Any:
         return []
 
 
-def _df_to_serializable_dict(df: pd.DataFrame | None) -> dict[str, dict[int, Any]]:
-    """Convert DataFrame to JSON-serializable dict format
+def _df_to_result_dict(df: pd.DataFrame | None) -> dict:
+    """将 DataFrame 转换为 RPC 返回格式
     
     Args:
-        df: DataFrame with date column and data columns
+        df: DataFrame with fiscal_year as column or index
         
     Returns:
-        {field: {year: value}} dict with JSON-serializable values
+        {field: {year: value}} 格式的 dict
     """
     if df is None or df.empty:
         return {}
     
-    result: dict[str, dict[int, Any]] = {}
+    fiscal_year = StandardFields.fiscal_year
     
-    # Identify date column
-    date_columns = ["end_date", "report_date", "date", "trade_date", "year", "REPORT_DATE"]
-    actual_date_col = None
-    for col in date_columns:
-        if col in df.columns:
-            actual_date_col = col
-            break
-    
-    if actual_date_col is None:
+    # 确保 fiscal_year 是 index
+    if fiscal_year in df.columns:
+        df = df.set_index(fiscal_year)
+    elif df.index.name != fiscal_year:
+        logger.warning("_df_to_result_dict: missing fiscal_year, columns={}", list(df.columns))
         return {}
     
-    # Convert date column to year
-    try:
-        if actual_date_col == "year":
-            # year column is already integer year
-            years = df[actual_date_col].astype(int)
-        else:
-            dates = pd.to_datetime(df[actual_date_col], format="mixed")
-            years = dates.dt.year
-    except Exception:
-        return {}
+    # 删除 NaN 行
+    df = df.dropna(how='all')
     
-    # Process each column (except date column)
-    for col in df.columns:
-        if col == actual_date_col:
-            continue
-        
-        # Create {year: value} mapping
-        col_data: dict[int, Any] = {}
-        for year, val in zip(years, df[col]):
-            if pd.isna(val):
-                continue
-            # Convert to JSON-serializable types
-            if hasattr(val, 'item'):  # numpy/pandas scalar
-                col_data[int(year)] = val.item()
-            elif isinstance(val, float):
-                col_data[int(year)] = float(val)
-            elif isinstance(val, int):
-                col_data[int(year)] = int(val)
-            else:
-                col_data[int(year)] = val
-        
-        if col_data:
-            result[col] = col_data
-    
-    return result
+    return df.to_dict()
 
 
 def _merge_dfs(dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
-    """Merge multiple DataFrames on date column
+    """Merge multiple DataFrames on fiscal_year
+    
+    所有 Provider 必须输出 fiscal_year 列。
     
     Args:
-        dfs: List of DataFrames to merge
+        dfs: List of DataFrames with fiscal_year column
         
     Returns:
-        Merged DataFrame or None if empty
+        Merged DataFrame with fiscal_year as index, or None
     """
     if not dfs:
         return None
     
+    fiscal_year = StandardFields.fiscal_year
+    
     # Start with first DataFrame
     result = dfs[0].copy()
     
-    # If result has 'year' column but index is not year, set year as index
-    if "year" in result.columns and not result.index.name == "year":
-        year_col = result["year"].copy()
-        if not year_col.equals(pd.Series(result.index, index=year_col.index)):
-            result = result.reset_index(drop=True)
-            result = result.set_index("year")
+    # 确保 fiscal_year 是 index
+    if fiscal_year in result.columns:
+        result = result.set_index(fiscal_year)
     
     # Merge remaining DataFrames
     for df in dfs[1:]:
-        # Find common date column (check both columns and index name)
-        date_cols = ["end_date", "report_date", "date", "trade_date", "year"]
-        result_date_col = None
-        df_date_col = None
+        if df is None or df.empty:
+            continue
         
-        for col in date_cols:
-            if result_date_col is None:
-                if col in result.columns:
-                    result_date_col = col
-                elif result.index.name == col:
-                    result_date_col = col
-            if col in df.columns and df_date_col is None:
-                df_date_col = col
+        df_to_merge = df.copy()
         
-        if result_date_col and df_date_col:
-            # Prepare df for merge
-            df_to_merge = df.copy()
-            
-            # If df has year as index but not as column, reset it first
-            if df_to_merge.index.name == "year" and "year" not in df_to_merge.columns:
-                df_to_merge = df_to_merge.reset_index()
-            
-            # Determine which columns to add
-            cols_to_add = [c for c in df_to_merge.columns if c != df_date_col and c not in result.columns]
-            
-            if cols_to_add:
-                before_cols = set(result.columns)
-                
-                # If result_date_col == df_date_col, align indexes for merge
-                if result_date_col == df_date_col:
-                    result = result.reset_index()
-                    result = result.merge(
-                        df_to_merge[[df_date_col] + cols_to_add],
-                        on=df_date_col,
-                        how="left"
-                    )
-                    if result_date_col in result.columns:
-                        result = result.set_index(result_date_col)
-                else:
-                    result = result.merge(
-                        df_to_merge[[df_date_col] + cols_to_add],
-                        left_on=result_date_col,
-                        right_on=df_date_col,
-                        how="left"
-                    )
-                
-                # Broadcast if merge failed (year mismatch) and df has only 1 row
-                new_cols = [c for c in cols_to_add if c in result.columns and c not in before_cols]
-                if new_cols and len(df_to_merge) == 1:
-                    all_nan = all(result[c].isna().all() for c in new_cols)
-                    if all_nan:
-                        for col in new_cols:
-                            result[col] = df_to_merge[col].iloc[0]
+        # 确保 fiscal_year 是 index
+        if fiscal_year in df_to_merge.columns:
+            df_to_merge = df_to_merge.set_index(fiscal_year)
+        
+        # 找出需要添加的新列
+        cols_to_add = [c for c in df_to_merge.columns if c not in result.columns]
+        
+        if not cols_to_add:
+            continue
+        
+        # 特殊情况：单行数据（如 market_cap），广播到所有行
+        if len(df_to_merge) == 1:
+            for col in cols_to_add:
+                result[col] = df_to_merge[col].iloc[0]
+        else:
+            # 按 index (fiscal_year) 合并
+            result = result.merge(
+                df_to_merge[cols_to_add],
+                left_index=True,
+                right_index=True,
+                how="left"
+            )
     
     return result
 
@@ -470,7 +412,7 @@ class ViCorePlugin:
         merged_df = _merge_dfs(dfs)
 
         # 转换为可返回的格式
-        result_data = _df_to_serializable_dict(merged_df) if merged_df is not None and not merged_df.empty else {}
+        result_data = _df_to_result_dict(merged_df)
 
         # Run calculators - 直接传入 DataFrame
         if requested_calculators:

@@ -76,8 +76,9 @@ class ProviderUSPlugin:
         symbol: str,
         fields: set[str],
     ) -> pd.DataFrame | None:
-        """Fetch market data (not supported for US)"""
-        return None
+        """Fetch market data"""
+        provider = _get_provider()
+        return provider.fetch_market(symbol, fields)
 
     @vi_hookimpl
     def vi_fetch_historical(
