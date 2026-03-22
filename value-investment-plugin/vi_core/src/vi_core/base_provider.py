@@ -4,6 +4,7 @@
 - 字段映射（FIELD_MAPPINGS → 系统标准字段）
 - 数据去重（按 update_flag 保留最新）
 - 模板方法（子类实现 _fetch_*）
+- 缓存支持（可选，通过 SmartCache）
 
 使用方式：
     class MyProvider(BaseDataProvider):
@@ -27,12 +28,55 @@
         
         def _fetch_market_impl(self, symbol) -> pd.DataFrame:
             return df
+        
+        def _get_financial_ttl(self, end_year: int) -> int:
+            # 自定义 TTL，例如到次年4月底（A股）
+            return get_ttl_until_april_next_year(end_year)
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from vi_core.smart_cache import SmartCache
+
+
+def get_ttl_until_april_next_year(end_year: int) -> int:
+    """Get TTL in seconds until April 30th of the next year
+    
+    A股年报一般在4月底前发布，所以缓存到次年4月底即可。
+    
+    Args:
+        end_year: The end year of the financial data
+    
+    Returns:
+        TTL in seconds until next year April 30th
+    """
+    now = datetime.now()
+    # April 30th of next year
+    april_next_year = datetime(now.year + 1, 4, 30, 23, 59, 59)
+    return int((april_next_year - now).total_seconds())
+
+
+def get_ttl_until_june_next_year(end_year: int) -> int:
+    """Get TTL in seconds until June 30th of the next year
+    
+    港股和美股年报一般在6月底前发布，所以缓存到次年6月底。
+    
+    Args:
+        end_year: The end year of the financial data
+    
+    Returns:
+        TTL in seconds until next year June 30th
+    """
+    now = datetime.now()
+    # June 30th of next year
+    june_next_year = datetime(now.year + 1, 6, 30, 23, 59, 59)
+    return int((june_next_year - now).total_seconds())
 
 
 class BaseDataProvider(ABC):
@@ -44,6 +88,12 @@ class BaseDataProvider(ABC):
     - 字段映射支持（native fields → standard fields）
     - 数据去重（按 update_flag 保留最新）
     - 模板方法自动调用数据处理
+    - 缓存支持（可选）
+    
+    子类可覆盖：
+    - _get_financial_ttl(): 自定义财务数据缓存 TTL
+    - _get_date_column(): 自定义日期列名
+    - _deduplicate(): 自定义去重逻辑
     """
 
     # ========================================================================
@@ -63,7 +113,19 @@ class BaseDataProvider(ABC):
     }
 
     # ========================================================================
-    # 公共接口 - 模板方法
+    # 初始化
+    # ========================================================================
+
+    def __init__(self, cache: SmartCache | None = None):
+        """Initialize BaseDataProvider
+        
+        Args:
+            cache: SmartCache instance for caching (optional)
+        """
+        self._cache = cache
+
+    # ========================================================================
+    # 公共接口 - 模板方法（带缓存）
     # ========================================================================
 
     def fetch_financials(
@@ -72,16 +134,18 @@ class BaseDataProvider(ABC):
         fields: set[str],
         end_year: int,
         years: int = 10,
+        force_refresh: bool = False,
     ) -> pd.DataFrame | None:
         """获取财务报表数据（模板方法）
         
-        自动执行：获取 → 映射 → 去重 → 过滤字段
+        自动执行：缓存 → 获取 → 映射 → 去重 → 过滤字段
         
         Args:
             symbol: 股票代码
             fields: 需要的字段集合
             end_year: 结束年份
             years: 年数
+            force_refresh: 是否强制刷新缓存
             
         Returns:
             DataFrame with mapped fields only, or None
@@ -92,10 +156,27 @@ class BaseDataProvider(ABC):
         start_year = end_year - years + 1
         normalized_symbol = self._normalize_symbol(symbol)
 
+        # 构建缓存 key
+        cache_key = self._get_cache_key("financials", normalized_symbol, end_year, years)
+
+        # 尝试从缓存获取
+        if self._cache is not None and not force_refresh:
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                df = cached
+                # 仍然需要映射、去重、过滤
+                df = self._apply_mapping(df)
+                df = self._deduplicate(df)
+                return self._filter_to_mapped_fields(df, fields)
+
         # 获取数据
         df = self._fetch_all_financials(normalized_symbol, start_year, end_year, fields)
         if df is None or df.empty:
             return None
+
+        # 存入缓存
+        if self._cache is not None:
+            self._cache.set(cache_key, df.copy(), ttl=self._get_financial_ttl(end_year))
 
         # 字段映射
         df = self._apply_mapping(df)
@@ -112,6 +193,7 @@ class BaseDataProvider(ABC):
         fields: set[str],
         end_year: int,
         years: int = 10,
+        force_refresh: bool = False,
     ) -> pd.DataFrame | None:
         """获取财务指标数据（模板方法）
         
@@ -120,6 +202,7 @@ class BaseDataProvider(ABC):
             fields: 需要的字段集合
             end_year: 结束年份
             years: 年数
+            force_refresh: 是否强制刷新缓存
             
         Returns:
             DataFrame with mapped fields only, or None
@@ -130,9 +213,25 @@ class BaseDataProvider(ABC):
         start_year = end_year - years + 1
         normalized_symbol = self._normalize_symbol(symbol)
 
+        # 构建缓存 key
+        cache_key = self._get_cache_key("indicators", normalized_symbol, end_year, years)
+
+        # 尝试从缓存获取
+        if self._cache is not None and not force_refresh:
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                df = cached
+                df = self._apply_mapping(df)
+                df = self._deduplicate(df)
+                return self._filter_to_mapped_fields(df, fields)
+
         df = self._fetch_indicators_impl(normalized_symbol, start_year, end_year)
         if df is None or df.empty:
             return None
+
+        # 存入缓存
+        if self._cache is not None:
+            self._cache.set(cache_key, df.copy(), ttl=self._get_financial_ttl(end_year))
 
         df = self._apply_mapping(df)
         df = self._deduplicate(df)
@@ -144,12 +243,14 @@ class BaseDataProvider(ABC):
         self,
         symbol: str,
         fields: set[str],
+        force_refresh: bool = False,
     ) -> pd.DataFrame | None:
         """获取市场数据（模板方法）
         
         Args:
             symbol: 股票代码
             fields: 需要的字段集合
+            force_refresh: 是否强制刷新缓存
             
         Returns:
             DataFrame with mapped fields only, or None
@@ -159,9 +260,24 @@ class BaseDataProvider(ABC):
 
         normalized_symbol = self._normalize_symbol(symbol)
 
+        # 构建缓存 key
+        cache_key = self._get_cache_key("market", normalized_symbol)
+
+        # 尝试从缓存获取
+        if self._cache is not None and not force_refresh:
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                df = cached
+                df = self._apply_mapping(df)
+                return self._filter_to_mapped_fields(df, fields)
+
         df = self._fetch_market_impl(normalized_symbol)
         if df is None or df.empty:
             return None
+
+        # 存入缓存
+        if self._cache is not None:
+            self._cache.set(cache_key, df.copy(), ttl=self._get_market_ttl())
 
         df = self._apply_mapping(df)
 
@@ -174,6 +290,7 @@ class BaseDataProvider(ABC):
         start_date: str | None = None,
         end_date: str | None = None,
         adjust: str = "hfq",
+        force_refresh: bool = False,
     ) -> pd.DataFrame | None:
         """获取历史交易数据（模板方法）
         
@@ -182,9 +299,7 @@ class BaseDataProvider(ABC):
             start_date: 开始日期 (YYYY-MM-DD)，可选
             end_date: 结束日期 (YYYY-MM-DD)，可选
             adjust: 复权方式（默认 "hfq" 后复权）
-                - "": 不复权
-                - "qfq": 前复权
-                - "hfq": 后复权
+            force_refresh: 是否强制刷新缓存
             
         Returns:
             DataFrame with columns: date, open, high, low, close, volume
@@ -192,19 +307,48 @@ class BaseDataProvider(ABC):
         """
         normalized_symbol = self._normalize_symbol(symbol)
 
+        # 构建缓存 key
+        cache_key = self._get_cache_key("historical", normalized_symbol, adjust, end_date)
+
+        # 尝试从缓存获取
+        if self._cache is not None and not force_refresh:
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                df = cached
+                # 应用日期过滤
+                return self._filter_historical_by_date(df, start_date, end_date)
+
         df = self._fetch_historical_impl(normalized_symbol, start_date, end_date, adjust)
         if df is None or df.empty:
             return None
 
-        # 日期过滤
-        if start_date and "date" in df.columns:
-            start_dt = pd.to_datetime(start_date)
-            df = df[pd.to_datetime(df["date"]) >= start_dt]
-        if end_date and "date" in df.columns:
-            end_dt = pd.to_datetime(end_date)
-            df = df[pd.to_datetime(df["date"]) <= end_dt]
+        # 存入缓存（全量数据，不带日期过滤）
+        if self._cache is not None:
+            self._cache.set(cache_key, df.copy(), ttl=self._get_historical_ttl())
 
-        return df.copy() if not df.empty else None
+        # 应用日期过滤
+        return self._filter_historical_by_date(df, start_date, end_date)
+
+    def _filter_historical_by_date(
+        self,
+        df: pd.DataFrame,
+        start_date: str | None,
+        end_date: str | None,
+    ) -> pd.DataFrame | None:
+        """对历史数据应用日期过滤"""
+        if df is None or df.empty:
+            return None
+
+        result = df.copy()
+
+        if start_date and "date" in result.columns:
+            start_dt = pd.to_datetime(start_date)
+            result = result[pd.to_datetime(result["date"]) >= start_dt]
+        if end_date and "date" in result.columns:
+            end_dt = pd.to_datetime(end_date)
+            result = result[pd.to_datetime(result["date"]) <= end_dt]
+
+        return result if not result.empty else None
 
     # ========================================================================
     # 子类必须实现的方法
@@ -300,6 +444,47 @@ class BaseDataProvider(ABC):
             DataFrame with columns: date, open, high, low, close, volume
         """
         return None
+
+    # ========================================================================
+    # 子类可覆盖的方法 - TTL 配置
+    # ========================================================================
+
+    def _get_financial_ttl(self, end_year: int) -> int:
+        """获取财务数据缓存 TTL
+        
+        子类可覆盖自定义 TTL 计算逻辑。
+        
+        A股：建议到次年4月底（年报4月底前发布）
+        港股/美股：建议到次年6月底
+        
+        Args:
+            end_year: 数据结束年份
+            
+        Returns:
+            TTL 秒数
+        """
+        return get_ttl_until_june_next_year(end_year)
+
+    def _get_market_ttl(self) -> int:
+        """获取市场数据缓存 TTL
+        
+        市场数据（如PE、PB、市值）变更较频繁，
+        默认缓存1天。
+        
+        Returns:
+            TTL 秒数
+        """
+        return 86400  # 1 day
+
+    def _get_historical_ttl(self) -> int:
+        """获取历史数据缓存 TTL
+        
+        历史交易数据相对稳定，默认缓存1年。
+        
+        Returns:
+            TTL 秒数
+        """
+        return 365 * 86400  # 1 year
 
     # ========================================================================
     # 子类可覆盖的方法
@@ -408,6 +593,17 @@ class BaseDataProvider(ABC):
     # ========================================================================
     # 辅助方法
     # ========================================================================
+
+    def _get_cache_key(self, *parts: Any) -> str:
+        """构建缓存 key
+        
+        Args:
+            *parts: 缓存 key 的各部分
+            
+        Returns:
+            缓存 key 字符串
+        """
+        return f"{self.MARKET_CODE}:" + ":".join(str(p) for p in parts)
 
     @classmethod
     def get_supported_fields(cls) -> set[str]:

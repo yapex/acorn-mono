@@ -16,6 +16,7 @@ import akshare as ak
 import pandas as pd
 
 from vi_core import BaseDataProvider
+from vi_core.base_provider import get_ttl_until_june_next_year
 from vi_fields_extension import StandardFields
 
 
@@ -141,6 +142,13 @@ class HKProvider(BaseDataProvider):
     def _get_date_column(self) -> str:
         """HK 使用 year 列作为日期列"""
         return "year"
+
+    def _get_financial_ttl(self, end_year: int) -> int:
+        """港股财务数据缓存到次年6月底
+        
+        港股年报一般在6月底前发布。
+        """
+        return get_ttl_until_june_next_year(end_year)
 
     def _fetch_all_financials(
         self,

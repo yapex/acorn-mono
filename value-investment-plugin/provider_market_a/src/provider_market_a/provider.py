@@ -16,6 +16,7 @@ import pandas as pd
 import tushare as ts
 
 from vi_core import BaseDataProvider
+from vi_core.base_provider import get_ttl_until_april_next_year
 from vi_fields_extension import StandardFields
 
 
@@ -129,15 +130,16 @@ class TushareProvider(BaseDataProvider):
     # 初始化
     # ========================================================================
 
-    def __init__(self, token: str | None = None):
+    def __init__(self, token: str | None = None, cache: Any = None):
         """Initialize Tushare provider
 
         Args:
             token: Tushare API token (optional, can use TUSHARE_TOKEN env var)
+            cache: SmartCache instance for caching (optional)
         """
         self._token = token or os.environ.get("TUSHARE_TOKEN", "")
         self._api: Any = None
-        super().__init__()
+        super().__init__(cache=cache)
 
     def _init_provider(self) -> None:
         """Lazy init Tushare API"""
@@ -172,6 +174,13 @@ class TushareProvider(BaseDataProvider):
     def _get_date_column(self) -> str:
         """A 股使用 end_date 作为日期列"""
         return "end_date"
+
+    def _get_financial_ttl(self, end_year: int) -> int:
+        """A 股财务数据缓存到次年4月底
+        
+        A股年报一般在4月底前发布，所以缓存到次年4月底即可。
+        """
+        return get_ttl_until_april_next_year(end_year)
 
     def _fetch_all_financials(
         self,

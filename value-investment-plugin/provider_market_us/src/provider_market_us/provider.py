@@ -15,6 +15,7 @@ import akshare as ak
 import pandas as pd
 
 from vi_core import BaseDataProvider
+from vi_core.base_provider import get_ttl_until_june_next_year
 from vi_fields_extension import StandardFields
 
 
@@ -120,6 +121,18 @@ class USProvider(BaseDataProvider):
     }
 
     # ========================================================================
+    # 初始化
+    # ========================================================================
+
+    def __init__(self, cache: Any = None):
+        """Initialize US Provider
+        
+        Args:
+            cache: SmartCache instance for caching (optional)
+        """
+        super().__init__(cache=cache)
+
+    # ========================================================================
     # BaseDataProvider 抽象方法实现
     # ========================================================================
 
@@ -134,6 +147,14 @@ class USProvider(BaseDataProvider):
     def _get_date_column(self) -> str:
         """US 使用 REPORT_DATE 作为日期列"""
         return "REPORT_DATE"
+
+    def _get_financial_ttl(self, end_year: int) -> int:
+        """美股财务数据缓存到次年6月底
+        
+        美股财年可能不在12月结束（如苹果是9月），
+        但整体上在6月底前应该都能发布年报。
+        """
+        return get_ttl_until_june_next_year(end_year)
 
     def _fetch_all_financials(
         self,
