@@ -107,7 +107,7 @@ class ProviderHKPlugin:
         symbol: str,
         start_date: str | None = None,
         end_date: str | None = None,
-        adjust: str = "",
+        adjust: str = "hfq",
     ) -> dict[str, Any] | None:
         """Fetch historical trading data (OHLCV)"""
         provider = _get_provider()

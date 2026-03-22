@@ -218,11 +218,43 @@ class HKProvider(BaseDataProvider):
         end_date: str | None,
         adjust: str,
     ) -> pd.DataFrame | None:
-        """获取历史交易数据"""
+        """获取港股历史交易数据
+        
+        使用 AKShare stock_hk_daily 接口获取日线数据。
+        
+        Args:
+            symbol: 标准化后的股票代码 (5位数字)
+            start_date: 开始日期 (YYYY-MM-DD)
+            end_date: 结束日期 (YYYY-MM-DD)
+            adjust: 复权方式（港股不支持，参数被忽略）
+            
+        Returns:
+            DataFrame with columns: date, open, high, low, close, volume
+        """
         try:
             df = ak.stock_hk_daily(symbol=symbol)
             if df is None or df.empty:
                 return None
+            
+            # AKShare 返回列名: date, open, high, low, close, volume, amount
+            # 确认列名存在
+            expected_cols = ["date", "open", "high", "low", "close", "volume"]
+            if not all(col in df.columns for col in expected_cols):
+                # 尝试映射中文列名
+                col_mapping = {
+                    "日期": "date",
+                    "开盘": "open",
+                    "最高": "high",
+                    "最低": "low",
+                    "收盘": "close",
+                    "成交量": "volume",
+                    "成交额": "amount",
+                }
+                df = df.rename(columns=col_mapping)
+            
+            # 按日期排序（升序）
+            df = df.sort_values("date", ascending=True)
+            
             return df
         except Exception:
             return None
