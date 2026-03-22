@@ -127,7 +127,7 @@ class FieldProviderSpec:
         symbol: str,
         start_date: str | None = None,
         end_date: str | None = None,
-        adjust: str = "",
+        adjust: str = "hfq",
     ) -> dict[str, Any] | None:
         """Fetch historical trading data (OHLCV)
 
@@ -135,7 +135,7 @@ class FieldProviderSpec:
             symbol: Stock code (e.g. "600519", "00700", "AAPL")
             start_date: Start date in "YYYY-MM-DD" format (optional)
             end_date: End date in "YYYY-MM-DD" format (optional)
-            adjust: Price adjustment method
+            adjust: Price adjustment method (default: "hfq" 后复权)
                 - "": No adjustment (不复权)
                 - "qfq": Forward adjustment (前复权)
                 - "hfq": Backward adjustment (后复权)

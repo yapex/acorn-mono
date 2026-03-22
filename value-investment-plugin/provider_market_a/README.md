@@ -101,12 +101,12 @@ df = provider.fetch_market(
     fields={"market_cap", "pe_ratio", "pb_ratio"},
 )
 
-# 获取历史交易数据（不复权）
+# 获取历史交易数据（默认后复权）
 df = provider.fetch_historical(
     "600519",
     start_date="2024-01-01",
     end_date="2024-12-31",
-    adjust="",  # ""=不复权, "qfq"=前复权, "hfq"=后复权
+    # adjust 默认为 "hfq" 后复权
 )
 
 # 获取前复权历史数据
@@ -115,6 +115,14 @@ df = provider.fetch_historical(
     start_date="2024-01-01",
     end_date="2024-12-31",
     adjust="qfq",
+)
+
+# 获取不复权历史数据
+df = provider.fetch_historical(
+    "600519",
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    adjust="",
 )
 ```
 

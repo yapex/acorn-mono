@@ -173,7 +173,7 @@ class BaseDataProvider(ABC):
         symbol: str,
         start_date: str | None = None,
         end_date: str | None = None,
-        adjust: str = "",
+        adjust: str = "hfq",
     ) -> pd.DataFrame | None:
         """获取历史交易数据（模板方法）
         
@@ -181,7 +181,7 @@ class BaseDataProvider(ABC):
             symbol: 股票代码
             start_date: 开始日期 (YYYY-MM-DD)，可选
             end_date: 结束日期 (YYYY-MM-DD)，可选
-            adjust: 复权方式
+            adjust: 复权方式（默认 "hfq" 后复权）
                 - "": 不复权
                 - "qfq": 前复权
                 - "hfq": 后复权
