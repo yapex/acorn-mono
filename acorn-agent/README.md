@@ -4,6 +4,26 @@ Persistent agent service for acorn-core with Unix Socket RPC interface.
 
 ## Quick Start
 
+### Using CLI (Recommended)
+
+CLI commands automatically start the server if not running:
+
+```bash
+# Query stock data (auto-starts server if needed)
+acorn-agent query 600519 -r roe,gross_margin -y 10
+
+# List available fields
+acorn-agent list-fields --source ifrs
+
+# List calculators
+acorn-agent list-calculators
+
+# Raw RPC call (for debugging)
+acorn-agent call health --args '{}'
+```
+
+### Start Server Manually
+
 ```bash
 # Start the agent server (runs in foreground)
 acorn-agent
@@ -12,25 +32,103 @@ acorn-agent
 uv run acorn-agent
 ```
 
+## CLI Commands
+
+### `query` - Query Financial Data
+
+```bash
+acorn-agent query <symbol> [options]
+
+# Examples
+acorn-agent query 600519 -r roe,gross_margin -y 10
+acorn-agent query 600519 -r all -c implied_growth --wacc 0.08
+acorn-agent query 600519 --format json
+```
+
+**Options:**
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--fields` | `-r` | `all` | Comma-separated fields |
+| `--years` | `-y` | `10` | Number of years |
+| `--calculators` | `-c` | | Comma-separated calculators |
+| `--wacc` | | `0.08` | WACC for DCF calculations |
+| `--g-terminal` | | `0.03` | Terminal growth rate |
+| `--format` | | `table` | Output format: `table`, `json` |
+
+### `list-fields` - List Available Fields
+
+```bash
+acorn-agent list-fields [--source <source>] [--prefix <prefix>]
+
+# Examples
+acorn-agent list-fields
+acorn-agent list-fields --source ifrs
+acorn-agent list-fields --prefix roe
+```
+
+### `list-calculators` - List Available Calculators
+
+```bash
+acorn-agent list-calculators
+```
+
+### `call` - Raw RPC Call (Debugging)
+
+```bash
+acorn-agent call <command> --args '<json>'
+
+# Examples
+acorn-agent call health --args '{}'
+acorn-agent call vi_query --args '{"symbol": "600519", "fields": "roe"}'
+```
+
 ## RPC Interface
 
-The agent listens on Unix Socket at `~/.acorn/agent.sock`. Send JSON commands via `nc` (netcat) or `socat`:
-
-### Using nc (netcat)
+The agent listens on Unix Socket at `~/.acorn/agent.sock`. Send JSON commands via `nc` (netcat):
 
 ```bash
 echo '{"command": "<cmd>", "args": {}}' | nc -U ~/.acorn/agent.sock
 ```
 
-### Using socat
+## Available Commands
+
+### Built-in Commands
+
+#### `health` - Check Server Status
+
+Returns server status and loaded plugins:
 
 ```bash
-echo '{"command": "<cmd>", "args": {}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+echo '{"command": "health", "args": {}}' | nc -U ~/.acorn/agent.sock
 ```
 
-> **Note:** `nc` is preferred as it's available by default on most Unix systems.
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "ok",
+    "plugins": [
+      {
+        "name": "vi_core",
+        "details": {
+          "sub_plugins": ["provider_market_a", "ifrs", "extension", "vi_calculators"],
+          "entry_point_groups": ["value_investment.fields", "value_investment.providers", "value_investment.calculators"]
+        }
+      },
+      {"name": "evo_manager"},
+      {"name": "vi"}
+    ]
+  }
+}
+```
 
-## Available Commands
+#### `list_commands` - List All Available Commands
+
+```bash
+echo '{"command": "list_commands", "args": {}}' | nc -U ~/.acorn/agent.sock
+```
 
 ### VI Commands (Value Investment)
 
@@ -48,7 +146,7 @@ echo '{
       "implied_growth": {"wacc": 0.08, "g_terminal": 0.03, "n_years": 10}
     }
   }
-}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+}' | nc -U ~/.acorn/agent.sock
 ```
 
 **Arguments:**
@@ -80,42 +178,29 @@ echo '{
 #### `vi_list_fields` - List Available Fields
 
 ```bash
-# List all fields
-echo '{"command": "vi_list_fields", "args": {}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
-
-# Filter by source
-echo '{"command": "vi_list_fields", "args": {"source": "ifrs"}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
-
-# Filter by prefix
-echo '{"command": "vi_list_fields", "args": {"prefix": "roe"}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+echo '{"command": "vi_list_fields", "args": {}}' | nc -U ~/.acorn/agent.sock
+echo '{"command": "vi_list_fields", "args": {"source": "ifrs"}}' | nc -U ~/.acorn/agent.sock
+echo '{"command": "vi_list_fields", "args": {"prefix": "roe"}}' | nc -U ~/.acorn/agent.sock
 ```
 
 #### `vi_list_calculators` - List Available Calculators
 
 ```bash
-echo '{"command": "vi_list_calculators", "args": {}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+echo '{"command": "vi_list_calculators", "args": {}}' | nc -U ~/.acorn/agent.sock
 ```
 
-**Available Calculators:**
-
-| Calculator | Required Fields | Description |
-|------------|-----------------|-------------|
-| `implied_growth` | `operating_cash_flow`, `market_cap` | DCF implied growth rate |
-
 #### `vi_register_calculator` - Register a Calculator Dynamically
-
-Register a new calculator by providing Python code:
 
 ```bash
 echo '{
   "command": "vi_register_calculator",
   "args": {
-    "name": "peg_ratio",
-    "required_fields": ["pe_ratio", "net_profit_yoy"],
-    "code": "import pandas as pd\n\ndef calculate(results, config):\n    pe = results.get(\"pe_ratio\", {})\n    growth = results.get(\"net_profit_yoy\", {})\n    if pe.empty or growth.empty:\n        return pd.Series(dtype=float)\n    # 取最新年份的数据\n    latest_year = max(pe.index)\n    latest_pe = pe.loc[latest_year]\n    latest_growth = growth.loc[latest_year]\n    if latest_growth <= 0:\n        return pd.Series(dtype=float)\n    peg = latest_pe / latest_growth\n    return pd.Series({latest_year: round(peg, 2)})",
-    "description": "PEG Ratio = P/E / Growth Rate"
+    "name": "roe_score",
+    "required_fields": ["roe"],
+    "code": "import pandas as pd\n\ndef calculate(results, config):\n    roe = results.get(\"roe\", {})\n    if roe.empty:\n        return pd.Series(dtype=float)\n    latest_year = max(roe.index)\n    latest_roe = roe.loc[latest_year]\n    return pd.Series({latest_year: round(latest_roe / 10, 2)})",
+    "description": "ROE Score = ROE / 10"
   }
-}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+}' | nc -U ~/.acorn/agent.sock
 ```
 
 **Arguments:**
@@ -126,45 +211,33 @@ echo '{
 | `code` | string | **yes** | Python code with `calculate(results, config)` function |
 | `required_fields` | array | **yes** | List of required field names |
 | `description` | string | no | Calculator description |
+| `namespace` | string | `"dynamic"` | Namespace: `builtin`, `user`, `dynamic` |
 
-**Example - Create and use a ROE Score calculator:**
+## Plugin Architecture
 
-```bash
-# 1. Register calculator
-echo '{
-  "command": "vi_register_calculator",
-  "args": {
-    "name": "roe_score",
-    "required_fields": ["roe"],
-    "code": "import pandas as pd\n\ndef calculate(results, config):\n    roe = results.get(\"roe\", {})\n    if roe.empty:\n        return pd.Series(dtype=float)\n    # 取最新年份的数据\n    latest_year = max(roe.index)\n    latest_roe = roe.loc[latest_year]\n    return pd.Series({latest_year: round(latest_roe / 10, 2)})",
-    "description": "ROE Score = ROE / 10"
-  }
-}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
-
-# 2. Use it immediately
-echo '{
-  "command": "vi_query",
-  "args": {
-    "symbol": "600519",
-    "fields": "roe",
-    "calculators": "roe_score"
-  }
-}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+```
+acorn-core [yapex.acorn.plugins]
+├── vi_core
+│   ├── [value_investment.fields]
+│   │   ├── ifrs - IFRS standard fields
+│   │   └── extension - Extended/custom fields
+│   ├── [value_investment.providers]
+│   │   ├── provider_market_a - A-share market (Tushare)
+│   │   ├── provider_market_hk - HK market
+│   │   └── provider_market_us - US market
+│   └── [value_investment.calculators]
+│       └── vi_calculators - Calculator loader
+├── evo_manager - Evolution manager
+└── vi - Agent built-in plugin
 ```
 
-### Built-in Commands
+### Calculator Namespaces
 
-#### `health` - Check Server Status
-
-```bash
-echo '{"command": "health", "args": {}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
-```
-
-#### `list_commands` - List All Available Commands
-
-```bash
-echo '{"command": "list_commands", "args": {}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
-```
+| Namespace | Source | Trust Level |
+|-----------|--------|-------------|
+| `builtin` | `value-investment-plugin/calculators/` | Trusted |
+| `user` | `~/.value_investment/calculators/` | User-defined |
+| `dynamic` | Runtime registration (default) | Unverified |
 
 ## Response Format
 
@@ -219,22 +292,28 @@ if result['success']:
 ### Analyze a Stock
 
 ```bash
-# 1. List available fields for analysis
-echo '{"command": "vi_list_fields", "args": {"prefix": "roe"}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+# Using CLI
+acorn-agent query 600519 -r roe,gross_margin,net_profit_margin -y 10
 
-# 2. Query key metrics for 10 years
-echo '{"command": "vi_query", "args": {"symbol": "600519", "fields": "roe,gross_margin,net_profit_margin,current_ratio", "years": 10}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
-
-# 3. Calculate implied growth rate
-echo '{"command": "vi_query", "args": {"symbol": "600519", "fields": "operating_cash_flow,market_cap", "calculators": "implied_growth", "calculator_config": {"implied_growth": {"wacc": 0.08}}}}' | socat - UNIX-CONNECT:~/.acorn/agent.sock
+# With calculator
+acorn-agent query 600519 -r operating_cash_flow,market_cap -c implied_growth --wacc 0.08
 ```
 
-### Screen Stocks
+### Screen Multiple Stocks
 
 ```bash
-# Query multiple stocks
 for symbol in 600519 000001 600036; do
   echo "=== $symbol ==="
-  echo "{\"command\": \"vi_query\", \"args\": {\"symbol\": \"$symbol\", \"fields\": \"roe,gross_margin\", \"years\": 5}}" | socat - UNIX-CONNECT:~/.acorn/agent.sock
+  acorn-agent query $symbol -r roe,gross_margin -y 5
 done
+```
+
+### Register and Use Custom Calculator
+
+```bash
+# 1. Register
+acorn-agent call vi_register_calculator --args '{"name": "roe_score", "required_fields": ["roe"], "code": "import pandas as pd\n\ndef calculate(results, config):\n    roe = results.get(\"roe\", {})\n    if roe.empty:\n        return pd.Series(dtype=float)\n    latest_year = max(roe.index)\n    latest_roe = roe.loc[latest_year]\n    return pd.Series({latest_year: round(latest_roe / 10, 2)})"}'
+
+# 2. Use
+acorn-agent query 600519 -r roe -c roe_score
 ```
