@@ -279,6 +279,57 @@ class TushareProvider(BaseDataProvider):
         except Exception:
             return None
 
+    def _fetch_historical_impl(
+        self,
+        symbol: str,
+        start_date: str | None,
+        end_date: str | None,
+        adjust: str,
+    ) -> pd.DataFrame | None:
+        """获取 A 股历史交易数据
+        
+        使用 Tushare pro_bar 接口获取日线数据。
+        
+        Args:
+            symbol: 标准化后的股票代码 (如 600519.SH)
+            start_date: 开始日期 (YYYY-MM-DD)
+            end_date: 结束日期 (YYYY-MM-DD)
+            adjust: 复权方式 ("", "qfq", "hfq")
+            
+        Returns:
+            DataFrame with columns: date, open, high, low, close, volume
+        """
+        try:
+            # 转换日期格式：YYYY-MM-DD -> YYYYMMDD
+            start_str = start_date.replace("-", "") if start_date else None
+            end_str = end_date.replace("-", "") if end_date else None
+            
+            # 获取数据
+            adj_param = adjust if adjust else None  # Tushare: None 表示不复权
+            df = ts.pro_bar(
+                ts_code=symbol,
+                start_date=start_str,
+                end_date=end_str,
+                adj=adj_param,
+                freq="D",
+            )
+            
+            if df is None or df.empty:
+                return None
+            
+            # 重命名列：trade_date -> date, vol -> volume
+            df = df.rename(columns={
+                "trade_date": "date",
+                "vol": "volume",
+            })
+            
+            # 按日期排序（降序 -> 升序）
+            df = df.sort_values("date", ascending=True)
+            
+            return df
+        except Exception:
+            return None
+
     # ========================================================================
     # A 股特定逻辑
     # ========================================================================

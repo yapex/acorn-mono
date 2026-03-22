@@ -78,6 +78,45 @@ class ProviderAPlugin:
         provider = _get_provider()
         return provider.fetch_market(symbol, fields)
 
+    @vi_hookimpl
+    def vi_fetch_historical(
+        self,
+        symbol: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        adjust: str = "",
+    ) -> dict[str, Any] | None:
+        """Fetch historical trading data (OHLCV) for A-share
+        
+        Args:
+            symbol: Stock code (e.g. "600519", "000001")
+            start_date: Start date in "YYYY-MM-DD" format (optional)
+            end_date: End date in "YYYY-MM-DD" format (optional)
+            adjust: Price adjustment method
+                - "": No adjustment (不复权)
+                - "qfq": Forward adjustment (前复权)
+                - "hfq": Backward adjustment (后复权)
+        
+        Returns:
+            {
+                "date": [...],
+                "open": [...],
+                "high": [...],
+                "low": [...],
+                "close": [...],
+                "volume": [...],
+                "amount": [...],
+            }
+            or None if not supported
+        """
+        provider = _get_provider()
+        df = provider.fetch_historical(symbol, start_date, end_date, adjust)
+        if df is None or df.empty:
+            return None
+        
+        # 转换 DataFrame 为 dict
+        return df.to_dict(orient="list")
+
 
 # Plugin instance for pluggy registration
 plugin = ProviderAPlugin()
