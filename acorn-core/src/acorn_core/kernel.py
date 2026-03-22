@@ -12,6 +12,7 @@ from typing import Any
 
 import pluggy
 
+from .events import EventBus
 from .specs import Genes
 from .types import Response, Task
 
@@ -25,6 +26,7 @@ class Acorn:
         self.pm = pluggy.PluginManager("evo")
         self.pm.add_hookspecs(Genes)
         self._plugins: dict = {}  # plugin_id -> 插件实例
+        self._event_bus = EventBus()
 
     def load_plugins(self, plugin_path: str | Path | None = None):
         """加载插件
@@ -40,6 +42,12 @@ class Acorn:
         # 2. 加载外部路径插件
         if plugin_path:
             self._load_from_path(plugin_path)
+
+        # 3. 发送插件加载完成事件
+        for plugin in self.pm.get_plugins():
+            plugin_name = self.pm.get_name(plugin)
+            if plugin_name:
+                self._event_bus.publish("acorn.plugin.loaded", sender=self, plugin_name=plugin_name, plugin=plugin)
 
         self.pm.hook.on_load()
 

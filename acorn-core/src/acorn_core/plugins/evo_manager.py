@@ -6,6 +6,7 @@ EvoManager - 进化管理器
 
 from typing import Any
 
+from acorn_core.events import EventBus
 from acorn_core.specs import hookimpl
 
 
@@ -17,6 +18,34 @@ class EvoManager:
     def __init__(self) -> None:
         self.error_log: list[dict[str, Any]] = []
         self.max_log = 100
+        self.missing_fields: list[dict[str, Any]] = []
+        self._event_bus = EventBus()
+
+    def _on_plugin_loaded(self, event_type, sender, **kwargs):
+        """订阅 acorn.plugin.loaded 事件，记录插件信息"""
+        plugin_name = kwargs.get("plugin_name", "unknown")
+        plugin: Any = kwargs.get("plugin")
+        # 检查插件是否有缺失字段的能力声明
+        if plugin and hasattr(plugin, "get_capabilities"):
+            try:
+                caps = plugin.get_capabilities()
+                if caps and isinstance(caps, dict):
+                    # 记录插件声明的字段
+                    pass
+            except Exception:
+                pass
+
+    def _on_field_missing(self, event_type, sender, **kwargs):
+        """订阅 vi.field.missing 事件，记录缺失的字段"""
+        symbol = kwargs.get("symbol", "unknown")
+        fields = kwargs.get("fields", [])
+        self.missing_fields.append({
+            "symbol": symbol,
+            "fields": fields
+        })
+        # 保持最大记录数
+        if len(self.missing_fields) > self.max_log:
+            self.missing_fields = self.missing_fields[-self.max_log:]
 
     @property
     def commands(self) -> list[str]:
@@ -35,6 +64,8 @@ class EvoManager:
     def on_load(self) -> None:
         """初始化 EvoManager"""
         self.error_log = []
+        self._event_bus.on("acorn.plugin.loaded")(self._on_plugin_loaded)
+        self._event_bus.on("vi.field.missing")(self._on_field_missing)
 
     @hookimpl
     def handle(self, task) -> dict:

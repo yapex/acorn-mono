@@ -3,5 +3,6 @@
   "pythonPlatform": "Darwin",
   "include": ["src", "tests"],
   "exclude": ["**/__pycache__"],
-  "extraPaths": [".venv/lib/python3.12/site-packages"]
+  "extraPaths": ["../../.venv/lib/python3.12/site-packages"],
+  "venvPath": "../.."
 }

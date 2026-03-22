@@ -13,6 +13,7 @@ from typing import Any, TYPE_CHECKING
 
 import pluggy  # type: ignore[import]
 
+from acorn_core.events import EventBus
 from .spec import vi_hookimpl, ValueInvestmentSpecs
 
 if TYPE_CHECKING:
@@ -48,6 +49,7 @@ class ViCorePlugin:
 
     # Class-level plugin manager reference
     _pm: Any = None
+    _event_bus = EventBus()
 
     @classmethod
     def set_plugin_manager(cls, pm: Any) -> None:
@@ -223,8 +225,13 @@ class ViCorePlugin:
             fields = requested & all_fields
             unsupported = requested - all_fields
             if unsupported:
-                # Log but continue
-                pass
+                # 发送字段缺失事件
+                self._event_bus.publish(
+                    "vi.field.missing",
+                    sender=self,
+                    symbol=symbol,
+                    fields=list(unsupported),
+                )
 
         if not fields and not requested_calculators:
             return {"success": False, "error": "No valid fields specified"}
