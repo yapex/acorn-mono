@@ -7,12 +7,37 @@ Provides:
 """
 from __future__ import annotations
 
+import sys
+from importlib.metadata import entry_points
 from typing import Any, TYPE_CHECKING
 
-from .spec import vi_hookimpl
+import pluggy
+
+from .spec import vi_hookimpl, ValueInvestmentSpecs
 
 if TYPE_CHECKING:
     pass
+
+
+# Entry point groups for VI sub-plugins
+VI_ENTRY_POINT_GROUPS = (
+    "value_investment.fields",
+    "value_investment.providers",
+    "value_investment.calculators",
+)
+
+
+def _get_entry_points(group: str) -> Any:
+    """Get entry points by group, compatible with Python 3.9-3.12"""
+    try:
+        return entry_points(group=group)
+    except TypeError:
+        eps = entry_points()
+        if hasattr(eps, "select"):
+            return eps.select(group=group)
+        elif isinstance(eps, dict):
+            return eps.get(group, [])
+        return []
 
 
 class ViCorePlugin:
@@ -28,6 +53,44 @@ class ViCorePlugin:
     def set_plugin_manager(cls, pm: Any) -> None:
         """Set the plugin manager for field collection"""
         cls._pm = pm
+
+    @classmethod
+    def _get_plugin_manager(cls) -> Any:
+        """Get or create the VI plugin manager"""
+        if cls._pm is None:
+            cls._pm = cls._create_plugin_manager()
+        return cls._pm
+
+    @classmethod
+    def _create_plugin_manager(cls) -> Any:
+        """Create pluggy plugin manager and discover sub-plugins"""
+        pm = pluggy.PluginManager("value_investment")
+        pm.add_hookspecs(ValueInvestmentSpecs)
+
+        # Discover and register sub-plugins via entry_points
+        for group in VI_ENTRY_POINT_GROUPS:
+            for ep in _get_entry_points(group):
+                try:
+                    pm.register(ep.load(), name=ep.name)
+                except Exception as e:
+                    print(f"Warning: Failed to load {group}:{ep.name}: {e}", file=sys.stderr)
+
+        return pm
+
+    # =============================================================================
+    # Genes Interface (Acorn Core)
+    # =============================================================================
+
+    @property
+    def commands(self) -> list[str]:
+        """Return supported commands for Acorn Core"""
+        return ["vi_query", "vi_list_fields", "vi_list_calculators", "vi_register_calculator"]
+
+    def handle(self, task) -> dict:
+        """Handle task for Acorn Core"""
+        command = task.command
+        args = task.args or {}
+        return self._handle(command, args)
 
     @vi_hookimpl
     def vi_commands(self) -> list[str]:
@@ -45,11 +108,22 @@ class ViCorePlugin:
 
     @vi_hookimpl
     def vi_handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
-        """Handle commands"""
-        if command == "list_fields":
+        """Handle commands via pluggy"""
+        return self._handle(command, args)
+
+    def _handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
+        """Internal command handler"""
+        # Strip "vi_" prefix if present
+        internal_cmd = command[3:] if command.startswith("vi_") else command
+
+        if internal_cmd == "list_fields":
             return self._list_fields(args)
-        elif command == "query":
+        elif internal_cmd == "query":
             return self._query(args)
+        elif internal_cmd == "list_calculators":
+            return self._list_calculators(args)
+        elif internal_cmd == "register_calculator":
+            return self._register_calculator(args)
         return {"success": False, "error": f"Unknown command: {command}"}
 
     def _list_fields(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -57,8 +131,8 @@ class ViCorePlugin:
         all_fields: dict[str, dict] = {}
 
         # Collect fields from all plugins via vi_fields hook
-        if self._pm:
-            for result in self._pm.hook.vi_fields():
+        if self._get_plugin_manager():
+            for result in self._get_plugin_manager().hook.vi_fields():
                 if result:
                     source = result.get("source", "unknown")
                     fields = result.get("fields", set())
@@ -133,11 +207,11 @@ class ViCorePlugin:
         )
 
         # Parse fields
-        if not self._pm:
+        if not self._get_plugin_manager():
             return {"success": False, "error": "Plugin manager not initialized"}
 
         all_fields: set[str] = set()
-        for result in self._pm.hook.vi_supported_fields():
+        for result in self._get_plugin_manager().hook.vi_supported_fields():
             if result:
                 all_fields.update(result)
 
@@ -182,7 +256,7 @@ class ViCorePlugin:
 
         # Fetch from providers
         if financial_fields:
-            for result in self._pm.hook.vi_fetch_financials(
+            for result in self._get_plugin_manager().hook.vi_fetch_financials(
                 symbol=symbol,
                 fields=financial_fields,
                 end_year=end_year,
@@ -192,7 +266,7 @@ class ViCorePlugin:
                     results["data"].update(result)
 
         if indicator_fields:
-            for result in self._pm.hook.vi_fetch_indicators(
+            for result in self._get_plugin_manager().hook.vi_fetch_indicators(
                 symbol=symbol,
                 fields=indicator_fields,
                 end_year=end_year,
@@ -202,7 +276,7 @@ class ViCorePlugin:
                     results["data"].update(result)
 
         if market_fields:
-            for result in self._pm.hook.vi_fetch_market(
+            for result in self._get_plugin_manager().hook.vi_fetch_market(
                 symbol=symbol,
                 fields=market_fields,
             ):
@@ -223,11 +297,11 @@ class ViCorePlugin:
         calculator_config: dict[str, Any],
     ) -> None:
         """Run calculators via hook and add results to data"""
-        if not self._pm:
+        if not self._get_plugin_manager():
             return
 
         # Get available calculators
-        calc_list = self._pm.hook.vi_list_calculators()
+        calc_list = self._get_plugin_manager().hook.vi_list_calculators()
         if not calc_list:
             return
 
@@ -262,7 +336,7 @@ class ViCorePlugin:
 
             # Call hook to run calculator (auto-discovery!)
             config = calculator_config.get(calc_name, {})
-            calc_result = self._pm.hook.vi_run_calculator(
+            calc_result = self._get_plugin_manager().hook.vi_run_calculator(
                 name=calc_name,
                 data=calc_data,
                 config=config,
@@ -286,6 +360,45 @@ class ViCorePlugin:
 
             if calc_result:
                 results["data"][calc_name] = calc_result
+
+    def _list_calculators(self, args: dict[str, Any]) -> dict[str, Any]:
+        """List all available calculators"""
+        if not self._get_plugin_manager():
+            return {"success": False, "error": "Plugin manager not initialized"}
+
+        calc_list = self._get_plugin_manager().hook.vi_list_calculators()
+        if not calc_list:
+            return {"success": True, "data": {"calculators": []}}
+
+        # Flatten if nested
+        if calc_list and isinstance(calc_list[0], list):
+            calc_list = calc_list[0]
+
+        return {"success": True, "data": {"calculators": calc_list}}
+
+    def _register_calculator(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Register a calculator dynamically"""
+        if not self._get_plugin_manager():
+            return {"success": False, "error": "Plugin manager not initialized"}
+
+        result = self._get_plugin_manager().hook.vi_register_calculator(
+            name=args.get("name"),
+            code=args.get("code"),
+            required_fields=args.get("required_fields", []),
+            description=args.get("description", ""),
+            namespace=args.get("namespace", "dynamic"),
+        )
+        return result if result else {"success": True, "data": {"message": "Calculator registered"}}
+
+
+    def on_load(self) -> None:
+        """Called when plugin is loaded (Genes lifecycle)"""
+        # Plugin manager is set by Acorn kernel
+        pass
+
+    def on_unload(self) -> None:
+        """Called when plugin is unloaded (Genes lifecycle)"""
+        pass
 
 
 # Plugin instance for pluggy registration
