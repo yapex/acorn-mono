@@ -5,7 +5,7 @@ A 股数据提供者，使用 Tushare API 获取数据。
 ## 职责
 
 - 实现 `FieldProviderSpec` 的所有 Hook
-- 提供 A 股市场的财务报表、指标、市场数据
+- 提供 A 股市场的财务报表、指标、市场数据、历史交易数据
 - 将 Tushare API 字段映射到系统标准字段
 
 ## 架构
@@ -28,6 +28,7 @@ provider_market_a
 - `cashflow` - 现金流量表
 - `fina_indicator` - 财务指标
 - `daily_basic` - 每日市场数据
+- `pro_bar` - 历史交易数据（OHLCV）
 
 ## 字段映射
 
@@ -98,6 +99,22 @@ df = provider.fetch_financials(
 df = provider.fetch_market(
     "600519",
     fields={"market_cap", "pe_ratio", "pb_ratio"},
+)
+
+# 获取历史交易数据（不复权）
+df = provider.fetch_historical(
+    "600519",
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    adjust="",  # ""=不复权, "qfq"=前复权, "hfq"=后复权
+)
+
+# 获取前复权历史数据
+df = provider.fetch_historical(
+    "600519",
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    adjust="qfq",
 )
 ```
 
