@@ -13,25 +13,8 @@ import os
 from typing import Any
 
 import pandas as pd
+import tushare as ts
 
-# Tushare API (lazy import)
-_tushare: Any = None
-
-
-def _get_tushare():
-    """Lazy import tushare"""
-    global _tushare
-    if _tushare is None:
-        import tushare as ts
-
-        token = os.environ.get("TUSHARE_TOKEN", "")
-        if token:
-            ts.set_token(token)
-        _tushare = ts.pro_api()
-    return _tushare
-
-
-# 使用标准字段常量引用
 from vi_fields_extension import StandardFields
 
 
@@ -179,10 +162,8 @@ class TushareProvider:
 
     @property
     def api(self):
-        """Lazy init Tushare API"""
+        """Lazy init Tushare API (instance-level singleton)"""
         if self._api is None:
-            import tushare as ts
-
             if self._token:
                 ts.set_token(self._token)
             self._api = ts.pro_api()
