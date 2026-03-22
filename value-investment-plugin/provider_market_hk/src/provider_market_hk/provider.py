@@ -207,6 +207,13 @@ class HKProvider(BaseDataProvider):
             df = ak.stock_hk_financial_indicator_em(symbol=symbol)
             if df is None or df.empty:
                 return None
+            
+            # 添加 year 列 - AKShare 返回的数据没有日期列，
+            # 假设每行代表一个财年，按数据顺序分配年份
+            n_rows = len(df)
+            df = df.copy()
+            df["year"] = list(range(end_year, end_year - n_rows, -1))
+            
             return df
         except Exception:
             return None
@@ -333,7 +340,12 @@ class HKProvider(BaseDataProvider):
                 values="AMOUNT",
                 aggfunc="first",
             )
-            return wide_df.reset_index()
+            result = wide_df.reset_index()
+            # 移除不需要的元数据列
+            cols_to_drop = [c for c in result.columns if c in ["STD_ITEM_NAME", "ITEM_NAME", "AMOUNT", "SECUCODE", "SECURITY_CODE", "SECURITY_NAME_ABBR", "ORG_CODE", "DATE_TYPE_CODE", "FISCAL_YEAR", "START_DATE", "STD_REPORT_DATE"]]
+            if cols_to_drop:
+                result = result.drop(columns=cols_to_drop)
+            return result
         except Exception:
             return df
 

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
+
 from vi_core.spec import vi_hookimpl
 
 from .provider import USProvider
@@ -51,9 +53,10 @@ class ProviderUSPlugin:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
-        """Fetch financial statement data (not supported for US)"""
-        return None
+    ) -> pd.DataFrame | None:
+        """Fetch financial statement data"""
+        provider = _get_provider()
+        return provider.fetch_financials(symbol, fields, end_year, years)
 
     @vi_hookimpl
     def vi_fetch_indicators(
@@ -62,18 +65,19 @@ class ProviderUSPlugin:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
-        """Fetch financial indicators (not supported for US)"""
-        return None
+    ) -> pd.DataFrame | None:
+        """Fetch financial indicators"""
+        provider = _get_provider()
+        return provider.fetch_indicators(symbol, fields, end_year, years)
 
     @vi_hookimpl
     def vi_fetch_market(
         self,
         symbol: str,
         fields: set[str],
-    ) -> dict[str, Any]:
+    ) -> pd.DataFrame | None:
         """Fetch market data (not supported for US)"""
-        return {}
+        return None
 
     @vi_hookimpl
     def vi_fetch_historical(
@@ -82,7 +86,7 @@ class ProviderUSPlugin:
         start_date: str | None = None,
         end_date: str | None = None,
         adjust: str = "qfq",
-    ) -> dict[str, Any] | None:
+    ) -> pd.DataFrame | None:
         """Fetch historical trading data (OHLCV) for US stock
         
         Args:
@@ -94,23 +98,11 @@ class ProviderUSPlugin:
                 - "qfq": Forward adjustment (前复权)
         
         Returns:
-            {
-                "date": [...],
-                "open": [...],
-                "high": [...],
-                "low": [...],
-                "close": [...],
-                "volume": [...],
-            }
+            DataFrame with columns: date, open, high, low, close, volume
             or None if not supported
         """
         provider = _get_provider()
-        df = provider.fetch_historical(symbol, start_date, end_date, adjust)
-        if df is None or df.empty:
-            return None
-        
-        # 转换 DataFrame 为 dict
-        return df.to_dict(orient="list")
+        return provider.fetch_historical(symbol, start_date, end_date, adjust)
 
 
 # Plugin instance for pluggy registration

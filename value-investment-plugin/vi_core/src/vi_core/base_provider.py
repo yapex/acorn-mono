@@ -508,17 +508,14 @@ class BaseDataProvider(ABC):
         if df is None or df.empty:
             return df
 
-        # 按映射类型逐个应用
+        # 按映射类型逐个应用，逐个重命名
         for statement_type, mapping in self.FIELD_MAPPINGS.items():
             if not mapping:
                 continue
-            rename_map = {
-                native: std
-                for native, std in mapping.items()
-                if native in df.columns
-            }
-            if rename_map:
-                df = df.rename(columns=rename_map)
+            # 逐个检查并映射，避免一次性构建映射表导致的列名冲突
+            for native, std in mapping.items():
+                if native in df.columns and std not in df.columns:
+                    df = df.rename(columns={native: std})
 
         return df
 

@@ -11,6 +11,7 @@ import sys
 from importlib.metadata import entry_points
 from typing import Any, TYPE_CHECKING
 
+import pandas as pd
 import pluggy  # type: ignore[import]
 
 from .spec import vi_hookimpl, ValueInvestmentSpecs
@@ -38,6 +39,113 @@ def _get_entry_points(group: str) -> Any:
         elif isinstance(eps, dict):
             return eps.get(group, [])
         return []
+
+
+def _df_to_serializable_dict(df: pd.DataFrame | None) -> dict[str, dict[int, Any]]:
+    """Convert DataFrame to JSON-serializable dict format
+    
+    Args:
+        df: DataFrame with date column and data columns
+        
+    Returns:
+        {field: {year: value}} dict with JSON-serializable values
+    """
+    if df is None or df.empty:
+        return {}
+    
+    result: dict[str, dict[int, Any]] = {}
+    
+    # Identify date column
+    date_columns = ["end_date", "report_date", "date", "trade_date", "year", "REPORT_DATE"]
+    actual_date_col = None
+    for col in date_columns:
+        if col in df.columns:
+            actual_date_col = col
+            break
+    
+    if actual_date_col is None:
+        return {}
+    
+    # Convert date column to year
+    try:
+        if actual_date_col == "year":
+            # year column is already integer year
+            years = df[actual_date_col].astype(int)
+        else:
+            dates = pd.to_datetime(df[actual_date_col], format="mixed")
+            years = dates.dt.year
+    except Exception:
+        return {}
+    
+    # Process each column (except date column)
+    for col in df.columns:
+        if col == actual_date_col:
+            continue
+        
+        # Create {year: value} mapping
+        col_data: dict[int, Any] = {}
+        for year, val in zip(years, df[col]):
+            if pd.isna(val):
+                continue
+            # Convert to JSON-serializable types
+            if hasattr(val, 'item'):  # numpy/pandas scalar
+                col_data[int(year)] = val.item()
+            elif isinstance(val, float):
+                col_data[int(year)] = float(val)
+            elif isinstance(val, int):
+                col_data[int(year)] = int(val)
+            else:
+                col_data[int(year)] = val
+        
+        if col_data:
+            result[col] = col_data
+    
+    return result
+
+
+def _merge_dfs(dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
+    """Merge multiple DataFrames on date column
+    
+    Args:
+        dfs: List of DataFrames to merge
+        
+    Returns:
+        Merged DataFrame or None if empty
+    """
+    if not dfs:
+        return None
+    
+    # Start with first DataFrame
+    result = dfs[0].copy()
+    
+    # Merge remaining DataFrames
+    for df in dfs[1:]:
+        # Find common date column
+        date_cols = ["end_date", "report_date", "date", "trade_date"]
+        result_date_col = None
+        df_date_col = None
+        
+        for col in date_cols:
+            if col in result.columns and result_date_col is None:
+                result_date_col = col
+            if col in df.columns and df_date_col is None:
+                df_date_col = col
+        
+        if result_date_col and df_date_col:
+            # Merge on date column
+            cols_to_add = [c for c in df.columns if c != df_date_col and c not in result.columns]
+            if cols_to_add:
+                result = result.merge(
+                    df[[df_date_col] + cols_to_add],
+                    left_on=result_date_col,
+                    right_on=df_date_col,
+                    how="left"
+                )
+                # Remove duplicate date column if created
+                if result_date_col != df_date_col and df_date_col in result.columns:
+                    result = result.drop(columns=[df_date_col])
+    
+    return result
 
 
 class ViCorePlugin:
@@ -290,12 +398,8 @@ class ViCorePlugin:
 
         financial_fields = fields - indicator_fields - market_fields
 
-        results: dict[str, Any] = {
-            "symbol": symbol,
-            "end_year": end_year,
-            "years": years,
-            "data": {},
-        }
+        # 收集所有 DataFrame
+        dfs: list[pd.DataFrame] = []
 
         # Fetch from providers
         if financial_fields:
@@ -305,8 +409,8 @@ class ViCorePlugin:
                 end_year=end_year,
                 years=years,
             ):
-                if result:
-                    results["data"].update(result)
+                if result is not None and not result.empty:
+                    dfs.append(result)
 
         if indicator_fields:
             for result in self._get_plugin_manager().hook.vi_fetch_indicators(
@@ -315,38 +419,64 @@ class ViCorePlugin:
                 end_year=end_year,
                 years=years,
             ):
-                if result:
-                    results["data"].update(result)
+                if result is not None and not result.empty:
+                    dfs.append(result)
 
         if market_fields:
             for result in self._get_plugin_manager().hook.vi_fetch_market(
                 symbol=symbol,
                 fields=market_fields,
             ):
-                if result:
-                    results["data"].update(result)
+                if result is not None and not result.empty:
+                    dfs.append(result)
 
-        # Run calculators
+        # Merge DataFrames
+        merged_df = _merge_dfs(dfs)
+
+        # 转换为可返回的格式
+        result_data = _df_to_serializable_dict(merged_df) if merged_df is not None and not merged_df.empty else {}
+
+        # Run calculators - 直接传入 DataFrame
         if requested_calculators:
-            self._run_calculators(results, requested_calculators, calculator_config)
+            calc_results = self._run_calculators(merged_df, requested_calculators, calculator_config)
+            for calc_name, series in calc_results.items():
+                if series is not None and not series.empty:
+                    result_data[calc_name] = {int(year): val for year, val in series.items()}
 
-        results["fields_fetched"] = list(results["data"].keys())
-        return {"success": True, "data": results}
+        return {
+            "success": True,
+            "data": {
+                "symbol": symbol,
+                "end_year": end_year,
+                "years": years,
+                "data": result_data,
+                "fields_fetched": list(result_data.keys()),
+            }
+        }
 
     def _run_calculators(
         self,
-        results: dict[str, Any],
+        df: pd.DataFrame | None,
         calculator_names: set[str],
         calculator_config: dict[str, Any],
-    ) -> None:
-        """Run calculators via hook and add results to data"""
-        if not self._get_plugin_manager():
-            return
+    ) -> dict[str, pd.Series]:
+        """Run calculators via hook and return results
+        
+        Args:
+            df: DataFrame with financial data (index=year, columns=field names)
+            calculator_names: Calculator names to run
+            calculator_config: Calculator-specific config
+            
+        Returns:
+            {calculator_name: pd.Series} dict
+        """
+        if df is None or df.empty or not self._get_plugin_manager():
+            return {}
 
         # Get available calculators
         calc_list = self._get_plugin_manager().hook.vi_list_calculators()
         if not calc_list:
-            return
+            return {}
 
         # Flatten if nested (pluggy returns [[...]])
         if calc_list and isinstance(calc_list[0], list):
@@ -357,6 +487,8 @@ class ViCorePlugin:
         for calc in calc_list:
             calc_registry[calc["name"]] = calc
 
+        results: dict[str, pd.Series] = {}
+
         # Run each requested calculator via hook
         for calc_name in calculator_names:
             if calc_name not in calc_registry:
@@ -364,24 +496,17 @@ class ViCorePlugin:
 
             calc_spec = calc_registry[calc_name]
             required_fields = set(calc_spec.get("required_fields", []))
-            optional_fields = set(calc_spec.get("optional_fields", []))
-
-            # Collect required data
-            calc_data: dict[str, dict] = {}
-            for field in required_fields | optional_fields:
-                if field in results["data"]:
-                    calc_data[field] = results["data"][field]
 
             # Check if all required fields are available
-            missing = required_fields - set(calc_data.keys())
+            missing = required_fields - set(df.columns)
             if missing:
                 continue  # Skip this calculator
 
-            # Call hook to run calculator (auto-discovery!)
+            # Call hook to run calculator with DataFrame
             config = calculator_config.get(calc_name, {})
             calc_result = self._get_plugin_manager().hook.vi_run_calculator(
                 name=calc_name,
-                data=calc_data,
+                data=df,
                 config=config,
             )
 
@@ -390,18 +515,16 @@ class ViCorePlugin:
 
             # Check for calculator error
             if isinstance(calc_result, dict) and calc_result.get("__error__"):
-                # Calculator运行时出错，记录错误信息
-                if "calculator_errors" not in results:
-                    results["calculator_errors"] = []
-                results["calculator_errors"].append({
-                    "calculator": calc_result["calculator"],
-                    "error_type": calc_result["error_type"],
-                    "error_message": calc_result["error_message"],
-                })
-                continue  # Skip this calculator, don't add error result
+                continue  # Skip error results
 
-            if calc_result:
-                results["data"][calc_name] = calc_result
+            # Accept pd.Series or dict
+            if calc_result is not None:
+                if isinstance(calc_result, pd.Series):
+                    results[calc_name] = calc_result
+                elif isinstance(calc_result, dict):
+                    results[calc_name] = pd.Series(calc_result)
+
+        return results
 
     def _list_calculators(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available calculators"""

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 import pluggy  # type: ignore[import]
 
 vi_hookspec = pluggy.HookspecMarker("value_investment")
@@ -69,7 +70,7 @@ class FieldProviderSpec:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
+    ) -> pd.DataFrame | None:
         """Fetch financial statement data (balance sheet, income, cash flow)
 
         Args:
@@ -79,7 +80,7 @@ class FieldProviderSpec:
             years: Number of years to fetch
 
         Returns:
-            {field: {year: value}} or None if fields not supported
+            DataFrame with date column and financial fields, or None
         """
         return None
 
@@ -90,7 +91,7 @@ class FieldProviderSpec:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
+    ) -> pd.DataFrame | None:
         """Fetch financial indicators (ROE, ROA, gross margin, etc.)
 
         Args:
@@ -100,7 +101,7 @@ class FieldProviderSpec:
             years: Number of years to fetch
 
         Returns:
-            {field: {year: value}} or None
+            DataFrame with date column and indicator fields, or None
         """
         return None
 
@@ -109,7 +110,7 @@ class FieldProviderSpec:
         self,
         symbol: str,
         fields: set[str],
-    ) -> dict[str, Any]:
+    ) -> pd.DataFrame | None:
         """Fetch market data (market cap, PE, PB, etc.)
 
         Args:
@@ -117,9 +118,9 @@ class FieldProviderSpec:
             fields: Market field names (market_cap, pe_ratio, pb_ratio)
 
         Returns:
-            {field: value} single time point values
+            DataFrame with date column and market fields, or None
         """
-        return {}
+        return None
 
     @vi_hookspec
     def vi_fetch_historical(
@@ -128,7 +129,7 @@ class FieldProviderSpec:
         start_date: str | None = None,
         end_date: str | None = None,
         adjust: str = "hfq",
-    ) -> dict[str, Any] | None:
+    ) -> pd.DataFrame | None:
         """Fetch historical trading data (OHLCV)
 
         Args:
@@ -141,15 +142,7 @@ class FieldProviderSpec:
                 - "hfq": Backward adjustment (后复权)
 
         Returns:
-            {
-                "date": [...],      # 日期列表
-                "open": [...],      # 开盘价
-                "high": [...],      # 最高价
-                "low": [...],       # 最低价
-                "close": [...],     # 收盘价
-                "volume": [...],    # 成交量
-                "amount": [...],    # 成交额 (optional)
-            }
+            DataFrame with columns: date, open, high, low, close, volume
             or None if not supported
         """
         return None
@@ -180,18 +173,18 @@ class CalculatorSpec:
     def vi_run_calculator(
         self,
         name: str,
-        data: dict[str, dict[int, Any]],
+        data: pd.DataFrame,
         config: dict[str, Any],
-    ) -> dict[int, Any] | None:
+    ) -> pd.Series | None:
         """Execute a calculator by name
 
         Args:
             name: Calculator name (e.g. "implied_growth")
-            data: Field data {field: {year: value}}
+            data: DataFrame with financial data (index=year, columns=field names)
             config: Calculator-specific config
 
         Returns:
-            {year: value} or None if calculator not found/not implemented
+            pd.Series with year as index, or None if calculator not found
             如果calculator运行时出错，返回:
             {"__error__": True, "calculator": name, "error_type": type, "error_message": msg}
         """

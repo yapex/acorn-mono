@@ -119,7 +119,9 @@ class VIPlugin:
 
         # Register providers and fields via entry_points
         _entry_point_configs = [
-            ("value_investment.providers", "tushare"),
+            ("value_investment.providers", "provider_market_a"),
+            ("value_investment.providers", "provider_market_us"),
+            ("value_investment.providers", "provider_market_hk"),
             ("value_investment.fields", "ifrs"),
             ("value_investment.fields", "extension"),
         ]

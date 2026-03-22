@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -75,6 +76,7 @@ class TushareProvider(BaseDataProvider):
         "indicators": {
             "roe": StandardFields.roe,
             "roa": StandardFields.roa,
+            # 注意: Tushare 的 gross_margin 是毛利润金额(元)，grossprofit_margin 才是毛利率(%)
             "grossprofit_margin": StandardFields.gross_margin,
             "netprofit_margin": StandardFields.net_profit_margin,
             "current_ratio": StandardFields.current_ratio,
@@ -141,10 +143,6 @@ class TushareProvider(BaseDataProvider):
         self._api: Any = None
         super().__init__(cache=cache)
 
-    def _init_provider(self) -> None:
-        """Lazy init Tushare API"""
-        pass
-
     @property
     def api(self):
         """Lazy init Tushare API (instance-level singleton)"""
@@ -172,8 +170,8 @@ class TushareProvider(BaseDataProvider):
         return symbol
 
     def _get_date_column(self) -> str:
-        """A 股使用 end_date 作为日期列"""
-        return "end_date"
+        """A 股使用 year 作为日期列"""
+        return "year"
 
     def _get_financial_ttl(self, end_year: int) -> int:
         """A 股财务数据缓存到次年4月底
@@ -190,62 +188,92 @@ class TushareProvider(BaseDataProvider):
         fields: set[str],
     ) -> pd.DataFrame | None:
         """获取所有财务报表数据并合并"""
-        start_date = f"{start_year}0101"
-        end_date = f"{end_year}1231"
+        today = datetime.now().strftime("%Y%m%d")
 
         dfs = []
 
         # 资产负债表
-        try:
-            df = self.api.balancesheet(
-                ts_code=symbol,
-                start_date=start_date,
-                end_date=end_date,
-            )
-            if df is not None and not df.empty:
-                df = self._filter_annual_reports(df)
-                dfs.append(df)
-        except Exception:
-            pass
+        df = self._fetch_single_statement(
+            "balancesheet", symbol, today
+        )
+        if df is not None and not df.empty:
+            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            dfs.append(df)
 
         # 利润表
-        try:
-            df = self.api.income(
-                ts_code=symbol,
-                start_date=start_date,
-                end_date=end_date,
-            )
-            if df is not None and not df.empty:
-                df = self._filter_annual_reports(df)
-                dfs.append(df)
-        except Exception:
-            pass
+        df = self._fetch_single_statement(
+            "income", symbol, today
+        )
+        if df is not None and not df.empty:
+            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            dfs.append(df)
 
         # 现金流量表
-        try:
-            df = self.api.cashflow(
-                ts_code=symbol,
-                start_date=start_date,
-                end_date=end_date,
-            )
-            if df is not None and not df.empty:
-                df = self._filter_annual_reports(df)
-                dfs.append(df)
-        except Exception:
-            pass
+        df = self._fetch_single_statement(
+            "cashflow", symbol, today
+        )
+        if df is not None and not df.empty:
+            df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
+            dfs.append(df)
 
         if not dfs:
             return None
 
-        # 按 end_date 合并
+        # 按 year 合并
         result = dfs[0]
         for df in dfs[1:]:
-            result = result.merge(df, on="end_date", how="outer", suffixes=("", "_dup"))
-            # 移除重复列
+            result = result.merge(df, on="year", how="outer", suffixes=("", "_dup"))
             dup_cols = [c for c in result.columns if c.endswith("_dup")]
             result = result.drop(columns=dup_cols)
 
         return result
+
+    def _fetch_single_statement(
+        self,
+        statement: str,
+        symbol: str,
+        end_date: str,
+    ) -> pd.DataFrame | None:
+        """获取单个报表数据
+        
+        Args:
+            statement: "balancesheet" | "income" | "cashflow"
+            symbol: 股票代码
+            end_date: 结束日期 (YYYYMMDD)
+            
+        Returns:
+            DataFrame with year column and financial data
+        """
+        try:
+            df = getattr(self.api, statement)(
+                ts_code=symbol,
+                start_date="19900101",  # 从很早开始获取所有历史数据
+                end_date=end_date,
+            )
+            if df is None or df.empty:
+                return None
+            
+            # 过滤年报 (end_date ends with 1231)
+            df = df[df["end_date"].astype(str).str.endswith("1231")]
+            if df.empty:
+                return None
+            
+            # 按 update_flag 降序排序，保留第一条 (update_flag=1 是最终版)
+            # 需要同时按 end_date 降序排序，确保同一 end_date 时 update_flag 高的在前
+            if "update_flag" in df.columns:
+                df = df.sort_values(["end_date", "update_flag"], ascending=[False, False])
+                df = df.drop_duplicates(subset=["end_date"], keep="first")
+            else:
+                df = df.sort_values("end_date", ascending=False)
+                df = df.drop_duplicates(subset=["end_date"], keep="first")
+            
+            # 提取年份
+            df = df.copy()
+            df["year"] = pd.to_datetime(df["end_date"]).dt.year
+            
+            return df
+        except Exception:
+            return None
 
     def _fetch_indicators_impl(
         self,
@@ -254,36 +282,52 @@ class TushareProvider(BaseDataProvider):
         end_year: int,
     ) -> pd.DataFrame | None:
         """获取财务指标数据"""
+        today = datetime.now().strftime("%Y%m%d")
+        
         try:
             df = self.api.fina_indicator(
                 ts_code=symbol,
-                start_date=f"{start_year}0101",
-                end_date=f"{end_year}1231",
+                start_date="19900101",
+                end_date=today,
             )
-            if df is not None and not df.empty:
-                df = self._filter_annual_reports(df)
-                return df
+            if df is None or df.empty:
+                return None
+            
+            # 过滤年报 (end_date ends with 1231)
+            df = df[df["end_date"].astype(str).str.endswith("1231")]
+            if df.empty:
+                return None
+            
+            # 按 ann_date 降序排序，保留第一条 (最新发布的)
+            if "ann_date" in df.columns:
+                df = df.sort_values("ann_date", ascending=False)
+                df = df.drop_duplicates(subset=["end_date"], keep="first")
+            
+            # 提取年份
+            df = df.copy()
+            df["year"] = pd.to_datetime(df["end_date"]).dt.year
+            
+            # Tushare fina_indicator 同时返回 gross_margin(毛利润金额) 和
+            # grossprofit_margin(毛利率)。我们只需要毛利率，需要在映射前
+            # 删除 gross_margin 列避免列名冲突
+            if "gross_margin" in df.columns and "grossprofit_margin" in df.columns:
+                df = df.drop(columns=["gross_margin"])
+            
+            return df
         except Exception:
-            pass
-        return None
+            return None
 
     def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
         """获取市场数据"""
         try:
-            # 获取 daily_basic
             df = self.api.daily_basic(ts_code=symbol)
             if df is None or df.empty:
                 return None
-
-            # 获取 daily（交易数据）
-            try:
-                df_daily = self.api.daily(ts_code=symbol)
-                if df_daily is not None and not df_daily.empty:
-                    # 合并
-                    df = df.merge(df_daily, on="trade_date", how="left", suffixes=("", "_daily"))
-            except Exception:
-                pass
-
+            
+            # 添加 year 列
+            df = df.copy()
+            df["year"] = pd.to_datetime(df["trade_date"]).dt.year
+            
             return df
         except Exception:
             return None
@@ -295,26 +339,12 @@ class TushareProvider(BaseDataProvider):
         end_date: str | None,
         adjust: str,
     ) -> pd.DataFrame | None:
-        """获取 A 股历史交易数据
-        
-        使用 Tushare pro_bar 接口获取日线数据。
-        
-        Args:
-            symbol: 标准化后的股票代码 (如 600519.SH)
-            start_date: 开始日期 (YYYY-MM-DD)
-            end_date: 结束日期 (YYYY-MM-DD)
-            adjust: 复权方式 ("", "qfq", "hfq")
-            
-        Returns:
-            DataFrame with columns: date, open, high, low, close, volume
-        """
+        """获取 A 股历史交易数据"""
         try:
-            # 转换日期格式：YYYY-MM-DD -> YYYYMMDD
             start_str = start_date.replace("-", "") if start_date else None
             end_str = end_date.replace("-", "") if end_date else None
             
-            # 获取数据
-            adj_param = adjust if adjust else None  # Tushare: None 表示不复权
+            adj_param = adjust if adjust else None
             df = ts.pro_bar(
                 ts_code=symbol,
                 start_date=start_str,
@@ -326,13 +356,10 @@ class TushareProvider(BaseDataProvider):
             if df is None or df.empty:
                 return None
             
-            # 重命名列：trade_date -> date, vol -> volume
             df = df.rename(columns={
                 "trade_date": "date",
                 "vol": "volume",
             })
-            
-            # 按日期排序（降序 -> 升序）
             df = df.sort_values("date", ascending=True)
             
             return df
@@ -347,31 +374,21 @@ class TushareProvider(BaseDataProvider):
         """Filter to keep only annual reports (end_date ends with 1231)"""
         if df.empty or "end_date" not in df.columns:
             return df
-
-        result = df.copy()
-        mask = result["end_date"].astype(str).str.endswith("1231")
-        result = result.loc[mask]
-
-        return result
+        return df[df["end_date"].astype(str).str.endswith("1231")]
 
     def _deduplicate(self, df: pd.DataFrame) -> pd.DataFrame:
         """A 股数据去重
         
-        按 update_flag 排序，保留最新记录（每个日期只保留一条）。
+        按 update_flag 降序排序，保留第一条（最新版本）。
         """
         if df is None or df.empty:
             return df
 
-        date_col = self._get_date_column()
-        if date_col not in df.columns:
-            return df
-
-        # 按 update_flag 和日期排序，保留最新
         if "update_flag" in df.columns:
-            df = df.sort_values([date_col, "update_flag"], ascending=[False, False])
-            df = df.drop_duplicates(subset=[date_col], keep="last")  # update_flag 最新在最后
+            df = df.sort_values(["end_date", "update_flag"], ascending=[False, False])
+            df = df.drop_duplicates(subset=["end_date"], keep="first")
         else:
-            df = df.sort_values(date_col, ascending=False)
-            df = df.drop_duplicates(subset=[date_col], keep="first")
+            df = df.sort_values("end_date", ascending=False)
+            df = df.drop_duplicates(subset=["end_date"], keep="first")
 
         return df
