@@ -226,13 +226,16 @@ class HKProvider(BaseDataProvider):
             symbol: 标准化后的股票代码 (5位数字)
             start_date: 开始日期 (YYYY-MM-DD)
             end_date: 结束日期 (YYYY-MM-DD)
-            adjust: 复权方式（港股不支持，参数被忽略）
+            adjust: 复权方式
+                - "": 不复权
+                - "qfq": 前复权
+                - "hfq": 后复权
             
         Returns:
             DataFrame with columns: date, open, high, low, close, volume
         """
         try:
-            df = ak.stock_hk_daily(symbol=symbol)
+            df = ak.stock_hk_daily(symbol=symbol, adjust=adjust)
             if df is None or df.empty:
                 return None
             

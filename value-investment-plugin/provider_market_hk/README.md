@@ -107,7 +107,7 @@ df = provider.fetch_market(
     fields={"hk_market_cap", "pe_ratio", "pb_ratio"},
 )
 
-# 获取历史交易数据（默认后复权，但港股实际不需要复权）
+# 获取历史交易数据（默认后复权）
 df = provider.fetch_historical(
     "00700",
     start_date="2026-01-01",
@@ -118,11 +118,17 @@ df = provider.fetch_historical(
 ## 历史交易数据
 
 ```python
-# 返回 DataFrame（默认后复权，港股 adjust 参数实际被忽略）
+# 返回 DataFrame（默认后复权）
 df = provider.fetch_historical("00700", start_date="2026-03-01", end_date="2026-03-20")
 #            date   open   high    low  close      volume        amount
 # 0    2026-03-01  520.0  528.0  515.0  525.5  18543210.0  9.72e+09
 # ...
+
+# 获取前复权历史数据
+df = provider.fetch_historical("00700", adjust="qfq")
+
+# 获取不复权历史数据
+df = provider.fetch_historical("00700", adjust="")
 
 # 通过 vi_fetch_historical hook
 result = plugin.vi_fetch_historical(
