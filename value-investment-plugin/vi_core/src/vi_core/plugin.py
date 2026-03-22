@@ -13,6 +13,7 @@ from typing import Any, TYPE_CHECKING
 
 import pluggy  # type: ignore[import]
 
+from acorn_events import EventBus
 from .spec import vi_hookimpl, ValueInvestmentSpecs
 
 if TYPE_CHECKING:
@@ -48,6 +49,7 @@ class ViCorePlugin:
 
     # Class-level plugin manager reference
     _pm: Any = None
+    _event_bus = EventBus()
 
     @classmethod
     def set_plugin_manager(cls, pm: Any) -> None:
@@ -102,7 +104,7 @@ class ViCorePlugin:
         """Return core fields (empty, fields come from plugins)"""
         return {
             "source": "core",
-            "fields": set(),
+            "fields": {},
             "description": "Core - fields defined by plugins",
         }
 
@@ -135,12 +137,13 @@ class ViCorePlugin:
             for result in self._get_plugin_manager().hook.vi_fields():
                 if result:
                     source = result.get("source", "unknown")
-                    fields = result.get("fields", set())
-                    for field in fields:
-                        if field not in all_fields:
-                            all_fields[field] = {
+                    fields = result.get("fields", {})
+                    # fields 现在是 dict: {field_name: {description: ...}}
+                    for field_name, field_info in fields.items():
+                        if field_name not in all_fields:
+                            all_fields[field_name] = {
                                 "source": source,
-                                "description": result.get("description", ""),
+                                "description": field_info.get("description", ""),
                             }
 
         source = args.get("source")
@@ -159,6 +162,7 @@ class ViCorePlugin:
             "data": {
                 "fields": sorted(fields),
                 "by_source": {f: all_fields[f]["source"] for f in sorted(fields)},
+                "descriptions": {f: all_fields[f]["description"] for f in sorted(fields)},
             }
         }
 
@@ -210,21 +214,49 @@ class ViCorePlugin:
         if not self._get_plugin_manager():
             return {"success": False, "error": "Plugin manager not initialized"}
 
-        all_fields: set[str] = set()
+        # 获取系统标准字段（vi_fields hook 返回所有插件定义的字段）
+        standard_fields: set[str] = set()
+        for result in self._get_plugin_manager().hook.vi_fields():
+            if result:
+                # vi_fields 返回格式: {field_name: {description: ...}}
+                fields_dict = result.get("fields", {})
+                standard_fields.update(fields_dict.keys())
+
+        # 获取 Provider 支持的字段（vi_supported_fields hook 返回 Provider 实际能提供的字段）
+        provider_fields: set[str] = set()
         for result in self._get_plugin_manager().hook.vi_supported_fields():
             if result:
-                all_fields.update(result)
+                provider_fields.update(result)
 
         if fields_str.lower() == "all":
-            fields = all_fields
+            requested = standard_fields
+            fields = provider_fields
         else:
             requested = set(f.strip() for f in fields_str.split(",") if f.strip())
-            # Filter to supported fields only
-            fields = requested & all_fields
-            unsupported = requested - all_fields
+            # 区分 unsupported 和 unfilled
+            # unsupported: 请求的字段不在系统标准字段定义中（系统能力不足）
+            # unfilled: 请求的字段在标准字段中，但 Provider 不支持或返回空（Provider 实现问题）
+            unsupported = requested - standard_fields  # 系统不知道这个字段
+            unfilled = requested & (standard_fields - provider_fields)  # 系统有但 Provider 不支持
+
             if unsupported:
-                # Log but continue
-                pass
+                self._event_bus.publish(
+                    "vi.field.unsupported",
+                    sender=self,
+                    symbol=symbol,
+                    fields=list(unsupported),
+                )
+
+            if unfilled:
+                self._event_bus.publish(
+                    "vi.field.unfilled",
+                    sender=self,
+                    symbol=symbol,
+                    fields=list(unfilled),
+                )
+
+            # 最终使用的字段是请求的字段和 Provider 支持字段的交集
+            fields = requested & provider_fields
 
         if not fields and not requested_calculators:
             return {"success": False, "error": "No valid fields specified"}

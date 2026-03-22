@@ -1,0 +1,40 @@
+{
+  "pythonVersion": "3.14",
+  "pythonPlatform": "Darwin",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "vi_core/src",
+    "vi_core/tests",
+    "vi_fields_ifrs/src",
+    "vi_fields_extension/src",
+    "provider_tushare/src",
+    "calculators",
+    "vi_calculators",
+    "vi_cli/src",
+    "tests",
+    ".pyright"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    ".venv"
+  ],
+  "extraPaths": [
+    "vi_core/src",
+    "vi_fields_ifrs/src",
+    "vi_fields_extension/src",
+    "provider_tushare/src",
+    "calculators",
+    "vi_calculators",
+    "tests",
+    ".pyright"
+  ],
+  "stubPath": ".pyright",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false,
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ]
+}

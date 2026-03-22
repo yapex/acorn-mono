@@ -1,0 +1,1 @@
+"""VI Core tests package"""

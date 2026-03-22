@@ -6,6 +6,7 @@ EvoManager - 进化管理器
 
 from typing import Any
 
+from acorn_events import EventBus
 from acorn_core.specs import hookimpl
 
 
@@ -17,6 +18,47 @@ class EvoManager:
     def __init__(self) -> None:
         self.error_log: list[dict[str, Any]] = []
         self.max_log = 100
+        self.unsupported_fields: list[dict[str, Any]] = []  # 系统标准字段定义中没有
+        self.unfilled_fields: list[dict[str, Any]] = []  # 标准字段中但 Provider 不支持或返回空
+        self._event_bus = EventBus()
+
+    def _on_plugin_loaded(self, event_type, sender, **kwargs):
+        """订阅 acorn.plugin.loaded 事件，记录插件信息"""
+        plugin_name = kwargs.get("plugin_name", "unknown")
+        plugin: Any = kwargs.get("plugin")
+        # 检查插件是否有缺失字段的能力声明
+        if plugin and hasattr(plugin, "get_capabilities"):
+            try:
+                caps = plugin.get_capabilities()
+                if caps and isinstance(caps, dict):
+                    # 记录插件声明的字段
+                    pass
+            except Exception:
+                pass
+
+    def _on_field_unsupported(self, event_type, sender, **kwargs):
+        """订阅 vi.field.unsupported 事件，记录系统不支持的字段"""
+        symbol = kwargs.get("symbol", "unknown")
+        fields = kwargs.get("fields", [])
+        self.unsupported_fields.append({
+            "symbol": symbol,
+            "fields": fields
+        })
+        # 保持最大记录数
+        if len(self.unsupported_fields) > self.max_log:
+            self.unsupported_fields = self.unsupported_fields[-self.max_log:]
+
+    def _on_field_unfilled(self, event_type, sender, **kwargs):
+        """订阅 vi.field.unfilled 事件，记录 Provider 无法提供的字段"""
+        symbol = kwargs.get("symbol", "unknown")
+        fields = kwargs.get("fields", [])
+        self.unfilled_fields.append({
+            "symbol": symbol,
+            "fields": fields
+        })
+        # 保持最大记录数
+        if len(self.unfilled_fields) > self.max_log:
+            self.unfilled_fields = self.unfilled_fields[-self.max_log:]
 
     @property
     def commands(self) -> list[str]:
@@ -35,6 +77,9 @@ class EvoManager:
     def on_load(self) -> None:
         """初始化 EvoManager"""
         self.error_log = []
+        self._event_bus.on("acorn.plugin.loaded")(self._on_plugin_loaded)
+        self._event_bus.on("vi.field.unsupported")(self._on_field_unsupported)
+        self._event_bus.on("vi.field.unfilled")(self._on_field_unfilled)
 
     @hookimpl
     def handle(self, task) -> dict:

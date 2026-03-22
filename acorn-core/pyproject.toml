@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Self-evolving plugin system based on pluggy"
 requires-python = ">=3.12"
 dependencies = [
+    "acorn-events>=0.1.0",
     "pluggy>=1.6.0",
 ]
 
@@ -36,9 +37,9 @@ pythonVersion = "3.12"
 pythonPlatform = "Darwin"
 include = ["src", "tests"]
 exclude = ["**/__pycache__", ".venv"]
-extraPaths = ["../.venv/lib/python3.12/site-packages"]
-venvPath = ".."
-pythonBinaryPath = "../.venv/bin/python"
+extraPaths = ["../../.venv/lib/python3.12/site-packages"]
+venvPath = "../.."
+pythonBinaryPath = "../../.venv/bin/python"
 
 [dependency-groups]
 dev = ["pytest>=9.0.2"]

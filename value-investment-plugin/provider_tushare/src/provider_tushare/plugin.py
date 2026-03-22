@@ -3,6 +3,8 @@
 Provides:
 - A股市场数据获取
 - 支持财务报表、财务指标、市场数据
+
+字段定义从 FIELD_MAPPINGS 动态计算，不再硬编码。
 """
 from __future__ import annotations
 
@@ -35,8 +37,12 @@ class TushareProviderPlugin:
 
     @vi_hookimpl
     def vi_supported_fields(self) -> list[str]:
-        """Return list of supported fields"""
-        return list(TushareProvider.SUPPORTED_FIELDS)
+        """Return list of supported fields
+
+        从 FIELD_MAPPINGS 动态计算，返回 Provider 实际能从 Tushare API
+        获取的所有系统标准字段。
+        """
+        return list(TushareProvider.get_supported_fields())
 
     @vi_hookimpl
     def vi_fetch_financials(

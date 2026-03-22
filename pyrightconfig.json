@@ -6,6 +6,7 @@
   "include": [
     "acorn-core/src",
     "acorn-core/tests",
+    "acorn-events/src",
     "acorn-agent/src",
     "examples-plugin/src",
     "value-investment-plugin/vi_core/src",
@@ -24,6 +25,7 @@
   ],
   "extraPaths": [
     ".venv/lib/python3.12/site-packages",
+    "acorn-events/src",
     "value-investment-plugin/vi_core/src",
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",

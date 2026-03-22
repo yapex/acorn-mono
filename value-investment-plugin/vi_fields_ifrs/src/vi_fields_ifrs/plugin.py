@@ -1,6 +1,7 @@
 """IFRS Fields Plugin
 
 Provides IFRS (International Financial Reporting Standards) standard fields.
+Fields are sourced from standard_fields.py (single source of truth).
 """
 from __future__ import annotations
 
@@ -8,52 +9,14 @@ from typing import Any
 
 from vi_core.spec import vi_hookimpl
 
+from vi_fields_extension.standard_fields import IFRS_FIELDS, FIELD_DEFINITIONS
 
-# IFRS Standard Fields
-IFRS_FIELDS = {
-    # Balance Sheet
-    "total_assets",
-    "total_liabilities",
-    "total_equity",
-    "current_assets",
-    "current_liabilities",
-    "cash_and_equivalents",
-    "inventory",
-    "accounts_receivable",
-    "accounts_payable",
-    "fixed_assets",
-    "prepayment",
-    "adv_receipts",
-    "contract_assets",
-    "contract_liab",
-    # Income Statement
-    "total_revenue",
-    "net_profit",
-    "operating_profit",
-    "operating_cost",
-    # Cash Flow
-    "operating_cash_flow",
-    "investing_cash_flow",
-    "financing_cash_flow",
-    "capital_expenditure",
-    # Key Ratios
-    "roe",
-    "roa",
-    "gross_margin",
-    "net_profit_margin",
-    "current_ratio",
-    "quick_ratio",
-    "debt_ratio",
-    "asset_turnover",
-    "receivable_turnover",
-    # Market Data
-    "market_cap",
-    "total_shares",
-    "pe_ratio",
-    "pb_ratio",
-    "basic_eps",
-    "diluted_eps",
-    "book_value_per_share",
+
+# IFRS 字段描述（从标准定义中提取）
+IFRS_FIELD_DESCRIPTIONS = {
+    f: FIELD_DEFINITIONS[f]["description"]
+    for f in IFRS_FIELDS
+    if f in FIELD_DEFINITIONS
 }
 
 
@@ -62,10 +25,10 @@ class ViFieldsIfrsPlugin:
 
     @vi_hookimpl
     def vi_fields(self) -> Any:
-        """Return IFRS standard fields"""
+        """Return IFRS standard fields with descriptions"""
         return {
             "source": "ifrs",
-            "fields": IFRS_FIELDS,
+            "fields": IFRS_FIELD_DESCRIPTIONS,
             "description": "International Financial Reporting Standards fields",
         }
 

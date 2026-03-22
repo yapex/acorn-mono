@@ -28,7 +28,7 @@ class TestViCorePlugin:
         """Test vi_fields returns core fields structure"""
         result = vi_core_plugin.vi_fields()
         assert result["source"] == "core"
-        assert result["fields"] == set()
+        assert result["fields"] == {}
         assert "description" in result
 
     def test_list_fields_command(self):
