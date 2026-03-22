@@ -112,10 +112,17 @@ class ViCorePlugin:
         calculators_str = args.get("calculators", "")
         calculator_config = args.get("calculator_config", {})
 
-        # Parse end_year
+        # Parse end_year: 智能判断默认值
+        # 年报通常在次年 4 月发布
+        # 如果当前月份 < 4，使用前年（确保年报已发布）
+        # 如果当前月份 >= 4，使用去年
         if end_year is None:
             from datetime import datetime
-            end_year = datetime.now().year
+            now = datetime.now()
+            if now.month < 4:
+                end_year = now.year - 2  # 去年年报还未发布，用前年
+            else:
+                end_year = now.year - 1  # 去年年报已发布
         else:
             end_year = int(end_year)
         years = int(years)
