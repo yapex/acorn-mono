@@ -266,11 +266,19 @@ class ViCorePlugin:
         if prefix:
             fields = [f for f in fields if f.startswith(prefix)]
 
+        # Build by_source as {source: [field_names]} for CLI compatibility
+        by_source: dict[str, list[str]] = {}
+        for f in sorted(fields):
+            src = all_fields[f]["source"]
+            if src not in by_source:
+                by_source[src] = []
+            by_source[src].append(f)
+
         return {
             "success": True,
             "data": {
                 "fields": sorted(fields),
-                "by_source": {f: all_fields[f]["source"] for f in sorted(fields)},
+                "by_source": by_source,
                 "descriptions": {f: all_fields[f]["description"] for f in sorted(fields)},
             }
         }

@@ -34,7 +34,14 @@ class AcornClient:
             request = json.dumps({"command": command, "args": args})
             sock.sendall(request.encode())
 
-            response = sock.recv(4096)
+            # Read all response data (may span multiple recv calls)
+            chunks = []
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            response = b"".join(chunks)
             return json.loads(response.decode())
         finally:
             sock.close()

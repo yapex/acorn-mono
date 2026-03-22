@@ -325,9 +325,19 @@ class TushareProvider(BaseDataProvider):
             # 按交易日期降序排序，只取最新一条
             df = df.sort_values("trade_date", ascending=False).head(1)
             
-            # 添加 year 列（用于与其他数据合并）
             df = df.copy()
-            df[StandardFields.fiscal_year] = pd.to_datetime(df["trade_date"]).dt.year
+            
+            # 使用最近财年而非交易日期年份
+            # 年报通常在次年 4 月发布，所以：
+            # - 1-3 月：最近财年是前年
+            # - 4-12 月：最近财年是去年
+            import datetime
+            now = datetime.datetime.now()
+            if now.month < 4:
+                fiscal_year = now.year - 2
+            else:
+                fiscal_year = now.year - 1
+            df[StandardFields.fiscal_year] = fiscal_year
             
             return df
         except Exception:
