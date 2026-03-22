@@ -26,14 +26,14 @@ def calculate(
     data: dict[str, pd.Series],
     config: dict[str, Any] | None = None,
 ) -> pd.Series:
-    """计算隐含增长率
+    """计算隐含增长率（仅最新一年）
     
     Args:
         data: dict[str, pd.Series]，字段名 -> Series(index=年份)
         config: Calculator configuration
         
     Returns:
-        pd.Series with implied growth rates, index=年份
+        pd.Series with implied growth rate for latest year only
     """
     cfg = {**DEFAULT_CONFIG, **(config or {})}
     wacc = cfg["wacc"]
@@ -54,34 +54,34 @@ def calculate(
     
     market_cap_series = data["market_cap"]
     
-    # 处理市值可能是单个值的情况（广播到所有年份）
+    # 处理市值可能是单个值的情况
+    current_market_cap = None
     if len(market_cap_series) == 1:
-        # 单个市值，广播到所有年份
         current_market_cap = float(market_cap_series.iloc[0])
-        if current_market_cap <= 0:
-            return pd.Series(dtype=float)
-        market_cap_series = pd.Series(
-            {year: current_market_cap for year in fcf_series.index},
-            index=fcf_series.index
-        )
+    elif len(market_cap_series) > 1:
+        # 取最新年份的市值
+        latest_year = max(fcf_series.index)
+        if latest_year in market_cap_series.index:
+            current_market_cap = float(market_cap_series.loc[latest_year])
+        else:
+            current_market_cap = float(market_cap_series.iloc[0])
+    
+    if current_market_cap is None or current_market_cap <= 0:
+        return pd.Series(dtype=float)
     
     # 规范化市值单位（万元 -> 元）
-    market_cap_series = _normalize_market_cap(market_cap_series, fcf_series)
+    fcf_latest = fcf_series.iloc[0]  # 已经是排序的，最新年在最前
+    if current_market_cap < fcf_latest:
+        current_market_cap *= 10000
 
-    result = pd.Series(dtype=float)
+    # 只计算最新一年的隐含增长率
+    g = _calculate_implied_growth(fcf_latest, current_market_cap, wacc, g_terminal, n_years)
     
-    for year in fcf_series.index:
-        fcf = fcf_series.loc[year]
-        market_cap = market_cap_series.loc[year] if year in market_cap_series.index else market_cap_series.iloc[0]
-        
-        if fcf <= 0 or pd.isna(market_cap) or market_cap <= 0:
-            continue
-        
-        g = _calculate_implied_growth(fcf, market_cap, wacc, g_terminal, n_years)
-        if g is not None:
-            result.loc[year] = g
-
-    return result
+    if g is not None:
+        latest_year = max(fcf_series.index)
+        return pd.Series({latest_year: g})
+    
+    return pd.Series(dtype=float)
 
 
 def _get_fcf(data: dict[str, pd.Series]) -> pd.Series:
