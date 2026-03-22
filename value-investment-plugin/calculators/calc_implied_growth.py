@@ -1,8 +1,14 @@
 """Implied Growth Rate Calculator
 
 基于 DCF 模型，用市值反推隐含的年增长率。
+
+输入数据格式：dict[str, pd.Series]
+- key: 字段名 (operating_cash_flow, market_cap 等)
+- value: pd.Series，index=年份, values=数值
 """
 from typing import Any
+
+import pandas as pd
 
 REQUIRED_FIELDS = [
     "operating_cash_flow",
@@ -17,66 +23,107 @@ DEFAULT_CONFIG = {
 
 
 def calculate(
-    results: dict[str, dict[int, Any]],
+    data: dict[str, pd.Series],
     config: dict[str, Any] | None = None,
-) -> dict[str | int, float]:
-    """计算隐含增长率"""
+) -> pd.Series:
+    """计算隐含增长率
+    
+    Args:
+        data: dict[str, pd.Series]，字段名 -> Series(index=年份)
+        config: Calculator configuration
+        
+    Returns:
+        pd.Series with implied growth rates, index=年份
+    """
     cfg = {**DEFAULT_CONFIG, **(config or {})}
     wacc = cfg["wacc"]
     g_terminal = cfg["g_terminal"]
     n_years = cfg["n_years"]
 
-    fcf_data = _get_fcf(results)
-    if not fcf_data:
-        return {}
+    if not data:
+        return pd.Series(dtype=float)
 
-    market_cap_data = results.get("market_cap", {})
-    if not market_cap_data:
-        return {}
+    # 获取 FCF 数据
+    fcf_series = _get_fcf(data)
+    if fcf_series.empty:
+        return pd.Series(dtype=float)
 
-    # 处理 market_cap 可能是单个值的情况
-    if isinstance(market_cap_data, (int, float)):
-        # 当前市值（单个值），用于最新年份计算
-        # Tushare 返回的是万元，需要转换为元
-        current_market_cap = float(market_cap_data) * 10000
-        # 获取最新年份
-        latest_year = max(fcf_data.keys()) if fcf_data else None
-        if latest_year and current_market_cap > 0:
-            fcf = fcf_data.get(latest_year, 0)
-            if fcf > 0:
-                g = _calculate_implied_growth(fcf, current_market_cap, wacc, g_terminal, n_years)
-                if g is not None:
-                    return {"current": g}
-        return {}
+    # 获取市值数据
+    if "market_cap" not in data:
+        return pd.Series(dtype=float)
+    
+    market_cap_series = data["market_cap"]
+    
+    # 处理市值可能是单个值的情况（广播到所有年份）
+    if len(market_cap_series) == 1:
+        # 单个市值，广播到所有年份
+        current_market_cap = float(market_cap_series.iloc[0])
+        if current_market_cap <= 0:
+            return pd.Series(dtype=float)
+        market_cap_series = pd.Series(
+            {year: current_market_cap for year in fcf_series.index},
+            index=fcf_series.index
+        )
+    
+    # 规范化市值单位（万元 -> 元）
+    market_cap_series = _normalize_market_cap(market_cap_series, fcf_series)
 
-    implied_growth = {}
-    for year, fcf in fcf_data.items():
-        if fcf <= 0:
+    result = pd.Series(dtype=float)
+    
+    for year in fcf_series.index:
+        fcf = fcf_series.loc[year]
+        market_cap = market_cap_series.loc[year] if year in market_cap_series.index else market_cap_series.iloc[0]
+        
+        if fcf <= 0 or pd.isna(market_cap) or market_cap <= 0:
             continue
-
-        market_cap = market_cap_data.get(year)
-        if not market_cap or market_cap <= 0:
-            continue
-
+        
         g = _calculate_implied_growth(fcf, market_cap, wacc, g_terminal, n_years)
         if g is not None:
-            implied_growth[year] = g
+            result.loc[year] = g
 
-    return implied_growth
+    return result
 
 
-def _get_fcf(results: dict[str, dict[int, Any]]) -> dict[int, float]:
+def _get_fcf(data: dict[str, pd.Series]) -> pd.Series:
     """获取自由现金流数据"""
-    if "free_cash_flow" in results:
-        return {y: v for y, v in results["free_cash_flow"].items() if v > 0}
+    if "free_cash_flow" in data:
+        return data["free_cash_flow"].dropna().loc[lambda x: x > 0]
+    
+    if "operating_cash_flow" not in data:
+        return pd.Series(dtype=float)
+    
+    ocf = data["operating_cash_flow"]
+    
+    if "capital_expenditure" not in data:
+        return ocf.dropna().loc[lambda x: x > 0]
+    
+    capex = data["capital_expenditure"]
+    # 确保 capex 和 ocf 有相同的 index
+    common_idx = ocf.index.intersection(capex.index)
+    fcf = ocf.reindex(common_idx) - capex.reindex(common_idx).fillna(0)
+    return fcf.dropna().loc[lambda x: x > 0]
 
-    ocf = results.get("operating_cash_flow", {})
-    capex = results.get("capital_expenditure", {})
 
-    if not capex:
-        return {y: v for y, v in ocf.items() if v > 0}
-
-    return {y: ocf.get(y, 0) - capex.get(y, 0) for y in ocf if ocf.get(y, 0) - capex.get(y, 0) > 0}
+def _normalize_market_cap(market_cap: pd.Series, fcf: pd.Series) -> pd.Series:
+    """规范化市值单位
+    
+    Tushare 返回的市值单位是万元，需要转换为元。
+    如果市值明显小于 OCF（正常情况下市值 > OCF），则说明单位是万元。
+    """
+    if market_cap.empty or fcf.empty:
+        return market_cap
+    
+    # 获取市值和 OCF 的中位数进行比较
+    cap_median = market_cap.median()
+    fcf_median = fcf.median()
+    
+    # 如果市值中位数小于 OCF 中位数，说明市值是万元单位
+    # 正常情况下市值 > OCF（比如 10-50 倍）
+    if cap_median < fcf_median:
+        # 市值是万元，转为元
+        return market_cap * 10000
+    
+    return market_cap
 
 
 def _calculate_implied_growth(

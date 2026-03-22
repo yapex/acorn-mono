@@ -28,6 +28,8 @@ import os
 import types
 import uuid
 from pathlib import Path
+
+import pandas as pd
 from typing import Any
 
 from vi_core.spec import vi_hookimpl, CalculatorSpec  # type: ignore[import]
@@ -140,10 +142,19 @@ class CalculatorLoaderPlugin(CalculatorSpec):
     def vi_run_calculator(
         self,
         name: str,
-        data: dict[str, dict[int, Any]],
+        data: dict[str, pd.Series],
         config: dict[str, Any],
-    ) -> dict[str, Any] | None:
-        """执行指定名称的计算器"""
+    ) -> pd.Series | None:
+        """执行指定名称的计算器
+        
+        Args:
+            name: 计算器名称
+            data: {字段名: pd.Series} 格式的数据
+            config: 计算器配置
+            
+        Returns:
+            pd.Series 计算结果，或 None
+        """
         for calc in self._calculators:
             if calc["name"] == name:
                 try:

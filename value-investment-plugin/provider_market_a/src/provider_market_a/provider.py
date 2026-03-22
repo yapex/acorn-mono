@@ -267,8 +267,10 @@ class TushareProvider(BaseDataProvider):
                 df = df.sort_values("end_date", ascending=False)
                 df = df.drop_duplicates(subset=["end_date"], keep="first")
             
+            # 重置 index，确保后续合并时 index 正确对应
+            df = df.reset_index(drop=True)
+            
             # 提取年份
-            df = df.copy()
             df["year"] = pd.to_datetime(df["end_date"]).dt.year
             
             return df
@@ -318,13 +320,16 @@ class TushareProvider(BaseDataProvider):
             return None
 
     def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
-        """获取市场数据"""
+        """获取市场数据（仅最新一条）"""
         try:
             df = self.api.daily_basic(ts_code=symbol)
             if df is None or df.empty:
                 return None
             
-            # 添加 year 列
+            # 按交易日期降序排序，只取最新一条
+            df = df.sort_values("trade_date", ascending=False).head(1)
+            
+            # 添加 year 列（用于与其他数据合并）
             df = df.copy()
             df["year"] = pd.to_datetime(df["trade_date"]).dt.year
             
@@ -390,5 +395,8 @@ class TushareProvider(BaseDataProvider):
         else:
             df = df.sort_values("end_date", ascending=False)
             df = df.drop_duplicates(subset=["end_date"], keep="first")
+
+        # 重置 index，确保 index 与 year 列正确对应
+        df = df.reset_index(drop=True)
 
         return df

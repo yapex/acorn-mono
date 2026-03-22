@@ -118,32 +118,68 @@ def _merge_dfs(dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
     # Start with first DataFrame
     result = dfs[0].copy()
     
+    # If result has 'year' column but index is not year, set year as index
+    if "year" in result.columns and not result.index.name == "year":
+        year_col = result["year"].copy()
+        if not year_col.equals(pd.Series(result.index, index=year_col.index)):
+            result = result.reset_index(drop=True)
+            result = result.set_index("year")
+    
     # Merge remaining DataFrames
     for df in dfs[1:]:
-        # Find common date column
-        date_cols = ["end_date", "report_date", "date", "trade_date"]
+        # Find common date column (check both columns and index name)
+        date_cols = ["end_date", "report_date", "date", "trade_date", "year"]
         result_date_col = None
         df_date_col = None
         
         for col in date_cols:
-            if col in result.columns and result_date_col is None:
-                result_date_col = col
+            if result_date_col is None:
+                if col in result.columns:
+                    result_date_col = col
+                elif result.index.name == col:
+                    result_date_col = col
             if col in df.columns and df_date_col is None:
                 df_date_col = col
         
         if result_date_col and df_date_col:
-            # Merge on date column
-            cols_to_add = [c for c in df.columns if c != df_date_col and c not in result.columns]
+            # Prepare df for merge
+            df_to_merge = df.copy()
+            
+            # If df has year as index but not as column, reset it first
+            if df_to_merge.index.name == "year" and "year" not in df_to_merge.columns:
+                df_to_merge = df_to_merge.reset_index()
+            
+            # Determine which columns to add
+            cols_to_add = [c for c in df_to_merge.columns if c != df_date_col and c not in result.columns]
+            
             if cols_to_add:
-                result = result.merge(
-                    df[[df_date_col] + cols_to_add],
-                    left_on=result_date_col,
-                    right_on=df_date_col,
-                    how="left"
-                )
-                # Remove duplicate date column if created
-                if result_date_col != df_date_col and df_date_col in result.columns:
-                    result = result.drop(columns=[df_date_col])
+                before_cols = set(result.columns)
+                
+                # If result_date_col == df_date_col, align indexes for merge
+                if result_date_col == df_date_col:
+                    result = result.reset_index()
+                    result = result.merge(
+                        df_to_merge[[df_date_col] + cols_to_add],
+                        on=df_date_col,
+                        how="left"
+                    )
+                    if result_date_col in result.columns:
+                        result = result.set_index(result_date_col)
+                else:
+                    result = result.merge(
+                        df_to_merge[[df_date_col] + cols_to_add],
+                        left_on=result_date_col,
+                        right_on=df_date_col,
+                        how="left"
+                    )
+                
+                # Broadcast if merge failed (year mismatch) and df has only 1 row
+                new_cols = [c for c in cols_to_add if c in result.columns and c not in before_cols]
+                if new_cols and len(df_to_merge) == 1:
+                    all_nan = all(result[c].isna().all() for c in new_cols)
+                    if all_nan:
+                        for col in new_cols:
+                            result[col] = df_to_merge[col].iloc[0]
     
     return result
 
@@ -495,18 +531,24 @@ class ViCorePlugin:
                 continue
 
             calc_spec = calc_registry[calc_name]
-            required_fields = set(calc_spec.get("required_fields", []))
+            required_fields = list(calc_spec.get("required_fields", []))
 
             # Check if all required fields are available
-            missing = required_fields - set(df.columns)
+            missing = set(required_fields) - set(df.columns)
             if missing:
                 continue  # Skip this calculator
 
-            # Call hook to run calculator with DataFrame
+            # Extract only the required fields from DataFrame
+            # Build dict format: {field: pd.Series}
+            calc_data: dict[str, pd.Series] = {
+                field: df[field] for field in required_fields if field in df.columns
+            }
+
+            # Call hook to run calculator
             config = calculator_config.get(calc_name, {})
             calc_result = self._get_plugin_manager().hook.vi_run_calculator(
                 name=calc_name,
-                data=df,
+                data=calc_data,
                 config=config,
             )
 
