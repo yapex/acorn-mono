@@ -53,15 +53,10 @@ class ProviderHKPlugin:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
+    ) -> pd.DataFrame | None:
         """Fetch financial statement data"""
         provider = _get_provider()
-        df = provider.fetch_financials(symbol, fields, end_year, years)
-        if df is None or df.empty:
-            return None
-
-        # 转换为 {field: {year: value}} 格式
-        return _df_to_dict(df, fields)
+        return provider.fetch_financials(symbol, fields, end_year, years)
 
     @vi_hookimpl
     def vi_fetch_indicators(
@@ -70,36 +65,20 @@ class ProviderHKPlugin:
         fields: set[str],
         end_year: int,
         years: int = 10,
-    ) -> dict[str, dict[int, Any]] | None:
+    ) -> pd.DataFrame | None:
         """Fetch financial indicators"""
         provider = _get_provider()
-        df = provider.fetch_indicators(symbol, fields, end_year, years)
-        if df is None or df.empty:
-            return None
-
-        return _df_to_dict(df, fields)
+        return provider.fetch_indicators(symbol, fields, end_year, years)
 
     @vi_hookimpl
     def vi_fetch_market(
         self,
         symbol: str,
         fields: set[str],
-    ) -> dict[str, Any]:
+    ) -> pd.DataFrame | None:
         """Fetch market data"""
         provider = _get_provider()
-        df = provider.fetch_market(symbol, fields)
-        if df is None or df.empty:
-            return {}
-
-        # 返回最新一条数据
-        row = df.iloc[0]
-        result = {}
-        for col in fields:
-            if col in df.columns:
-                value = row.get(col)
-                if value is not None and not pd.isna(value):
-                    result[col] = value
-        return result
+        return provider.fetch_market(symbol, fields)
 
     @vi_hookimpl
     def vi_fetch_historical(
@@ -108,39 +87,10 @@ class ProviderHKPlugin:
         start_date: str | None = None,
         end_date: str | None = None,
         adjust: str = "hfq",
-    ) -> dict[str, Any] | None:
+    ) -> pd.DataFrame | None:
         """Fetch historical trading data (OHLCV)"""
         provider = _get_provider()
-        df = provider.fetch_historical(symbol, start_date, end_date, adjust)
-        if df is None or df.empty:
-            return None
-
-        # 转换为 dict 格式
-        return df.to_dict(orient="list")
-
-
-def _df_to_dict(df: pd.DataFrame, fields: set[str]) -> dict[str, dict[int, Any]]:
-    """Convert DataFrame to {field: {year: value}}"""
-    if df.empty:
-        return {}
-
-    result: dict[str, dict[int, Any]] = {}
-    date_col = "year" if "year" in df.columns else df.columns[0]
-
-    for col in fields:
-        if col not in df.columns:
-            continue
-        result[col] = {}
-        for _, row in df.iterrows():
-            date_val = row.get(date_col)
-            if date_val is None or pd.isna(date_val):
-                continue
-            year = int(date_val) if pd.api.types.is_integer_dtype(type(date_val)) else pd.to_datetime(str(date_val)).year
-            value = row.get(col)
-            if value is not None and not pd.isna(value):
-                result[col][year] = value
-
-    return result if result else None
+        return provider.fetch_historical(symbol, start_date, end_date, adjust)
 
 
 # Plugin instance for pluggy registration
