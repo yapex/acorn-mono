@@ -11,7 +11,7 @@ import sys
 from importlib.metadata import entry_points
 from typing import Any, TYPE_CHECKING
 
-import pluggy
+import pluggy  # type: ignore[import]
 
 from .spec import vi_hookimpl, ValueInvestmentSpecs
 
