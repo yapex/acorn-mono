@@ -33,48 +33,54 @@ class TestTushareProviderPlugin:
     def test_supported_fields_count(self):
         """Test supported fields count"""
         fields = tushare_plugin.vi_supported_fields()
-        assert len(fields) == 83, f"Expected 83 fields, got {len(fields)}"
+        # 84 = FIELD_MAPPINGS 所有值（系统标准字段名）
+        assert len(fields) == 84, f"Expected 84 fields, got {len(fields)}"
 
 
 class TestTushareProvider:
     """Test TushareProvider class"""
 
-    def test_supported_fields_is_set(self):
-        """Test SUPPORTED_FIELDS is a set"""
-        assert isinstance(TushareProvider.SUPPORTED_FIELDS, set)
+    def test_supported_fields_is_set_from_method(self):
+        """Test get_supported_fields returns a set"""
+        fields = TushareProvider.get_supported_fields()
+        assert isinstance(fields, set)
+        assert len(fields) > 0
 
     def test_supported_fields_contains_balance_fields(self):
-        """Test SUPPORTED_FIELDS contains balance sheet fields"""
+        """Test get_supported_fields contains balance sheet fields"""
         balance_fields = {
             "total_assets",
             "total_equity",
             "total_liabilities",
             "cash_and_equivalents",
         }
+        supported = TushareProvider.get_supported_fields()
         for field in balance_fields:
-            assert field in TushareProvider.SUPPORTED_FIELDS
+            assert field in supported
 
     def test_supported_fields_contains_indicator_fields(self):
-        """Test SUPPORTED_FIELDS contains indicator fields"""
+        """Test get_supported_fields contains indicator fields"""
         indicator_fields = {
             "roe",
             "roa",
             "gross_margin",
             "net_profit_margin",
         }
+        supported = TushareProvider.get_supported_fields()
         for field in indicator_fields:
-            assert field in TushareProvider.SUPPORTED_FIELDS
+            assert field in supported
 
     def test_supported_fields_contains_market_fields(self):
-        """Test SUPPORTED_FIELDS contains market fields"""
+        """Test get_supported_fields contains market fields"""
         market_fields = {
             "market_cap",
             "pe_ratio",
             "pb_ratio",
             "close",
         }
+        supported = TushareProvider.get_supported_fields()
         for field in market_fields:
-            assert field in TushareProvider.SUPPORTED_FIELDS
+            assert field in supported
 
     def test_field_mappings_defined(self):
         """Test FIELD_MAPPINGS is defined"""

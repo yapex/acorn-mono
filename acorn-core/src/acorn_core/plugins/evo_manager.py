@@ -6,7 +6,7 @@ EvoManager - 进化管理器
 
 from typing import Any
 
-from acorn_core.events import EventBus
+from acorn_events import EventBus
 from acorn_core.specs import hookimpl
 
 
@@ -18,7 +18,8 @@ class EvoManager:
     def __init__(self) -> None:
         self.error_log: list[dict[str, Any]] = []
         self.max_log = 100
-        self.missing_fields: list[dict[str, Any]] = []
+        self.unsupported_fields: list[dict[str, Any]] = []  # 系统标准字段定义中没有
+        self.unfilled_fields: list[dict[str, Any]] = []  # 标准字段中但 Provider 不支持或返回空
         self._event_bus = EventBus()
 
     def _on_plugin_loaded(self, event_type, sender, **kwargs):
@@ -35,17 +36,29 @@ class EvoManager:
             except Exception:
                 pass
 
-    def _on_field_missing(self, event_type, sender, **kwargs):
-        """订阅 vi.field.missing 事件，记录缺失的字段"""
+    def _on_field_unsupported(self, event_type, sender, **kwargs):
+        """订阅 vi.field.unsupported 事件，记录系统不支持的字段"""
         symbol = kwargs.get("symbol", "unknown")
         fields = kwargs.get("fields", [])
-        self.missing_fields.append({
+        self.unsupported_fields.append({
             "symbol": symbol,
             "fields": fields
         })
         # 保持最大记录数
-        if len(self.missing_fields) > self.max_log:
-            self.missing_fields = self.missing_fields[-self.max_log:]
+        if len(self.unsupported_fields) > self.max_log:
+            self.unsupported_fields = self.unsupported_fields[-self.max_log:]
+
+    def _on_field_unfilled(self, event_type, sender, **kwargs):
+        """订阅 vi.field.unfilled 事件，记录 Provider 无法提供的字段"""
+        symbol = kwargs.get("symbol", "unknown")
+        fields = kwargs.get("fields", [])
+        self.unfilled_fields.append({
+            "symbol": symbol,
+            "fields": fields
+        })
+        # 保持最大记录数
+        if len(self.unfilled_fields) > self.max_log:
+            self.unfilled_fields = self.unfilled_fields[-self.max_log:]
 
     @property
     def commands(self) -> list[str]:
@@ -65,7 +78,8 @@ class EvoManager:
         """初始化 EvoManager"""
         self.error_log = []
         self._event_bus.on("acorn.plugin.loaded")(self._on_plugin_loaded)
-        self._event_bus.on("vi.field.missing")(self._on_field_missing)
+        self._event_bus.on("vi.field.unsupported")(self._on_field_unsupported)
+        self._event_bus.on("vi.field.unfilled")(self._on_field_unfilled)
 
     @hookimpl
     def handle(self, task) -> dict:

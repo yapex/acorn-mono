@@ -1,0 +1,13 @@
+"""Stub for pytest package"""
+from typing import Callable, Any
+
+class PytestFixture:
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def __call__(self, func: Callable) -> Callable: ...
+
+def fixture(*args: Any, **kwargs: Any) -> PytestFixture: ...
+
+class PytestMark:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+mark = PytestMark()

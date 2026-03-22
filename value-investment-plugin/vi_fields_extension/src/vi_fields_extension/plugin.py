@@ -1,45 +1,36 @@
 """Extension Fields Plugin
 
-Aggregates all extension fields registered via register_fields().
+Aggregates all extension fields from built-in custom fields.
+Third-party plugins can contribute fields by implementing FieldRegistrySpec.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from vi_core.spec import vi_hookimpl
+from vi_core.spec import vi_hookimpl, FieldRegistrySpec
 
-from . import get_fields, get_descriptions
+from . import _extension_fields
 
 
-class ViFieldsExtensionPlugin:
+class ViFieldsExtensionPlugin(FieldRegistrySpec):
     """Extension Fields aggregator plugin"""
 
     @vi_hookimpl
     def vi_fields(self) -> Any:
-        """Return all extension fields from registry"""
-        all_fields = get_fields()
-        all_descriptions = get_descriptions()
+        """Return all extension fields (built-in)
 
-        if not all_fields:
-            return {
-                "source": "extension",
-                "fields": set(),
-                "description": "Extension fields - use register_fields() to add",
-            }
+        This hook is called by vi_core to collect all extension fields.
+        """
+        all_fields: dict[str, dict] = {}
 
-        # Merge all fields
-        merged_fields = set()
-        descriptions = {}
-        for source, fields in all_fields.items():
-            merged_fields.update(fields)
-            if source in all_descriptions:
-                descriptions.update(all_descriptions[source])
+        # Built-in custom fields
+        for source, fields in _extension_fields.items():
+            all_fields.update(fields)
 
         return {
             "source": "extension",
-            "fields": merged_fields,
-            "description": f"Extension fields from {len(all_fields)} sources",
-            "_descriptions": descriptions,
+            "fields": all_fields,
+            "description": "Extension fields",
         }
 
 

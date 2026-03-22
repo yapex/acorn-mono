@@ -1,6 +1,11 @@
 """Tushare Provider Implementation
 
 从 Tushare API 获取 A 股市场数据。
+
+字段定义：
+- FIELD_MAPPINGS: 定义 Tushare API 原始字段到系统标准字段的映射
+- 使用 StandardFields 常量引用，避免硬编码字段名
+- Provider 通过 vi_supported_fields 返回所有 FIELD_MAPPINGS 的值（即系统标准字段名）
 """
 from __future__ import annotations
 
@@ -26,226 +31,142 @@ def _get_tushare():
     return _tushare
 
 
+# 使用标准字段常量引用
+from vi_fields_extension import StandardFields
+
+
 class TushareProvider:
     """Tushare data provider for A 股 market"""
 
-    # 所有支持的字段
-    SUPPORTED_FIELDS: set[str] = {
-        # --- 资产负债表 ---
-        "total_assets",
-        "total_liabilities",
-        "total_equity",
-        "current_assets",
-        "current_liabilities",
-        "cash_and_equivalents",
-        "inventory",
-        "accounts_receivable",
-        "accounts_payable",
-        "fixed_assets",
-        "prepayment",
-        "contract_assets",
-        "contract_liab",
-        "total_shares",
-        "goodwill",
-        "intangible_assets",
-        "long_term_investment",
-        "construction_in_progress",
-        "short_term_borrowings",
-        "long_term_debt",
-        "non_current_liabilities_due_1y",
-        "bond_payable",
-        "other_receivables",
-        # --- 利润表 ---
-        "total_revenue",
-        "main_business_income",
-        "net_profit",
-        "operating_profit",
-        "operating_cost",
-        "parent_net_profit",
-        "interest_expense",
-        "interest_income",
-        "non_operating_income",
-        "investment_income",
-        "fair_value_change",
-        # --- 现金流量表 ---
-        "operating_cash_flow",
-        "investing_cash_flow",
-        "financing_cash_flow",
-        "capital_expenditure",
-        # --- 财务指标 ---
-        "roe",
-        "roa",
-        "gross_margin",
-        "net_profit_margin",
-        "current_ratio",
-        "quick_ratio",
-        "debt_ratio",
-        "asset_turnover",
-        "receivable_turnover",
-        "roic",
-        "basic_eps",
-        "diluted_eps",
-        "book_value_per_share",
-        "cash_ratio",
-        "ocf_to_debt",
-        "interest_bearing_debt",
-        "ebitda",
-        "currentdebt_to_debt",
-        "operating_profit_margin",
-        "revenue_yoy",
-        "net_profit_yoy",
-        # --- 计算字段 ---
-        "net_debt",
-        "ebit",
-        "free_cash_flow_to_firm",
-        "free_cash_flow_to_equity",
-        "ocf_to_short_debt",
-        "debt_to_equity",
-        "long_term_debt_ratio",
-        "current_assets_ratio",
-        "selling_expense_ratio",
-        "admin_expense_ratio",
-        "finance_expense_ratio",
-        "total_assets_yoy",
-        "equity_yoy",
-        "operating_cash_flow_yoy",
-        # --- 市场数据 ---
-        "market_cap",
-        "circ_market_cap",
-        "circ_shares",
-        "pe_ratio",
-        "pb_ratio",
-        "close",              # 收盘价
-        "open",               # 开盘价
-        "high",               # 最高价
-        "low",                # 最低价
-        "volume",            # 成交量
-    }
-
-    # 字段映射
+    # 字段映射: Tushare API 原始字段名 -> 系统标准字段名
+    # 使用 StandardFields 常量引用，当字段名改变时只需更新 StandardFields
     FIELD_MAPPINGS: dict[str, dict[str, str]] = {
         "balance_sheet": {
-            "total_assets": "total_assets",
-            "total_liab": "total_liabilities",
-            "total_hldr_eqy_exc_min_int": "total_equity",
-            "total_cur_liab": "current_liabilities",
-            "money_cap": "cash_and_equivalents",
-            "inventories": "inventory",
-            "accounts_receiv": "accounts_receivable",
-            "fix_assets": "fixed_assets",
-            "total_cur_assets": "current_assets",
-            "accounts_pay": "accounts_payable",
-            "prepayment": "prepayment",
-            "contract_assets": "contract_assets",
-            "contract_liab": "contract_liab",
-            "adv_receipts": "adv_receipts",
-            "total_share": "total_shares",
-            "goodwill": "goodwill",
-            "intan_assets": "intangible_assets",
-            "lt_eqt_invest": "long_term_investment",
-            "cip": "construction_in_progress",
-            "st_borr": "short_term_borrowings",
-            "lt_borr": "long_term_debt",
-            "non_cur_liab_due_1y": "non_current_liabilities_due_1y",
-            "bond_payable": "bond_payable",
-            "oth_receiv": "other_receivables",
+            # Tushare API 字段: 系统标准字段（常量引用）
+            "total_assets": StandardFields.total_assets,
+            "total_liab": StandardFields.total_liabilities,
+            "total_hldr_eqy_exc_min_int": StandardFields.total_equity,
+            "total_cur_liab": StandardFields.current_liabilities,
+            "money_cap": StandardFields.cash_and_equivalents,
+            "inventories": StandardFields.inventory,
+            "accounts_receiv": StandardFields.accounts_receivable,
+            "fix_assets": StandardFields.fixed_assets,
+            "total_cur_assets": StandardFields.current_assets,
+            "accounts_pay": StandardFields.accounts_payable,
+            "prepayment": StandardFields.prepayment,
+            "contract_assets": StandardFields.contract_assets,
+            "contract_liab": StandardFields.contract_liab,
+            "adv_receipts": StandardFields.adv_receipts,
+            "total_share": StandardFields.total_shares,
+            "goodwill": StandardFields.goodwill,
+            "intan_assets": StandardFields.intangible_assets,
+            "lt_eqt_invest": StandardFields.long_term_investment,
+            "cip": StandardFields.construction_in_progress,
+            "st_borr": StandardFields.short_term_borrowings,
+            "lt_borr": StandardFields.long_term_debt,
+            "non_cur_liab_due_1y": StandardFields.non_current_liabilities_due_1y,
+            "bond_payable": StandardFields.bond_payable,
+            "oth_receiv": StandardFields.other_receivables,
         },
         "income_statement": {
-            "total_revenue": "total_revenue",
-            "revenue": "main_business_income",
-            "n_income": "net_profit",
-            "operate_profit": "operating_profit",
-            "oper_cost": "operating_cost",
-            "n_income_attr_p": "parent_net_profit",
-            "int_exp": "interest_expense",
-            "int_income": "interest_income",
-            "non_oper_income": "non_operating_income",
-            "invest_income": "investment_income",
-            "fv_value_chg_gain": "fair_value_change",
+            "total_revenue": StandardFields.total_revenue,
+            "revenue": StandardFields.main_business_income,
+            "n_income": StandardFields.net_profit,
+            "operate_profit": StandardFields.operating_profit,
+            "oper_cost": StandardFields.operating_cost,
+            "n_income_attr_p": StandardFields.parent_net_profit,
+            "int_exp": StandardFields.interest_expense,
+            "int_income": StandardFields.interest_income,
+            "non_oper_income": StandardFields.non_operating_income,
+            "invest_income": StandardFields.investment_income,
+            "fv_value_chg_gain": StandardFields.fair_value_change,
         },
         "cash_flow": {
-            "n_cashflow_act": "operating_cash_flow",
-            "n_cashflow_inv_act": "investing_cash_flow",
-            "n_cash_flows_fnc_act": "financing_cash_flow",
-            "c_pay_acq_const_fiolta": "capital_expenditure",
+            "n_cashflow_act": StandardFields.operating_cash_flow,
+            "n_cashflow_inv_act": StandardFields.investing_cash_flow,
+            "n_cash_flows_fnc_act": StandardFields.financing_cash_flow,
+            "c_pay_acq_const_fiolta": StandardFields.capital_expenditure,
         },
         "indicators": {
-            "roe": "roe",
-            "roa": "roa",
-            "grossprofit_margin": "gross_margin",
-            "netprofit_margin": "net_profit_margin",
-            "current_ratio": "current_ratio",
-            "quick_ratio": "quick_ratio",
-            "debt_to_assets": "debt_ratio",
-            "assets_turn": "asset_turnover",
-            "ar_turn": "receivable_turnover",
-            "roic": "roic",
-            "eps": "basic_eps",
-            "dt_eps": "diluted_eps",
-            "bps": "book_value_per_share",
-            "cash_ratio": "cash_ratio",
-            "ocf_to_debt": "ocf_to_debt",
-            "interestdebt": "interest_bearing_debt",
-            "ebitda": "ebitda",
-            "currentdebt_to_debt": "currentdebt_to_debt",
-            "op_of_gr": "operating_profit_margin",
-            "tr_yoy": "revenue_yoy",
-            "netprofit_yoy": "net_profit_yoy",
-            "netdebt": "net_debt",
-            "ebit": "ebit",
-            "fcff": "free_cash_flow_to_firm",
-            "fcfe": "free_cash_flow_to_equity",
-            "ocf_to_shortdebt": "ocf_to_short_debt",
-            "debt_to_eqt": "debt_to_equity",
-            "longdeb_to_debt": "long_term_debt_ratio",
-            "ca_to_assets": "current_assets_ratio",
-            "saleexp_to_gr": "selling_expense_ratio",
-            "adminexp_of_gr": "admin_expense_ratio",
-            "finaexp_of_gr": "finance_expense_ratio",
-            "assets_yoy": "total_assets_yoy",
-            "eqt_yoy": "equity_yoy",
-            "ocf_yoy": "operating_cash_flow_yoy",
+            "roe": StandardFields.roe,
+            "roa": StandardFields.roa,
+            "grossprofit_margin": StandardFields.gross_margin,
+            "netprofit_margin": StandardFields.net_profit_margin,
+            "current_ratio": StandardFields.current_ratio,
+            "quick_ratio": StandardFields.quick_ratio,
+            "debt_to_assets": StandardFields.debt_ratio,
+            "assets_turn": StandardFields.asset_turnover,
+            "ar_turn": StandardFields.receivable_turnover,
+            "roic": StandardFields.roic,
+            "eps": StandardFields.basic_eps,
+            "dt_eps": StandardFields.diluted_eps,
+            "bps": StandardFields.book_value_per_share,
+            "cash_ratio": StandardFields.cash_ratio,
+            "ocf_to_debt": StandardFields.ocf_to_debt,
+            "interestdebt": StandardFields.interest_bearing_debt,
+            "ebitda": StandardFields.ebitda,
+            "currentdebt_to_debt": StandardFields.currentdebt_to_debt,
+            "op_of_gr": StandardFields.operating_profit_margin,
+            "tr_yoy": StandardFields.revenue_yoy,
+            "netprofit_yoy": StandardFields.net_profit_yoy,
+            "netdebt": StandardFields.net_debt,
+            "ebit": StandardFields.ebit,
+            "fcff": StandardFields.free_cash_flow_to_firm,
+            "fcfe": StandardFields.free_cash_flow_to_equity,
+            "ocf_to_shortdebt": StandardFields.ocf_to_short_debt,
+            "debt_to_eqt": StandardFields.debt_to_equity,
+            "longdeb_to_debt": StandardFields.long_term_debt_ratio,
+            "ca_to_assets": StandardFields.current_assets_ratio,
+            "saleexp_to_gr": StandardFields.selling_expense_ratio,
+            "adminexp_of_gr": StandardFields.admin_expense_ratio,
+            "finaexp_of_gr": StandardFields.finance_expense_ratio,
+            "assets_yoy": StandardFields.total_assets_yoy,
+            "eqt_yoy": StandardFields.equity_yoy,
+            "ocf_yoy": StandardFields.operating_cash_flow_yoy,
         },
         "market": {
-            "total_mv": "market_cap",
-            "circ_mv": "circ_market_cap",
-            "float_share": "circ_shares",
-            "pe_ttm": "pe_ratio",
-            "pb": "pb_ratio",
-            "total_share": "total_shares",
+            "total_mv": StandardFields.market_cap,
+            "circ_mv": StandardFields.circ_market_cap,
+            "float_share": StandardFields.circ_shares,
+            "pe_ttm": StandardFields.pe_ratio,
+            "pb": StandardFields.pb_ratio,
+            "total_share": StandardFields.total_shares,
         },
         "daily": {
-            "close": "close",
-            "open": "open",
-            "high": "high",
-            "low": "low",
-            "vol": "volume",
+            "close": StandardFields.close,
+            "open": StandardFields.open,
+            "high": StandardFields.high,
+            "low": StandardFields.low,
+            "vol": StandardFields.volume,
         },
     }
 
-    # 财务指标字段集合
-    _INDICATOR_FIELDS: set[str] = {
-        "roe", "roa", "gross_margin", "net_profit_margin",
-        "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
-        "receivable_turnover", "roic", "basic_eps", "diluted_eps",
-        "book_value_per_share", "cash_ratio", "ocf_to_debt",
-        "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
-        "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
-        "net_debt", "ebit", "free_cash_flow_to_firm", "free_cash_flow_to_equity",
-        "ocf_to_short_debt", "debt_to_equity", "long_term_debt_ratio",
-        "current_assets_ratio", "selling_expense_ratio", "admin_expense_ratio",
-        "finance_expense_ratio", "total_assets_yoy", "equity_yoy", "operating_cash_flow_yoy",
-    }
+    # ========================================================================
+    # 动态派生的字段集合（从 FIELD_MAPPINGS 计算）
+    # ========================================================================
+
+    # Provider 声称支持的所有系统标准字段（从映射表的值集合计算）
+    @classmethod
+    def get_supported_fields(cls) -> set[str]:
+        """获取 Provider 支持的所有系统标准字段"""
+        fields = set()
+        for mapping_dict in cls.FIELD_MAPPINGS.values():
+            fields.update(mapping_dict.values())
+        return fields
+
+    # 财务指标字段
+    _INDICATOR_FIELDS: set[str] = set(FIELD_MAPPINGS.get("indicators", {}).values())
 
     # 市场数据字段
-    _MARKET_FIELDS: set[str] = {
-        "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio", "total_shares",
-    }
+    _MARKET_FIELDS: set[str] = set(FIELD_MAPPINGS.get("market", {}).values())
 
     # 交易数据字段
-    _TRADING_FIELDS: set[str] = {
-        "close", "open", "high", "low", "volume",
-    }
+    _TRADING_FIELDS: set[str] = set(FIELD_MAPPINGS.get("daily", {}).values())
+
+    # 财务报表字段分类
+    _BALANCE_FIELDS: set[str] = set(FIELD_MAPPINGS.get("balance_sheet", {}).values())
+    _INCOME_FIELDS: set[str] = set(FIELD_MAPPINGS.get("income_statement", {}).values())
+    _CASH_FIELDS: set[str] = set(FIELD_MAPPINGS.get("cash_flow", {}).values())
 
     def __init__(self, token: str | None = None):
         """Initialize Tushare provider
@@ -470,26 +391,9 @@ class TushareProvider:
         results: dict[str, dict[int, Any]] = {f: {} for f in fs_fields}
 
         # Determine which statements to fetch
-        balance_fields = fs_fields & {
-            "total_assets", "total_liabilities", "total_equity",
-            "current_assets", "current_liabilities", "cash_and_equivalents",
-            "inventory", "accounts_receivable", "accounts_payable", "fixed_assets",
-            "prepayment", "contract_assets", "contract_liab", "total_shares",
-            "goodwill", "intangible_assets", "long_term_investment",
-            "construction_in_progress", "short_term_borrowings", "long_term_debt",
-            "non_current_liabilities_due_1y", "bond_payable", "other_receivables",
-        }
-
-        income_fields = fs_fields & {
-            "total_revenue", "main_business_income", "net_profit", "operating_profit",
-            "operating_cost", "parent_net_profit", "interest_expense", "interest_income",
-            "non_operating_income", "investment_income", "fair_value_change",
-        }
-
-        cash_fields = fs_fields & {
-            "operating_cash_flow", "investing_cash_flow", "financing_cash_flow",
-            "capital_expenditure",
-        }
+        balance_fields = fs_fields & self._BALANCE_FIELDS
+        income_fields = fs_fields & self._INCOME_FIELDS
+        cash_fields = fs_fields & self._CASH_FIELDS
 
         # Fetch and merge
         if balance_fields:
