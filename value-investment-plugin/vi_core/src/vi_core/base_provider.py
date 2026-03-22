@@ -168,6 +168,44 @@ class BaseDataProvider(ABC):
         # 过滤：只保留映射后的字段和日期列，返回拷贝
         return self._filter_to_mapped_fields(df, fields)
 
+    def fetch_historical(
+        self,
+        symbol: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        adjust: str = "",
+    ) -> pd.DataFrame | None:
+        """获取历史交易数据（模板方法）
+        
+        Args:
+            symbol: 股票代码
+            start_date: 开始日期 (YYYY-MM-DD)，可选
+            end_date: 结束日期 (YYYY-MM-DD)，可选
+            adjust: 复权方式
+                - "": 不复权
+                - "qfq": 前复权
+                - "hfq": 后复权
+            
+        Returns:
+            DataFrame with columns: date, open, high, low, close, volume
+            or None if not supported
+        """
+        normalized_symbol = self._normalize_symbol(symbol)
+
+        df = self._fetch_historical_impl(normalized_symbol, start_date, end_date, adjust)
+        if df is None or df.empty:
+            return None
+
+        # 日期过滤
+        if start_date and "date" in df.columns:
+            start_dt = pd.to_datetime(start_date)
+            df = df[pd.to_datetime(df["date"]) >= start_dt]
+        if end_date and "date" in df.columns:
+            end_dt = pd.to_datetime(end_date)
+            df = df[pd.to_datetime(df["date"]) <= end_dt]
+
+        return df.copy() if not df.empty else None
+
     # ========================================================================
     # 子类必须实现的方法
     # ========================================================================
@@ -240,6 +278,28 @@ class BaseDataProvider(ABC):
             原始 DataFrame
         """
         pass
+
+    def _fetch_historical_impl(
+        self,
+        symbol: str,
+        start_date: str | None,
+        end_date: str | None,
+        adjust: str,
+    ) -> pd.DataFrame | None:
+        """获取历史交易数据
+        
+        子类可选实现。默认返回 None（不支持）。
+        
+        Args:
+            symbol: 标准化后的股票代码
+            start_date: 开始日期 (YYYY-MM-DD)
+            end_date: 结束日期 (YYYY-MM-DD)
+            adjust: 复权方式 ("", "qfq", "hfq")
+            
+        Returns:
+            DataFrame with columns: date, open, high, low, close, volume
+        """
+        return None
 
     # ========================================================================
     # 子类可覆盖的方法

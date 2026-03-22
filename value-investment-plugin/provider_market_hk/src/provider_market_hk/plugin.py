@@ -101,6 +101,23 @@ class ProviderHKPlugin:
                     result[col] = value
         return result
 
+    @vi_hookimpl
+    def vi_fetch_historical(
+        self,
+        symbol: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        adjust: str = "",
+    ) -> dict[str, Any] | None:
+        """Fetch historical trading data (OHLCV)"""
+        provider = _get_provider()
+        df = provider.fetch_historical(symbol, start_date, end_date, adjust)
+        if df is None or df.empty:
+            return None
+
+        # 转换为 dict 格式
+        return df.to_dict(orient="list")
+
 
 def _df_to_dict(df: pd.DataFrame, fields: set[str]) -> dict[str, dict[int, Any]]:
     """Convert DataFrame to {field: {year: value}}"""

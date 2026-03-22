@@ -5,7 +5,7 @@
 ## 职责
 
 - 实现 `FieldProviderSpec` 的所有 Hook
-- 提供港股市场的财务报表、指标、市场数据
+- 提供港股市场的财务报表、指标、市场数据、历史交易数据
 - 将 AKShare API 中文字段映射到系统标准字段
 
 ## 架构
@@ -26,6 +26,7 @@ provider_market_hk
 - `stock_financial_hk_report_em` - 财务报表（资产负债表、利润表、现金流量表）
 - `stock_hk_financial_indicator_em` - 财务指标
 - `stock_hk_company_profile_em` - 公司基本信息
+- `stock_hk_daily` - 历史交易数据
 
 ## 字段映射
 
@@ -105,6 +106,33 @@ df = provider.fetch_market(
     "00700",
     fields={"hk_market_cap", "pe_ratio", "pb_ratio"},
 )
+
+# 获取历史交易数据
+df = provider.fetch_historical(
+    "00700",
+    start_date="2026-01-01",
+    end_date="2026-03-20",
+    adjust="",  # "", "qfq", "hfq"
+)
+```
+
+## 历史交易数据
+
+```python
+# 返回 DataFrame
+df = provider.fetch_historical("00700", start_date="2026-03-01", end_date="2026-03-20")
+#            date   open   high    low  close      volume        amount
+# 0    2026-03-01  520.0  528.0  515.0  525.5  18543210.0  9.72e+09
+# ...
+
+# 通过 vi_fetch_historical hook
+result = plugin.vi_fetch_historical(
+    symbol="00700",
+    start_date="2026-03-01",
+    end_date="2026-03-20",
+    adjust="",
+)
+# 返回: {"date": [...], "open": [...], "high": [...], ...}
 ```
 
 ## 依赖

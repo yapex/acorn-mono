@@ -211,8 +211,22 @@ class HKProvider(BaseDataProvider):
         except Exception:
             return None
 
-    # ========================================================================
-    # HK 特定方法
+    def _fetch_historical_impl(
+        self,
+        symbol: str,
+        start_date: str | None,
+        end_date: str | None,
+        adjust: str,
+    ) -> pd.DataFrame | None:
+        """获取历史交易数据"""
+        try:
+            df = ak.stock_hk_daily(symbol=symbol)
+            if df is None or df.empty:
+                return None
+            return df
+        except Exception:
+            return None
+
     # ========================================================================
 
     def _fetch_balance_sheet(self, symbol: str) -> pd.DataFrame | None:

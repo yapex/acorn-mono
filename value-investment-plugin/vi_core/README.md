@@ -52,6 +52,10 @@ def vi_fetch_indicators(self, symbol, fields, end_year, years) -> dict | None:
 @vi_hookspec
 def vi_fetch_market(self, symbol, fields) -> dict:
     """获取市场数据，返回 {field: value}"""
+
+@vi_hookspec
+def vi_fetch_historical(self, symbol, start_date, end_date, adjust) -> dict | None:
+    """获取历史交易数据，返回 {"date": [...], "open": [...], ...}"""
 ```
 
 ### 3. CalculatorSpec - 计算器

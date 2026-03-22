@@ -121,6 +121,39 @@ class FieldProviderSpec:
         """
         return {}
 
+    @vi_hookspec
+    def vi_fetch_historical(
+        self,
+        symbol: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        adjust: str = "",
+    ) -> dict[str, Any] | None:
+        """Fetch historical trading data (OHLCV)
+
+        Args:
+            symbol: Stock code (e.g. "600519", "00700", "AAPL")
+            start_date: Start date in "YYYY-MM-DD" format (optional)
+            end_date: End date in "YYYY-MM-DD" format (optional)
+            adjust: Price adjustment method
+                - "": No adjustment (不复权)
+                - "qfq": Forward adjustment (前复权)
+                - "hfq": Backward adjustment (后复权)
+
+        Returns:
+            {
+                "date": [...],      # 日期列表
+                "open": [...],      # 开盘价
+                "high": [...],      # 最高价
+                "low": [...],       # 最低价
+                "close": [...],     # 收盘价
+                "volume": [...],    # 成交量
+                "amount": [...],    # 成交额 (optional)
+            }
+            or None if not supported
+        """
+        return None
+
 
 # =============================================================================
 # Calculator Hooks
