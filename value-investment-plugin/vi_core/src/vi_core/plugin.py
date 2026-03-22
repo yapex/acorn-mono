@@ -13,11 +13,10 @@ from typing import Any, TYPE_CHECKING
 
 import pluggy  # type: ignore[import]
 
-from acorn_events import EventBus
 from .spec import vi_hookimpl, ValueInvestmentSpecs
 
 if TYPE_CHECKING:
-    pass
+    from acorn_events import EventBus
 
 
 # Entry point groups for VI sub-plugins
@@ -45,11 +44,21 @@ class ViCorePlugin:
     """VI Core plugin for pluggy
 
     Provides commands for querying financial data.
+
+    Args:
+        event_bus: 事件总线实例（IOC: 通过依赖注入获得）
     """
 
     # Class-level plugin manager reference
     _pm: Any = None
-    _event_bus = EventBus()
+
+    def __init__(self, event_bus: EventBus | None = None) -> None:
+        self._event_bus = event_bus  # IOC: 由外部注入或延迟初始化
+
+    def _get_default_event_bus(self) -> EventBus:
+        """获取默认事件总线（延迟导入避免循环依赖）"""
+        from acorn_events import EventBus
+        return EventBus()
 
     @classmethod
     def set_plugin_manager(cls, pm: Any) -> None:
@@ -88,7 +97,7 @@ class ViCorePlugin:
         """Return supported commands for Acorn Core"""
         return ["vi_query", "vi_list_fields", "vi_list_calculators", "vi_register_calculator"]
 
-    def handle(self, task) -> dict:
+    def handle(self, task: Any) -> dict[str, Any]:
         """Handle task for Acorn Core"""
         command = task.command
         args = task.args or {}
@@ -240,7 +249,8 @@ class ViCorePlugin:
             unfilled = requested & (standard_fields - provider_fields)  # 系统有但 Provider 不支持
 
             if unsupported:
-                self._event_bus.publish(
+                event_bus = self._event_bus or self._get_default_event_bus()
+                event_bus.publish(
                     "vi.field.unsupported",
                     sender=self,
                     symbol=symbol,
@@ -248,7 +258,8 @@ class ViCorePlugin:
                 )
 
             if unfilled:
-                self._event_bus.publish(
+                event_bus = self._event_bus or self._get_default_event_bus()
+                event_bus.publish(
                     "vi.field.unfilled",
                     sender=self,
                     symbol=symbol,
@@ -380,7 +391,6 @@ class ViCorePlugin:
             # Check for calculator error
             if isinstance(calc_result, dict) and calc_result.get("__error__"):
                 # Calculator运行时出错，记录错误信息
-                err_info = f"[{calc_result['calculator']}] {calc_result['error_type']}: {calc_result['error_message']}"
                 if "calculator_errors" not in results:
                     results["calculator_errors"] = []
                 results["calculator_errors"].append({
@@ -434,4 +444,4 @@ class ViCorePlugin:
 
 
 # Plugin instance for pluggy registration
-plugin = ViCorePlugin()
+plugin = ViCorePlugin()  # type: ignore[assignment]

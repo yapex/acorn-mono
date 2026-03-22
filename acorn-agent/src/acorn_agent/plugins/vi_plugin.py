@@ -18,7 +18,9 @@ from typing import Any, TYPE_CHECKING
 import pluggy  # type: ignore[import]
 
 # Add plugin paths for local packages (value-investment-plugin workspace)
-VI_PLUGIN_PATHS = [
+# This is a temporary workaround for local development. In production,
+# these packages should be installed via pip/uv.
+_LOCAL_PLUGIN_PATHS = [
     Path(__file__).parent.parent.parent.parent
     / "value-investment-plugin"
     / "vi_core"
@@ -40,31 +42,37 @@ VI_PLUGIN_PATHS = [
     / "calculators",
 ]
 
-for _p in VI_PLUGIN_PATHS:
+for _p in _LOCAL_PLUGIN_PATHS:
     if str(_p) not in sys.path and _p.exists():
         sys.path.insert(0, str(_p))
 
 # Acorn imports
 from acorn_core import Task, hookimpl  # type: ignore[import]
 
-# VI Core imports
-from vi_core import ValueInvestmentSpecs, plugin as vi_core_plugin  # type: ignore[import]
+# VI Core imports - these imports will succeed if packages are installed
+# or if local paths are added above
+try:
+    from vi_core import ValueInvestmentSpecs, plugin as vi_core_plugin  # type: ignore[import]
+except ImportError:
+    # Fallback for when vi_core is not installed
+    ValueInvestmentSpecs = None  # type: ignore
+    vi_core_plugin = None  # type: ignore
 
 
-def _get_entry_points(group: str):
+def _get_entry_points(group: str) -> list[Any]:
     """Get entry points by group, compatible with Python 3.9-3.12"""
     from importlib.metadata import entry_points
 
     try:
         # Python 3.10+
-        return entry_points(group=group)
+        return list(entry_points(group=group))
     except TypeError:
         # Python 3.9
         eps = entry_points()
         if hasattr(eps, "select"):
-            return eps.select(group=group)
+            return list(eps.select(group=group))
         elif isinstance(eps, dict):
-            return eps.get(group, [])
+            return list(eps.get(group, []))
         return []
 
 
@@ -85,8 +93,18 @@ class VIPlugin:
         if cls._vi_pm is not None:
             return cls._vi_pm
 
+        if ValueInvestmentSpecs is None or vi_core_plugin is None:
+            raise ImportError(
+                "vi_core package is not installed. "
+                "Install with: uv pip install -e ./value-investment-plugin/vi_core"
+            )
+
         # Import calculator loader
-        from vi_calculators import CalculatorLoaderPlugin  # type: ignore[import]
+        try:
+            from vi_calculators import CalculatorLoaderPlugin  # type: ignore[import]
+        except ImportError:
+            # Calculator loader not available
+            CalculatorLoaderPlugin = None  # type: ignore
 
         pm = pluggy.PluginManager("value_investment")
         pm.add_hookspecs(ValueInvestmentSpecs)
@@ -94,9 +112,10 @@ class VIPlugin:
         # Register core plugin
         pm.register(vi_core_plugin, name="vi_core")
 
-        # Register calculator loader
-        calc_loader = CalculatorLoaderPlugin()
-        pm.register(calc_loader, name="calculators")
+        # Register calculator loader if available
+        if CalculatorLoaderPlugin is not None:
+            calc_loader = CalculatorLoaderPlugin()
+            pm.register(calc_loader, name="calculators")
 
         # Register providers and fields via entry_points
         _entry_point_configs = [

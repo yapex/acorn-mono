@@ -209,19 +209,19 @@ class TestCoreEvents:
         
         missing_fields = []
         
-        @EventBus.on("vi.field.missing")
+        @EventBus.on("vi.field.unfilled")
         def on_field_missing(event_data, sender, **kwargs):
             missing_fields.append({
-                "field": kwargs.get("field"),
-                "plugin": kwargs.get("plugin")
+                "symbol": kwargs.get("symbol"),
+                "fields": kwargs.get("fields")
             })
         
         # 模拟字段缺失事件
-        EventBus.publish("vi.field.missing", sender=None, field="revenue", plugin="value_investment")
+        EventBus.publish("vi.field.unfilled", sender=None, symbol="600519", fields=["revenue"])
         
         assert len(missing_fields) == 1
-        assert missing_fields[0]["field"] == "revenue"
-        assert missing_fields[0]["plugin"] == "value_investment"
+        assert missing_fields[0]["symbol"] == "600519"
+        assert missing_fields[0]["fields"] == ["revenue"]
 
 
 class TestConcurrency:

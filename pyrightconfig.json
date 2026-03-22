@@ -1,8 +1,6 @@
 {
-  "pythonVersion": "3.12",
+  "pythonVersion": "3.10",
   "pythonPlatform": "Darwin",
-  "venvPath": ".",
-  "venv": ".venv",
   "include": [
     "acorn-core/src",
     "acorn-core/tests",
@@ -10,34 +8,32 @@
     "acorn-agent/src",
     "examples-plugin/src",
     "value-investment-plugin/vi_core/src",
-    "value-investment-plugin/vi_core/tests",
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",
-    "value-investment-plugin/provider_tushare/src",
-    "value-investment-plugin/calculators",
-    "value-investment-plugin/calculators/tests",
-    "value-investment-plugin/vi_calculators",
-    "value-investment-plugin/vi_cli/src"
+    "value-investment-plugin/provider_tushare/src"
   ],
   "exclude": [
     "**/__pycache__",
-    ".venv"
+    ".venv",
+    "value-investment-plugin/.venv"
   ],
   "extraPaths": [
-    ".venv/lib/python3.12/site-packages",
     "acorn-events/src",
+    "acorn-core/src",
     "value-investment-plugin/vi_core/src",
     "value-investment-plugin/vi_fields_ifrs/src",
     "value-investment-plugin/vi_fields_extension/src",
     "value-investment-plugin/provider_tushare/src",
     "value-investment-plugin/calculators",
-    "value-investment-plugin/vi_calculators",
-    "value-investment-plugin/tests"
+    "value-investment-plugin/vi_calculators"
   ],
+  "venvPath": ".",
+  "venv": ".venv",
   "executionEnvironments": [
     {
       "root": "."
     }
   ],
-  "typeCheckingMode": "basic"
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false
 }

@@ -4,39 +4,37 @@ EvoManager - 进化管理器
 系统的"求生欲"——痛觉反馈、错误追踪、能力盘点。
 """
 
-from typing import Any
+from __future__ import annotations
 
-from acorn_events import EventBus
+from typing import TYPE_CHECKING, Any
+
 from acorn_core.specs import hookimpl
+
+if TYPE_CHECKING:
+    from acorn_events import EventBus
 
 
 class EvoManager:
     """
     进化管理器 - 赋予 Acorn 求生欲的干细胞插件
+
+    Args:
+        event_bus: 事件总线实例（IOC: 通过依赖注入获得）
     """
 
-    def __init__(self) -> None:
+    def __init__(self, event_bus: EventBus | None = None) -> None:
         self.error_log: list[dict[str, Any]] = []
         self.max_log = 100
         self.unsupported_fields: list[dict[str, Any]] = []  # 系统标准字段定义中没有
         self.unfilled_fields: list[dict[str, Any]] = []  # 标准字段中但 Provider 不支持或返回空
-        self._event_bus = EventBus()
+        self._event_bus = event_bus  # IOC: 由外部注入或延迟初始化
 
-    def _on_plugin_loaded(self, event_type, sender, **kwargs):
-        """订阅 acorn.plugin.loaded 事件，记录插件信息"""
-        plugin_name = kwargs.get("plugin_name", "unknown")
-        plugin: Any = kwargs.get("plugin")
-        # 检查插件是否有缺失字段的能力声明
-        if plugin and hasattr(plugin, "get_capabilities"):
-            try:
-                caps = plugin.get_capabilities()
-                if caps and isinstance(caps, dict):
-                    # 记录插件声明的字段
-                    pass
-            except Exception:
-                pass
+    def _get_default_event_bus(self) -> EventBus:
+        """获取默认事件总线（延迟导入避免循环依赖）"""
+        from acorn_events import EventBus
+        return EventBus()
 
-    def _on_field_unsupported(self, event_type, sender, **kwargs):
+    def _on_field_unsupported(self, event_type: str, sender: Any, **kwargs: Any) -> None:
         """订阅 vi.field.unsupported 事件，记录系统不支持的字段"""
         symbol = kwargs.get("symbol", "unknown")
         fields = kwargs.get("fields", [])
@@ -48,7 +46,7 @@ class EvoManager:
         if len(self.unsupported_fields) > self.max_log:
             self.unsupported_fields = self.unsupported_fields[-self.max_log:]
 
-    def _on_field_unfilled(self, event_type, sender, **kwargs):
+    def _on_field_unfilled(self, event_type: str, sender: Any, **kwargs: Any) -> None:
         """订阅 vi.field.unfilled 事件，记录 Provider 无法提供的字段"""
         symbol = kwargs.get("symbol", "unknown")
         fields = kwargs.get("fields", [])
@@ -66,7 +64,7 @@ class EvoManager:
         return ["capabilities", "error_log"]
 
     @hookimpl
-    def get_capabilities(self) -> dict:
+    def get_capabilities(self) -> dict[str, Any]:
         """声明能力清单"""
         return {
             "commands": ["capabilities", "error_log"],
@@ -76,13 +74,16 @@ class EvoManager:
     @hookimpl
     def on_load(self) -> None:
         """初始化 EvoManager"""
+        # 延迟初始化事件总线
+        if self._event_bus is None:
+            self._event_bus = self._get_default_event_bus()
+
         self.error_log = []
-        self._event_bus.on("acorn.plugin.loaded")(self._on_plugin_loaded)
         self._event_bus.on("vi.field.unsupported")(self._on_field_unsupported)
         self._event_bus.on("vi.field.unfilled")(self._on_field_unfilled)
 
     @hookimpl
-    def handle(self, task) -> dict:
+    def handle(self, task: Any) -> dict[str, Any]:
         """处理系统命令"""
         command = task.command
 
@@ -101,15 +102,6 @@ class EvoManager:
 
     def _get_capabilities_report(self) -> str:
         """生成能力报告"""
-        # 访问 Acorn 的能力列表
-        from pathlib import Path
-        plugin_dir = Path(__file__).parent
-        # 列出所有插件文件
-        _ = [
-            f.stem for f in plugin_dir.glob("*.py")
-            if f.stem not in ["__init__", "evo_manager"]
-        ]
-
         lines = [
             "📋 系统能力报告",
             "=" * 40,
@@ -117,6 +109,10 @@ class EvoManager:
             "可用命令:",
             "  - capabilities (当前命令)",
             "  - error_log",
+            "",
+            "字段追踪:",
+            f"  - unsupported_fields: {len(self.unsupported_fields)} 条记录",
+            f"  - unfilled_fields: {len(self.unfilled_fields)} 条记录",
             "",
             "总计: 2 个系统命令",
             "=" * 40,

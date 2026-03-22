@@ -1,12 +1,13 @@
 """
 Client for acorn-agent RPC
 """
+from __future__ import annotations
 
 import json
 import os
 import socket
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 
 # Default socket path in user directory
@@ -16,13 +17,13 @@ DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
 class AcornClient:
     """Unix Socket RPC Client"""
 
-    def __init__(self, socket_path: str | None = None):
+    def __init__(self, socket_path: Optional[str] = None) -> None:
         self.socket_path = socket_path or os.environ.get(
             "ACORN_AGENT_SOCKET",
             str(DEFAULT_SOCKET_PATH)
         )
 
-    def execute(self, command: str, args: dict[str, Any] | None = None) -> dict:
+    def execute(self, command: str, args: Optional[dict[str, Any]] = None) -> dict:
         """Execute a command via RPC"""
         if args is None:
             args = {}
@@ -38,6 +39,6 @@ class AcornClient:
         finally:
             sock.close()
 
-    def __call__(self, command: str, **kwargs) -> dict:
+    def __call__(self, command: str, **kwargs: Any) -> dict:
         """Shortcut: client("echo", message="hello")"""
         return self.execute(command, kwargs)

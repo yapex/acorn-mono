@@ -111,8 +111,33 @@ class TestExecuteBatch:
 
     def test_execute_batch(self):
         from acorn_core import Acorn, Task
+        from acorn_core.plugins.sandbox import NamespaceSandbox
+
         acorn = Acorn()
         acorn.load_plugins()
+
+        # Install test plugin for echo command
+        echo_code = '''
+from acorn_core import hookimpl
+
+class EchoPlugin:
+    @property
+    def commands(self):
+        return ["echo"]
+
+    @hookimpl
+    def handle(self, task):
+        return {"success": True, "data": task.args.get("message", "")}
+
+    @hookimpl
+    def get_capabilities(self):
+        return {"commands": ["echo"], "args": {}}
+
+plugin = EchoPlugin()
+'''
+        sandbox = NamespaceSandbox()
+        namespace = sandbox.execute(echo_code, {})
+        acorn.install_plugin(namespace)
 
         tasks = [
             Task(command="echo", args={"message": "hello"}),
@@ -131,18 +156,68 @@ class TestListCapabilities:
 
     def test_list_capabilities_returns_structure(self):
         from acorn_core import Acorn
+        from acorn_core.plugins.sandbox import NamespaceSandbox
+
         acorn = Acorn()
         acorn.load_plugins()
 
+        # Install a plugin that declares capabilities
+        caps_code = '''
+from acorn_core import hookimpl
+
+class CapsPlugin:
+    @property
+    def commands(self):
+        return ["test_cmd"]
+
+    @hookimpl
+    def handle(self, task):
+        return {"success": True, "data": "ok"}
+
+    @hookimpl
+    def get_capabilities(self):
+        return {"commands": ["test_cmd"], "args": {}}
+
+plugin = CapsPlugin()
+'''
+        sandbox = NamespaceSandbox()
+        namespace = sandbox.execute(caps_code, {})
+        acorn.install_plugin(namespace)
+
         caps = acorn.list_capabilities()
         assert isinstance(caps, list)
-        # EvoManager 应该声明能力
+        # 至少有一个能力声明
         assert len(caps) > 0
 
     def test_capabilities_have_commands(self):
         from acorn_core import Acorn
+        from acorn_core.plugins.sandbox import NamespaceSandbox
+
         acorn = Acorn()
         acorn.load_plugins()
+
+        # Install a plugin that declares capabilities
+        caps_code = '''
+from acorn_core import hookimpl
+
+class CapsPlugin:
+    @property
+    def commands(self):
+        return ["test_cmd"]
+
+    @hookimpl
+    def handle(self, task):
+        return {"success": True, "data": "ok"}
+
+    @hookimpl
+    def get_capabilities(self):
+        return {"commands": ["test_cmd"], "args": {}}
+
+plugin = CapsPlugin()
+'''
+        sandbox = NamespaceSandbox()
+        namespace = sandbox.execute(caps_code, {})
+        acorn.install_plugin(namespace)
 
         caps = acorn.list_capabilities()
         # 至少有一个能力声明了 commands

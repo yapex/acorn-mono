@@ -53,25 +53,48 @@ result = len([1, 2, 3])
 
     def test_acorn_can_use_custom_sandbox(self):
         from acorn_core import Acorn
-        from acorn_core.plugins.sandbox import Sandbox
+        from acorn_core.plugins.sandbox import Sandbox, NamespaceSandbox
 
         # 自定义沙箱
         class MockSandbox(Sandbox):
             def execute(self, code: str, globals_dict: dict) -> dict:
                 return {"plugin": "mock"}  # 直接返回假的
 
-        sandbox = MockSandbox()
+        mock_sandbox = MockSandbox()
         acorn = Acorn()
         acorn.load_plugins()
 
         # 调用者使用自定义沙箱执行代码，然后传给 kernel
-        namespace = sandbox.execute("any code", {})
+        namespace = mock_sandbox.execute("any code", {})
         try:
             acorn.install_plugin(namespace)
         except ValueError:
             pass  # 预期 - mock 返回的 namespace 没有 plugin
 
-        # 检查内置插件已加载
+        # 安装一个真实插件
+        real_code = '''
+from acorn_core import hookimpl
+
+class TestPlugin:
+    @property
+    def commands(self):
+        return ["test"]
+
+    @hookimpl
+    def handle(self, task):
+        return {"success": True, "data": "ok"}
+
+    @hookimpl
+    def get_capabilities(self):
+        return {"commands": ["test"], "args": {}}
+
+plugin = TestPlugin()
+'''
+        real_sandbox = NamespaceSandbox()
+        real_namespace = real_sandbox.execute(real_code, {})
+        acorn.install_plugin(real_namespace)
+
+        # 检查插件已加载
         plugins = acorn.list_plugins()
         assert len(plugins) >= 1
 

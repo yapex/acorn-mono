@@ -2,33 +2,50 @@
 种子内核 (The Acorn)
 ====================
 自进化系统的核心引擎。
+
+设计原则：
+- IOC: 依赖通过构造函数注入，而非直接实例化
+- 插件通过 pluggy 管理
+- 事件通过 EventBus 异步通信
 """
+
+from __future__ import annotations
 
 import importlib
 import pkgutil
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pluggy
 
-from .events import EventBus
 from .specs import Genes
 from .types import Response, Task
+
+if TYPE_CHECKING:
+    from acorn_events import EventBus
 
 
 class Acorn:
     """
     种子内核 - 管理插件生命周期
+
+    Args:
+        event_bus: 事件总线实例（IOC: 通过依赖注入获得）
     """
 
-    def __init__(self):
+    def __init__(self, event_bus: EventBus | None = None) -> None:
         self.pm = pluggy.PluginManager("evo")
         self.pm.add_hookspecs(Genes)
-        self._plugins: dict = {}  # plugin_id -> 插件实例
-        self._event_bus = EventBus()
+        self._plugins: dict[str, Any] = {}  # plugin_id -> 插件实例
+        self._event_bus = event_bus  # IOC: 由外部注入或使用默认值
 
-    def load_plugins(self, plugin_path: str | Path | None = None):
+    def _get_default_event_bus(self) -> EventBus:
+        """获取默认事件总线（延迟导入避免循环依赖）"""
+        from acorn_events import EventBus
+        return EventBus()
+
+    def load_plugins(self, plugin_path: str | Path | None = None) -> None:
         """加载插件
 
         加载顺序：
@@ -36,6 +53,10 @@ class Acorn:
         2. 外部路径插件 (可选)
         3. 已安装的外部插件 (通过 setuptools entry_points)
         """
+        # 延迟初始化事件总线
+        if self._event_bus is None:
+            self._event_bus = self._get_default_event_bus()
+
         # 1. 加载内部插件（内置 + 入口点）
         self.pm.load_setuptools_entrypoints("yapex.acorn.plugins")
 
@@ -51,7 +72,7 @@ class Acorn:
 
         self.pm.hook.on_load()
 
-    def _load_from_path(self, plugin_path: str | Path):
+    def _load_from_path(self, plugin_path: str | Path) -> None:
         """从指定路径加载插件"""
         path = Path(plugin_path)
         if not path.exists():
@@ -66,7 +87,7 @@ class Acorn:
             except Exception as e:
                 print(f"Warning: Failed to load plugin {name}: {e}")
 
-    def _register_plugin_module(self, module):
+    def _register_plugin_module(self, module: Any) -> None:
         """从模块中注册插件"""
         if hasattr(module, "plugin"):
             self.pm.register(module.plugin, name=getattr(module, "__name__", None))
@@ -195,7 +216,7 @@ class Acorn:
         """
         return [self.execute(task) for task in tasks]
 
-    def _find_handler(self, command: str):
+    def _find_handler(self, command: str) -> Any:
         """查找能处理命令的插件"""
         for plugin in self.pm.get_plugins():
             if hasattr(plugin, "commands"):
@@ -212,7 +233,7 @@ class Acorn:
                     pass
         return None
 
-    def _get_plugin_name(self, plugin) -> str:
+    def _get_plugin_name(self, plugin: Any) -> str:
         """获取插件名称"""
         name = self.pm.get_name(plugin)
         if name is not None:
@@ -221,9 +242,9 @@ class Acorn:
             return plugin.name
         return type(plugin).__name__
 
-    def list_capabilities(self) -> list[dict]:
+    def list_capabilities(self) -> list[dict[str, Any]]:
         """列出所有插件声明的能力"""
-        capabilities = []
+        capabilities: list[dict[str, Any]] = []
         for plugin in self.pm.get_plugins():
             if hasattr(plugin, "get_capabilities"):
                 try:
@@ -237,18 +258,18 @@ class Acorn:
                     pass
         return capabilities
 
-    def list_plugins(self) -> list:
+    def list_plugins(self) -> list[tuple[str, Any]]:
         """列出所有已加载的插件"""
         return self.pm.list_name_plugin()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """关闭系统"""
         self.pm.hook.on_unload()
 
-    def __enter__(self):
+    def __enter__(self) -> Acorn:
         self.load_plugins()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         self.shutdown()
         return False

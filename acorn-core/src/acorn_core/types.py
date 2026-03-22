@@ -7,7 +7,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass
@@ -26,7 +29,7 @@ class Task:
     context: dict[str, Any] = field(default_factory=dict)
     options: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.command:
             raise ValueError("command cannot be empty")
 

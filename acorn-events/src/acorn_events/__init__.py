@@ -9,9 +9,16 @@ Acorn EventBus - 事件发布-订阅系统
 - register_event(event_type): 注册事件类型
 """
 
-from blinker import signal
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable
+
+from blinker import signal  # type: ignore[import]
 
 from .context import get_trace_id, set_trace_id
+
+if TYPE_CHECKING:
+    from blinker import Signal
 
 
 class EventBus:
@@ -24,27 +31,27 @@ class EventBus:
     - register_event(event_type): 注册事件类型
     """
     
-    _instance = None
-    _initialized = False
+    _instance: EventBus | None = None
+    _initialized: bool = False
     
-    def __new__(cls):
+    def __new__(cls) -> EventBus:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._wrapped_handlers = []
         return cls._instance
     
-    def __init__(self):
+    def __init__(self) -> None:
         if EventBus._initialized:
             return
         EventBus._initialized = True
-        self._signals: dict[str, signal] = {}
-        self._wrapped_handlers: list[callable] = []  # 保持 strong reference 防止 GC
+        self._signals: dict[str, Signal] = {}
+        self._wrapped_handlers: list[Callable[..., Any]] = []  # 保持 strong reference 防止 GC
     
-    def __call__(self):
+    def __call__(self) -> EventBus:
         """允许 EventBus() 返回单例实例"""
         return self
     
-    def publish(self, event_type: str, sender, **data):
+    def publish(self, event_type: str, sender: Any, **data: Any) -> None:
         """
         发布事件
         
@@ -62,12 +69,12 @@ class EventBus:
         data["_trace_id"] = get_trace_id()
         s.send(sender, **data)
     
-    def _wrap_handler(self, event_type: str, handler: callable) -> callable:
+    def _wrap_handler(self, event_type: str, handler: Callable[..., Any]) -> Callable[..., Any]:
         """
         包装 handler，使其符合 blinker 签名 (sender, **kwargs)
         但内部调用时传递 (event_type, sender, **kwargs)
         """
-        def wrapped(sender, **kwargs):
+        def wrapped(sender: Any, **kwargs: Any) -> None:
             try:
                 # 恢复 trace_id 到 context
                 trace_id = kwargs.pop("_trace_id", "")
@@ -82,7 +89,7 @@ class EventBus:
         self._wrapped_handlers.append(wrapped)
         return wrapped
     
-    def on(self, event_type: str):
+    def on(self, event_type: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """
         事件订阅装饰器
         
@@ -92,7 +99,7 @@ class EventBus:
         Returns:
             装饰器函数
         """
-        def decorator(handler):
+        def decorator(handler: Callable[..., Any]) -> Callable[..., Any]:
             s = self._signals.get(event_type)
             if s is None:
                 s = signal(event_type)
@@ -104,7 +111,7 @@ class EventBus:
             return handler
         return decorator
     
-    def register_event(self, event_type: str):
+    def register_event(self, event_type: str) -> None:
         """
         注册事件类型
         
@@ -115,5 +122,5 @@ class EventBus:
             self._signals[event_type] = signal(event_type)
 
 
-# 全局单例
-EventBus = EventBus()
+# 全局单例实例
+EventBus = EventBus()  # type: ignore[assignment, misc]  # noqa: N816

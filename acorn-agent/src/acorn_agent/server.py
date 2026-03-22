@@ -1,11 +1,13 @@
 """
 Unix Socket RPC Server for acorn-core
 """
+from __future__ import annotations
 
 import json
 import socket
 import threading
 from pathlib import Path
+from typing import Any, Optional
 
 from acorn_core import Acorn, Task  # type: ignore[import]
 
@@ -16,14 +18,14 @@ DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
 class AcornServer:
     """Unix Socket RPC Server"""
 
-    def __init__(self, socket_path: str | None = None):
+    def __init__(self, socket_path: Optional[str] = None) -> None:
         self.socket_path = socket_path or str(DEFAULT_SOCKET_PATH)
         self.acorn = Acorn()
         self.acorn.load_plugins()
         self._register_local_plugins()
         self._running = False
 
-    def _register_local_plugins(self):
+    def _register_local_plugins(self) -> None:
         """Register local plugins (vi_plugin)"""
         try:
             from acorn_agent.plugins import plugin as vi_plugin
@@ -31,7 +33,7 @@ class AcornServer:
         except Exception as e:
             print(f"Warning: Failed to register vi_plugin: {e}")
 
-    def start(self):
+    def start(self) -> None:
         """Start the server (blocking)"""
         # Create directory if needed
         Path(self.socket_path).parent.mkdir(parents=True, exist_ok=True)
@@ -54,12 +56,12 @@ class AcornServer:
                 if self._running:
                     print(f"Error: {e}")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the server"""
         self._running = False
         Path(self.socket_path).unlink(missing_ok=True)
 
-    def _handle_connection(self, conn):
+    def _handle_connection(self, conn: socket.socket) -> None:
         """Handle a single client connection"""
         try:
             data = conn.recv(4096)
@@ -81,7 +83,7 @@ class AcornServer:
         finally:
             conn.close()
 
-    def _execute(self, request: dict) -> dict:
+    def _execute(self, request: dict[str, Any]) -> dict[str, Any]:
         """Execute a command"""
         command = request.get("command")
         args = request.get("args", {})

@@ -10,6 +10,9 @@
 from __future__ import annotations
 
 import builtins
+import os
+import subprocess
+import tempfile
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -62,7 +65,7 @@ class NamespaceSandbox(Sandbox):
         'quit',      # 退出程序
     ])
 
-    def __init__(self, allowed_builtins: list[str] | None = None):
+    def __init__(self, allowed_builtins: list[str] | None = None) -> None:
         """
         Args:
             allowed_builtins: 可选的额外允许的 builtins 列表
@@ -90,7 +93,7 @@ class NamespaceSandbox(Sandbox):
     def _build_safe_builtins(self) -> dict[str, Any]:
         """构建安全的 builtins 字典"""
         # 允许大部分内置函数
-        safe = {}
+        safe: dict[str, Any] = {}
         for name in dir(builtins):
             if name.startswith('_') and name not in ('__import__', '__build_class__'):
                 continue
@@ -114,7 +117,7 @@ class SubprocessSandbox(Sandbox):
     适用于需要强隔离的场景。
     """
 
-    def __init__(self, timeout: float = 5.0):
+    def __init__(self, timeout: float = 5.0) -> None:
         """
         Args:
             timeout: 执行超时时间（秒）
@@ -125,9 +128,6 @@ class SubprocessSandbox(Sandbox):
         """
         在子进程中执行代码
         """
-        import subprocess
-        import tempfile
-
         # 写入临时文件
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
@@ -150,7 +150,6 @@ class SubprocessSandbox(Sandbox):
             return {}
 
         finally:
-            import os
             os.unlink(temp_path)
 
 
