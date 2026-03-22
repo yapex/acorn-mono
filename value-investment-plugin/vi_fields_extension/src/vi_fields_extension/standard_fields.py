@@ -138,6 +138,51 @@ FIELD_DEFINITIONS: dict[str, dict] = {
     # Market Data (extended)
     "circ_market_cap": {"description": "流通市值", "category": "market", "source": "custom"},
     "circ_shares": {"description": "流通股本", "category": "market", "source": "custom"},
+
+    # =====================================================================
+    # HK Market 特有字段
+    # =====================================================================
+
+    # HK 特有市场数据
+    "hk_market_cap": {"description": "港股市值(港元)", "category": "market", "source": "hk"},
+    "hk_dividend_per_share": {"description": "每股股息TTM(港元)", "category": "market", "source": "hk"},
+    "hk_dividend_yield_ttm": {"description": "股息率TTM(%)", "category": "market", "source": "hk"},
+    "hk_dividend_payout_ratio": {"description": "派息比率(%)", "category": "market", "source": "hk"},
+    "hk_total_revenue_growth_qoq": {"description": "营业总收入滚动环比增长(%)", "category": "ratio", "source": "hk"},
+    "hk_net_profit_growth_qoq": {"description": "净利润滚动环比增长(%)", "category": "ratio", "source": "hk"},
+
+    # HK Balance Sheet 特有字段
+    "shareholders_equity": {"description": "股东权益", "category": "balance_sheet", "source": "hk"},
+    "share_capital": {"description": "股本", "category": "balance_sheet", "source": "hk"},
+    "share_premium": {"description": "股本溢价", "category": "balance_sheet", "source": "hk"},
+    "retained_earnings": {"description": "保留溢利(累计亏损)", "category": "balance_sheet", "source": "hk"},
+    "investment_in_associates": {"description": "联营公司权益", "category": "balance_sheet", "source": "hk"},
+    "investment_in_joint_ventures": {"description": "合营公司权益", "category": "balance_sheet", "source": "hk"},
+    "non_current_assets": {"description": "非流动资产", "category": "balance_sheet", "source": "hk"},
+    "non_current_liabilities": {"description": "非流动负债", "category": "balance_sheet", "source": "hk"},
+    "short_term_debt": {"description": "短期贷款", "category": "balance_sheet", "source": "hk"},
+    "long_term_debt": {"description": "长期贷款", "category": "balance_sheet", "source": "hk"},
+
+    # HK Income Statement 特有字段
+    "gross_profit": {"description": "毛利", "category": "income_statement", "source": "hk"},
+    "profit_before_tax": {"description": "除税前溢利", "category": "income_statement", "source": "hk"},
+    "profit_after_tax": {"description": "除税后溢利", "category": "income_statement", "source": "hk"},
+    "administrative_expenses": {"description": "行政开支", "category": "income_statement", "source": "hk"},
+    "selling_distribution_expenses": {"description": "销售及分销费用", "category": "income_statement", "source": "hk"},
+    "finance_cost": {"description": "融资成本", "category": "income_statement", "source": "hk"},
+    "depreciation_amortization": {"description": "折旧及摊销", "category": "income_statement", "source": "hk"},
+    "operating_cash_flow_per_share": {"description": "每股经营现金流", "category": "market", "source": "hk"},
+
+    # HK Cash Flow 特有字段
+    "capital_expenditure_intangible": {"description": "购建无形资产及其他资产", "category": "cash_flow", "source": "hk"},
+    "interest_paid_operating": {"description": "已付利息(经营)", "category": "cash_flow", "source": "hk"},
+    "interest_paid_financing": {"description": "已付利息(融资)", "category": "cash_flow", "source": "hk"},
+    "taxes_paid": {"description": "已付税项", "category": "cash_flow", "source": "hk"},
+    "interest_received": {"description": "已收利息(投资)", "category": "cash_flow", "source": "hk"},
+    "dividend_received": {"description": "已收股息(投资)", "category": "cash_flow", "source": "hk"},
+    "cash_begin": {"description": "期初现金", "category": "cash_flow", "source": "hk"},
+    "cash_end": {"description": "期末现金", "category": "cash_flow", "source": "hk"},
+    "net_cash_change": {"description": "现金净额", "category": "cash_flow", "source": "hk"},
 }
 
 

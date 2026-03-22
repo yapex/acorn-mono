@@ -1,4 +1,4 @@
-"""Tushare Provider Plugin for pluggy
+"""Provider A Plugin (Tushare) for pluggy
 
 Provides:
 - A股市场数据获取
@@ -27,8 +27,8 @@ def _get_provider() -> TushareProvider:
     return _provider
 
 
-class TushareProviderPlugin:
-    """Tushare data provider plugin"""
+class ProviderAPlugin:
+    """A-Share market data provider plugin"""
 
     @vi_hookimpl
     def vi_markets(self) -> list[str]:
@@ -80,4 +80,4 @@ class TushareProviderPlugin:
 
 
 # Plugin instance for pluggy registration
-plugin = TushareProviderPlugin()
+plugin = ProviderAPlugin()
