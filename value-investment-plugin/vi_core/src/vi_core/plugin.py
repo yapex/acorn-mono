@@ -203,6 +203,20 @@ class ViCorePlugin:
             "description": "Core - fields defined by plugins",
         }
 
+    def get_health_info(self) -> dict[str, Any]:
+        """Return health info including sub-plugins"""
+        sub_plugins = []
+        if self._get_plugin_manager():
+            for plugin in self._get_plugin_manager().get_plugins():
+                name = self._get_plugin_manager().get_name(plugin)
+                if name:
+                    sub_plugins.append(name)
+
+        return {
+            "sub_plugins": sub_plugins,
+            "entry_point_groups": list(VI_ENTRY_POINT_GROUPS),
+        }
+
     @vi_hookimpl
     def vi_handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
         """Handle commands via pluggy"""
@@ -419,7 +433,15 @@ class ViCorePlugin:
             calc_results = self._run_calculators(merged_df, requested_calculators, calculator_config)
             for calc_name, series in calc_results.items():
                 if series is not None and not series.empty:
-                    result_data[calc_name] = {int(year): val for year, val in series.items()}
+                    # 尝试将 index 转换为整数年份
+                    try:
+                        result_data[calc_name] = {int(year): val for year, val in series.items()}
+                    except (ValueError, TypeError):
+                        # 如果 index 不是整数年份（如 'current'），直接返回整个 series
+                        # 使用第一个值的年份作为 key，如果没有则用 "latest"
+                        if len(series) > 0:
+                            first_val = list(series.values())[0]
+                            result_data[calc_name] = {"latest": first_val}
 
         return {
             "success": True,

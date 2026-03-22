@@ -96,11 +96,24 @@ class AcornServer:
 
         # Built-in health check
         if command == "health":
+            plugins_info = []
+            for name, plugin in self.acorn.list_plugins():
+                plugin_info = {"name": name}
+                # 如果插件有 get_health_info 方法，获取详细信息
+                if hasattr(plugin, "get_health_info"):
+                    try:
+                        detailed = plugin.get_health_info()
+                        if detailed:
+                            plugin_info["details"] = detailed
+                    except Exception as e:
+                        plugin_info["error"] = str(e)
+                plugins_info.append(plugin_info)
+
             return {
                 "success": True,
                 "data": {
                     "status": "ok",
-                    "plugins": [name for name, _ in self.acorn.list_plugins()]
+                    "plugins": plugins_info
                 }
             }
 

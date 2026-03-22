@@ -112,7 +112,7 @@ echo '{
   "args": {
     "name": "peg_ratio",
     "required_fields": ["pe_ratio", "net_profit_yoy"],
-    "code": "def calculate(results, config):\n    pe = results.get(\"pe_ratio\", {})\n    growth = results.get(\"net_profit_yoy\", {})\n    if not pe or not growth:\n        return None\n    latest_pe = list(pe.values())[0]\n    latest_growth = list(growth.values())[0]\n    if latest_growth <= 0:\n        return None\n    return {\"current\": round(latest_pe / latest_growth, 2)}",
+    "code": "import pandas as pd\n\ndef calculate(results, config):\n    pe = results.get(\"pe_ratio\", {})\n    growth = results.get(\"net_profit_yoy\", {})\n    if pe.empty or growth.empty:\n        return pd.Series(dtype=float)\n    # 取最新年份的数据\n    latest_year = max(pe.index)\n    latest_pe = pe.loc[latest_year]\n    latest_growth = growth.loc[latest_year]\n    if latest_growth <= 0:\n        return pd.Series(dtype=float)\n    peg = latest_pe / latest_growth\n    return pd.Series({latest_year: round(peg, 2)})",
     "description": "PEG Ratio = P/E / Growth Rate"
   }
 }' | socat - UNIX-CONNECT:~/.acorn/agent.sock
@@ -136,7 +136,7 @@ echo '{
   "args": {
     "name": "roe_score",
     "required_fields": ["roe"],
-    "code": "def calculate(results, config):\n    roe = results.get(\"roe\", {})\n    if not roe:\n        return None\n    latest_roe = list(roe.values())[0]\n    return {\"current\": round(latest_roe / 10, 2)}",
+    "code": "import pandas as pd\n\ndef calculate(results, config):\n    roe = results.get(\"roe\", {})\n    if roe.empty:\n        return pd.Series(dtype=float)\n    # 取最新年份的数据\n    latest_year = max(roe.index)\n    latest_roe = roe.loc[latest_year]\n    return pd.Series({latest_year: round(latest_roe / 10, 2)})",
     "description": "ROE Score = ROE / 10"
   }
 }' | socat - UNIX-CONNECT:~/.acorn/agent.sock
