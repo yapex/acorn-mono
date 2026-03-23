@@ -6,10 +6,7 @@ Acorn CLI
 命令:
     acorn install <source>   安装插件
     acorn list               列出已安装插件
-    acorn enable <name>      启用插件
-    acorn disable <name>     禁用插件
-    acorn config             打开配置 TUI
-    acorn discover           发现可用插件
+    acorn config             配置插件 (子命令: enable/disable/toggle/discover/path)
 """
 
 from __future__ import annotations
@@ -22,6 +19,8 @@ from .registry import PluginRegistry
 from .tui import run_config_tui
 
 app = typer.Typer(name="acorn", help="🌰 Acorn - 插件化命令行工具")
+config_app = typer.Typer(help="配置插件")
+app.add_typer(config_app, name="config")
 
 # 全局注册表路径（可通过环境变量覆盖）
 _registry_path: Optional[str] = None
@@ -106,7 +105,7 @@ def list_plugins() -> None:
     typer.echo("─" * 60)
 
 
-@app.command()
+@config_app.command()
 def enable(name: str) -> None:
     """启用插件
 
@@ -118,7 +117,7 @@ def enable(name: str) -> None:
     typer.echo(f"{'✅' if success else '❌'} {message}")
 
 
-@app.command()
+@config_app.command()
 def disable(name: str) -> None:
     """禁用插件
 
@@ -130,7 +129,7 @@ def disable(name: str) -> None:
     typer.echo(f"{'✅' if success else '❌'} {message}")
 
 
-@app.command()
+@config_app.command()
 def toggle(name: str) -> None:
     """切换插件状态
 
@@ -142,14 +141,7 @@ def toggle(name: str) -> None:
     typer.echo(f"{'✅' if success else '❌'} {message}")
 
 
-@app.command()
-def config() -> None:
-    """打开配置界面"""
-    registry = get_registry()
-    run_config_tui(registry)
-
-
-@app.command()
+@config_app.command()
 def discover() -> None:
     """发现可用插件"""
     registry = get_registry()
@@ -168,11 +160,18 @@ def discover() -> None:
     typer.echo("\n注册命令: acorn install <name>")
 
 
-@app.command()
+@config_app.command()
 def path() -> None:
     """显示注册表路径"""
     registry = get_registry()
     typer.echo(registry.path_str)
+
+
+@config_app.command()
+def tui() -> None:
+    """打开交互式配置界面"""
+    registry = get_registry()
+    run_config_tui(registry)
 
 
 # 动态加载插件命令
