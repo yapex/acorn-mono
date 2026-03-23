@@ -36,8 +36,13 @@ from vi_core.spec import vi_hookimpl, CalculatorSpec  # type: ignore[import]
 
 
 # 默认加载路径
+# editable 模式: vi_calculators/vi_calculators/__init__.py -> ../../../calculators
+# wheel 模式: site-packages/vi_calculators/__init__.py -> ../calculators (force-include)
+_editable_calc_path = Path(__file__).parent.parent.parent / "calculators"
+_wheel_calc_path = Path(__file__).parent.parent / "calculators"
+
 DEFAULT_CALC_PATHS = {
-    "builtin": Path(__file__).parent.parent.parent / "calculators",  # value-investment-plugin/calculators
+    "builtin": _editable_calc_path if _editable_calc_path.exists() else _wheel_calc_path,
     "user": Path.home() / ".value_investment" / "calculators",
 }
 

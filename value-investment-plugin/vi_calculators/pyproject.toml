@@ -11,12 +11,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["vi_calculators"]
+force-include = { "../calculators" = "calculators" }
 
 [tool.hatch.build.targets.editable]
 packages = ["vi_calculators"]
-
-[tool.hatch.build.targets.sdist]
-include = ["*.py"]
 
 # Pluggy entry point
 [project.entry-points."value_investment.calculators"]
