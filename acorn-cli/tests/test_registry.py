@@ -131,3 +131,55 @@ def test_plugin_entry_to_dict_from_dict():
     assert restored.version == entry.version
     assert restored.enabled == entry.enabled
     assert restored.source == entry.source
+
+
+def test_registry_enable_disable_persistence():
+    """测试启用/禁用状态能够正确保存到文件"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        registry_path = Path(tmpdir) / "registry.json"
+
+        # 创建第一个 registry 实例并添加插件
+        registry1 = PluginRegistry(path=registry_path)
+        entry = PluginEntry(name="test", entry_point="test:plugin", enabled=True)
+        registry1._plugins["test"] = entry
+        registry1._save()
+
+        # 禁用插件
+        registry1.disable("test")
+        assert registry1.get("test").enabled is False
+
+        # 创建新的 registry 实例（模拟重新加载）
+        registry2 = PluginRegistry(path=registry_path)
+        assert registry2.get("test").enabled is False, "禁用状态应该被持久化"
+
+        # 启用插件
+        registry2.enable("test")
+        assert registry2.get("test").enabled is True
+
+        # 再次创建新的 registry 实例
+        registry3 = PluginRegistry(path=registry_path)
+        assert registry3.get("test").enabled is True, "启用状态应该被持久化"
+
+
+def test_registry_file_not_corrupted():
+    """测试文件不会被损坏（没有多余字符）"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        registry_path = Path(tmpdir) / "registry.json"
+        registry = PluginRegistry(path=registry_path)
+
+        # 添加多个插件
+        for i in range(3):
+            entry = PluginEntry(name=f"plugin{i}", entry_point=f"p{i}:plugin")
+            registry._plugins[f"plugin{i}"] = entry
+
+        # 多次保存和加载
+        for _ in range(5):
+            registry.toggle("plugin0")
+            registry._save()
+
+            # 验证文件可以正确解析
+            with open(registry_path) as f:
+                import json
+                data = json.load(f)  # 如果文件损坏会抛出异常
+                assert "plugins" in data
+                assert len(data["plugins"]) == 3

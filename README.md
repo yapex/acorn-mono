@@ -14,19 +14,20 @@ acorn-mono/                      # Monorepo 工作空间
 │   │   ├── models.py            # TaskContext 模型
 │   │   ├── plugins/             # 内置插件
 │   │   │   ├── sandbox.py       # 沙箱隔离 (Namespace/Subprocess)
-│   │   │   └── evo_manager.py    # 进化管理器
+│   │   │   └── evo_manager.py   # 进化管理器
 │   │   └── __init__.py          # 导出核心 API
 │   └── tests/                   # 测试
-├── acorn-agent/                 # 持久化 Agent 服务
-│   ├── src/acorn_agent/
-│   │   ├── cli.py               # CLI 入口
+├── acorn-cli/                   # CLI 工具
+│   ├── src/acorn_cli/
+│   │   ├── cli.py               # CLI 入口 (acorn 命令)
 │   │   ├── server.py            # Unix Socket 服务端
-│   │   └── client.py            # 客户端 SDK
-│   └── README.md                # Agent 使用文档
-├── examples-plugin/          # 示例插件
-├── pyproject.toml               # 工作空间配置
-├── start-agent.sh               # 启动 Agent
-└── stop-agent.sh                # 停止 Agent
+│   │   ├── client.py            # 客户端 SDK
+│   │   ├── registry.py          # 插件注册表
+│   │   └── tui.py               # TUI 配置界面
+│   └── README.md                # 使用文档
+├── value-investment-plugin/     # 价值投资插件
+├── examples-plugin/             # 示例插件
+└── pyproject.toml               # 工作空间配置
 ```
 
 ## 快速开始
@@ -34,45 +35,31 @@ acorn-mono/                      # Monorepo 工作空间
 ### 1. 安装依赖
 
 ```bash
-# 安装核心包和 Agent
+# 安装核心包和 CLI
 uv sync
 
 # 或安装所有包
 uv sync --all-packages
 ```
 
-### 2. 启动 Agent 服务
+### 2. 使用 CLI
 
 ```bash
-# 前台运行
-./start-agent.sh
+# 列出已安装插件
+acorn list
 
-# 或直接运行
-acorn-agent
-```
+# 配置插件（启用/禁用）
+acorn config enable <plugin>
+acorn config disable <plugin>
 
-### 3. 使用客户端
+# 交互式配置
+acorn config tui
 
-```python
-from acorn_agent import AcornClient
+# 查询股票数据 (vi 插件命令)
+acorn vi query 600519 -r roe,gross_margin -y 10
 
-client = AcornClient()
-
-# 方式 1: execute
-result = client.execute("echo", {"message": "hello"})
-
-# 方式 2: 快捷调用
-result = client("echo", message="hello")
-
-print(result)  # {"success": true, "data": "hello"}
-```
-
-### 4. 停止服务
-
-```bash
-./stop-agent.sh
-# 或
-pkill acorn-agent
+# 列出可用字段
+acorn vi list-fields
 ```
 
 ## 开发插件
@@ -95,6 +82,10 @@ requires-python = ">=3.12"
 [project.entry-points."yapex.acorn.plugins"]
 my_plugin = "my_plugin:plugin"
 
+# 可选：贡献 CLI 命令
+[project.entry-points."acorn.cli.commands"]
+my = "my_plugin.cli:app"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -110,7 +101,8 @@ my-plugin/
 ├── pyproject.toml
 └── src/
     └── my_plugin/
-        └── __init__.py
+        ├── __init__.py      # 插件实现
+        └── cli.py           # CLI 命令 (可选)
 ```
 
 ### 4. 实现插件
@@ -123,11 +115,11 @@ class MyPlugin:
     @property
     def commands(self) -> list[str]:
         return ["my_command"]
-    
+
     @hookimpl
     def get_capabilities(self) -> dict:
         return {"commands": ["my_command"], "args": {}}
-    
+
     @hookimpl
     def handle(self, task) -> dict:
         return {"success": True, "data": "done"}
@@ -135,14 +127,31 @@ class MyPlugin:
 plugin = MyPlugin()
 ```
 
-### 5. 安装与测试
+### 5. 实现 CLI 命令 (可选)
+
+```python
+# src/my_plugin/cli.py
+import typer
+
+app = typer.Typer(help="我的插件命令")
+
+@app.command()
+def hello(name: str):
+    """打招呼"""
+    typer.echo(f"Hello, {name}!")
+```
+
+### 6. 安装与测试
 
 ```bash
 # 安装插件
 uv pip install -e .
 
+# 注册到 acorn
+acorn install my-acorn-plugin
+
 # 测试
-cd acorn-core && uv run pytest tests/ -q
+acorn my hello world
 ```
 
 ## 插件接口
@@ -171,18 +180,22 @@ acorn.list_plugins()              # 列出已加载插件
 acorn.list_capabilities()          # 列出所有能力
 ```
 
-### Acorn Agent (客户端)
+### Acorn CLI Client (RPC)
 
 ```python
-from acorn_agent import AcornClient
+from acorn_cli.client import AcornClient
 
 client = AcornClient()
 
 # 执行命令
 result = client.execute("echo", {"message": "hello"})
 
-# 快捷调用
-result = client("echo", message="hello")
+# 查询股票数据
+result = client.execute("vi_query", {
+    "symbol": "600519",
+    "fields": "roe,gross_margin",
+    "years": 10,
+})
 ```
 
 ## Task & Response

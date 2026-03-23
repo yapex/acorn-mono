@@ -6,6 +6,7 @@ Acorn 官方示例插件，作为开发新插件的参考模板。
 
 ```bash
 uv pip install -e examples-plugin/
+acorn install examples-plugin
 ```
 
 ## 命令
@@ -15,6 +16,15 @@ uv pip install -e examples-plugin/
 | `echo` | 回显消息 | `message` (string, required) |
 
 ## 使用
+
+### 通过 CLI
+
+```bash
+# 通过 RPC 调用 (需启动 acorn-agent)
+acorn-agent call echo --args '{"message": "Hello, Acorn!"}'
+```
+
+### 通过 Python API
 
 ```python
 from acorn_core import Acorn, Task
@@ -27,13 +37,14 @@ response = acorn.execute(task)
 print(response.data)  # Hello, Acorn!
 ```
 
-## 通过 Agent 客户端
+### 通过 RPC 客户端
 
 ```python
-from acorn_agent import AcornClient
+from acorn_cli.client import AcornClient
 
 client = AcornClient()
-result = client("echo", message="hello")
+result = client.execute("echo", {"message": "hello"})
+print(result)  # {"success": true, "data": "hello"}
 ```
 
 ## 作为模板
@@ -54,5 +65,18 @@ examples-plugin/
 └── src/
     └── examples_plugin/
         ├── __init__.py
-        └── echo.py
+        ├── echo.py           # 插件实现
+        └── cli.py            # CLI 命令 (可选)
+```
+
+## Entry Points
+
+```toml
+# pyproject.toml
+[project.entry-points."yapex.acorn.plugins"]
+examples = "examples_plugin:plugin"
+
+# 可选：贡献 CLI 命令
+[project.entry-points."acorn.cli.commands"]
+example = "examples_plugin.cli:app"
 ```

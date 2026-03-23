@@ -157,10 +157,29 @@ df = provider.fetch_market("600519", {"market_cap", "pe_ratio"})
 
 | 命令 | 参数 | 说明 |
 |------|------|------|
-| `query` | symbol, fields, end_year?, years?, calculators? | 查询财务数据 |
-| `list_fields` | source?, prefix? | 列出所有可用字段 |
-| `list_calculators` | - | 列出所有计算器 |
-| `register_calculator` | name, code, required_fields, description? | 动态注册计算器 |
+| `vi_query` | symbol, fields, end_year?, years?, calculators? | 查询财务数据 |
+| `vi_list_fields` | source?, prefix? | 列出所有可用字段 |
+| `vi_list_calculators` | - | 列出所有计算器 |
+| `vi_register_calculator` | name, code, required_fields, description? | 动态注册计算器 |
+
+### CLI 使用
+
+```bash
+# 查询财务数据
+acorn vi query 600519 -r roe,gross_margin -y 10
+
+# 列出可用字段
+acorn vi list-fields --source ifrs
+
+# 列出可用计算器
+acorn vi list-calculators
+```
+
+### RPC 调用
+
+```bash
+echo '{"command": "vi_query", "args": {"symbol": "600519", "fields": "roe"}}' | nc -U ~/.acorn/agent.sock
+```
 
 ## 插件发现
 

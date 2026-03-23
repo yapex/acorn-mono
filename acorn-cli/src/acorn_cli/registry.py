@@ -201,6 +201,9 @@ class PluginRegistry:
                 module_name = package_name.replace("-", "_")
                 entry_point = f"{module_name}:plugin"
 
+        # 获取版本号
+        version = self._get_package_version(package_name)
+
         # 注册到注册表
         entry = PluginEntry(
             name=plugin_name,

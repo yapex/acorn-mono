@@ -54,33 +54,45 @@ uv sync
 export TUSHARE_TOKEN="your_token_here"
 ```
 
-### 使用示例
+### CLI 使用
+
+```bash
+# 查询财务数据
+acorn vi query 600519 -r roe,gross_margin -y 10
+
+# 列出可用字段
+acorn vi list-fields
+
+# 列出可用计算器
+acorn vi list-calculators
+```
+
+### Python API
 
 ```python
-from vi_core.plugin import plugin
+from acorn_cli.client import AcornClient
 
-# 设置 Plugin Manager
-plugin.set_plugin_manager(pm)
+client = AcornClient()
 
 # 查询财务数据
-result = plugin._handle("query", {
+result = client.execute("vi_query", {
     "symbol": "600519",
     "fields": "total_assets,roe,market_cap",
     "years": 5,
 })
 
 # 查询并计算隐含增长率
-result = plugin._handle("query", {
+result = client.execute("vi_query", {
     "symbol": "600519",
     "fields": "operating_cash_flow,market_cap",
     "calculators": "implied_growth",
 })
 
 # 列出所有可用字段
-result = plugin._handle("list_fields", {})
+result = client.execute("vi_list_fields", {})
 
 # 列出所有计算器
-result = plugin._handle("list_calculators", {})
+result = client.execute("vi_list_calculators", {})
 ```
 
 ## 扩展点
