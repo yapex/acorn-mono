@@ -14,7 +14,6 @@ def test_cli_help_shows_core_commands():
     assert result.exit_code == 0
     assert "install" in result.stdout
     assert "list" in result.stdout
-    assert "plugins" in result.stdout
 
 
 def test_cli_list_shows_plugins():
@@ -48,13 +47,7 @@ def test_cli_config_command_exists():
     assert result.exit_code == 0
 
 
-def test_cli_plugins_command_exists():
-    """acorn plugins 命令存在"""
-    result = runner.invoke(app, ["plugins", "--help"])
-    assert result.exit_code == 0
-
-
-def test_cli_plugins_echo_exists():
-    """acorn plugins echo 命令存在"""
-    result = runner.invoke(app, ["plugins", "echo", "--help"])
+def test_cli_echo_command_exists():
+    """acorn echo 命令存在（插件命令）"""
+    result = runner.invoke(app, ["echo", "--help"])
     assert result.exit_code == 0

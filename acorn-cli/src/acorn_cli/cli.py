@@ -2,12 +2,6 @@
 Acorn CLI
 =========
 插件管理命令行工具，使用 typer 实现。
-
-命令:
-    acorn install <source>   安装插件
-    acorn list               列出已安装插件
-    acorn config             交互式配置插件
-    acorn plugins            插件贡献的命令
 """
 
 from __future__ import annotations
@@ -19,17 +13,19 @@ import typer
 from .registry import PluginRegistry
 from .tui import run_config_tui
 
-app = typer.Typer(name="acorn", help="🌰 Acorn - 插件化命令行工具")
-plugins_app = typer.Typer(help="插件贡献的命令")
-app.add_typer(plugins_app, name="plugins")
-
-# 全局注册表路径（可通过环境变量覆盖）
-_registry_path: Optional[str] = None
+# 主应用
+app = typer.Typer(
+    name="acorn",
+    help="🌰 Acorn - 插件化命令行工具\n\n"
+         "插件命令:\n"
+         "  echo                         Echo 插件",
+    epilog="运行 'acorn <command> --help' 查看详细帮助",
+)
 
 
 def get_registry() -> PluginRegistry:
     """获取注册表实例"""
-    return PluginRegistry(path=_registry_path)
+    return PluginRegistry()
 
 
 @app.command()
@@ -115,11 +111,7 @@ def config() -> None:
 
 @app.command()
 def enable(name: str) -> None:
-    """启用插件
-
-    Args:
-        name: 插件名称
-    """
+    """启用插件"""
     registry = get_registry()
     success, message = registry.enable(name)
     typer.echo(f"{'✅' if success else '❌'} {message}")
@@ -127,11 +119,7 @@ def enable(name: str) -> None:
 
 @app.command()
 def disable(name: str) -> None:
-    """禁用插件
-
-    Args:
-        name: 插件名称
-    """
+    """禁用插件"""
     registry = get_registry()
     success, message = registry.disable(name)
     typer.echo(f"{'✅' if success else '❌'} {message}")
@@ -139,11 +127,7 @@ def disable(name: str) -> None:
 
 @app.command()
 def toggle(name: str) -> None:
-    """切换插件状态
-
-    Args:
-        name: 插件名称
-    """
+    """切换插件状态"""
     registry = get_registry()
     success, message = registry.toggle(name)
     typer.echo(f"{'✅' if success else '❌'} {message}")
@@ -175,7 +159,7 @@ def path() -> None:
     typer.echo(registry.path_str)
 
 
-# 动态加载插件命令到 plugins 子命令组
+# 动态加载插件命令到主 app
 def load_plugin_commands() -> None:
     """从 entry_points 加载插件贡献的 CLI 命令"""
     from importlib.metadata import entry_points
@@ -183,7 +167,7 @@ def load_plugin_commands() -> None:
     try:
         for ep in entry_points(group="acorn.cli.commands"):
             plugin_app = ep.load()
-            plugins_app.add_typer(plugin_app, name=ep.name)
+            app.add_typer(plugin_app, name=ep.name)
     except Exception:
         pass
 
