@@ -14,13 +14,13 @@ def test_cli_help_shows_core_commands():
     assert result.exit_code == 0
     assert "install" in result.stdout
     assert "list" in result.stdout
+    assert "plugins" in result.stdout
 
 
 def test_cli_list_shows_plugins():
     """acorn list 显示已安装插件"""
     result = runner.invoke(app, ["list"])
     assert result.exit_code == 0
-    # 应该显示插件列表（不包含"暂无"）
     assert "已安装插件" in result.stdout
 
 
@@ -31,18 +31,30 @@ def test_cli_install_command_exists():
 
 
 def test_cli_enable_command_exists():
-    """acorn config enable 命令存在"""
-    result = runner.invoke(app, ["config", "enable", "--help"])
+    """acorn enable 命令存在"""
+    result = runner.invoke(app, ["enable", "--help"])
     assert result.exit_code == 0
 
 
 def test_cli_disable_command_exists():
-    """acorn config disable 命令存在"""
-    result = runner.invoke(app, ["config", "disable", "--help"])
+    """acorn disable 命令存在"""
+    result = runner.invoke(app, ["disable", "--help"])
     assert result.exit_code == 0
 
 
 def test_cli_config_command_exists():
     """acorn config 命令存在"""
     result = runner.invoke(app, ["config", "--help"])
+    assert result.exit_code == 0
+
+
+def test_cli_plugins_command_exists():
+    """acorn plugins 命令存在"""
+    result = runner.invoke(app, ["plugins", "--help"])
+    assert result.exit_code == 0
+
+
+def test_cli_plugins_echo_exists():
+    """acorn plugins echo 命令存在"""
+    result = runner.invoke(app, ["plugins", "echo", "--help"])
     assert result.exit_code == 0
