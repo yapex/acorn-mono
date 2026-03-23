@@ -7,6 +7,9 @@ requires-python = ">=3.12"
 [project.entry-points."yapex.acorn.plugins"]
 echo = "examples_plugin.echo:plugin"
 
+[project.entry-points."acorn.cli.commands"]
+echo = "examples_plugin.cli:app"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
