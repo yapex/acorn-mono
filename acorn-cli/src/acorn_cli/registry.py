@@ -163,7 +163,12 @@ class PluginRegistry:
         entry_point: str | None = None,
     ) -> tuple[bool, str]:
         """
-        安装插件
+        注册插件到 registry
+
+        注意：此命令只记录插件信息，不执行实际安装。
+        实际安装请使用 uv 命令：
+          - 本地开发: uv pip install -e <path>
+          - 生产环境: uv tool install acorn-cli --with-editable <path>
 
         Args:
             source: 插件来源 (包名/本地路径/git URL)
@@ -177,25 +182,13 @@ class PluginRegistry:
         source_path = Path(source)
         if source.startswith(("http://", "https://", "git@", "git+")):
             source_type = "git"
+            package_name = source.split("/")[-1].replace(".git", "")
         elif source_path.exists():
             source_type = "local"
+            package_name = source_path.name
         else:
             source_type = "pypi"
-
-        # 执行 uv pip install
-        if source_type == "pypi":
-            success, output = self._run_uv(["pip", "install", source])
             package_name = source
-        elif source_type == "local":
-            success, output = self._run_uv(["pip", "install", "-e", source])
-            package_name = source_path.name
-        else:  # git
-            success, output = self._run_uv(["pip", "install", source])
-            # 从 URL 提取包名
-            package_name = source.split("/")[-1].replace(".git", "")
-
-        if not success:
-            return False, f"Installation failed: {output}"
 
         # 推断或使用提供的名称
         plugin_name = name or package_name.replace("-", "_").replace(" ", "_")
@@ -207,9 +200,6 @@ class PluginRegistry:
                 # 尝试默认格式
                 module_name = package_name.replace("-", "_")
                 entry_point = f"{module_name}:plugin"
-
-        # 获取版本
-        version = self._get_package_version(package_name)
 
         # 注册到注册表
         entry = PluginEntry(
