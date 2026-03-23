@@ -13,6 +13,9 @@ import typer
 from .registry import PluginRegistry
 from .tui import run_config_tui
 
+# config 子命令应用
+config_app = typer.Typer(help="配置插件")
+
 # 主应用
 app = typer.Typer(
     name="acorn",
@@ -21,6 +24,9 @@ app = typer.Typer(
          "  echo                         Echo 插件",
     epilog="运行 'acorn <command> --help' 查看详细帮助",
 )
+
+# 将 config_app 注册为子命令
+app.add_typer(config_app, name="config")
 
 
 def get_registry() -> PluginRegistry:
@@ -102,14 +108,14 @@ def list_plugins() -> None:
     typer.echo("─" * 60)
 
 
-@app.command()
-def config() -> None:
+@config_app.command()
+def tui() -> None:
     """交互式配置插件 (TUI)"""
     registry = get_registry()
     run_config_tui(registry)
 
 
-@app.command()
+@config_app.command()
 def enable(name: str) -> None:
     """启用插件"""
     registry = get_registry()
@@ -117,7 +123,7 @@ def enable(name: str) -> None:
     typer.echo(f"{'✅' if success else '❌'} {message}")
 
 
-@app.command()
+@config_app.command()
 def disable(name: str) -> None:
     """禁用插件"""
     registry = get_registry()
@@ -125,7 +131,7 @@ def disable(name: str) -> None:
     typer.echo(f"{'✅' if success else '❌'} {message}")
 
 
-@app.command()
+@config_app.command()
 def toggle(name: str) -> None:
     """切换插件状态"""
     registry = get_registry()
@@ -133,7 +139,7 @@ def toggle(name: str) -> None:
     typer.echo(f"{'✅' if success else '❌'} {message}")
 
 
-@app.command()
+@config_app.command()
 def discover() -> None:
     """发现可用插件"""
     registry = get_registry()
@@ -152,7 +158,7 @@ def discover() -> None:
     typer.echo("\n注册命令: acorn install <name>")
 
 
-@app.command()
+@config_app.command()
 def path() -> None:
     """显示注册表路径"""
     registry = get_registry()

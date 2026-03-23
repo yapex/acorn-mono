@@ -71,19 +71,19 @@ class TestVITPlugin:
 class TestPluginRegistry:
     """插件注册表测试"""
 
-    def test_acorn_discover(self):
-        """acorn discover 能发现可用插件"""
+    def test_acorn_config_discover(self):
+        """acorn config discover 能发现可用插件"""
         result = subprocess.run(
-            ["uv", "run", "acorn", "discover"],
+            ["uv", "run", "acorn", "config", "discover"],
             capture_output=True,
             text=True,
         )
         assert result.returncode == 0
 
-    def test_acorn_path(self):
-        """acorn path 显示注册表路径"""
+    def test_acorn_config_path(self):
+        """acorn config path 显示注册表路径"""
         result = subprocess.run(
-            ["uv", "run", "acorn", "path"],
+            ["uv", "run", "acorn", "config", "path"],
             capture_output=True,
             text=True,
         )

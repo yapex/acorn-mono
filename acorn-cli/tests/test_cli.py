@@ -29,15 +29,15 @@ def test_cli_install_command_exists():
     assert result.exit_code == 0
 
 
-def test_cli_enable_command_exists():
-    """acorn enable 命令存在"""
-    result = runner.invoke(app, ["enable", "--help"])
+def test_cli_config_enable_command_exists():
+    """acorn config enable 命令存在"""
+    result = runner.invoke(app, ["config", "enable", "--help"])
     assert result.exit_code == 0
 
 
-def test_cli_disable_command_exists():
-    """acorn disable 命令存在"""
-    result = runner.invoke(app, ["disable", "--help"])
+def test_cli_config_disable_command_exists():
+    """acorn config disable 命令存在"""
+    result = runner.invoke(app, ["config", "disable", "--help"])
     assert result.exit_code == 0
 
 
