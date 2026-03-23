@@ -43,44 +43,32 @@ def evolution_mode(intent: str | None = None, behavior: str | None = None, confi
     # 阶段 1: 询问需求
     # -------------------------------------------------------------------------
     if not intent:
-        print("need: intent=?", file=sys.stdout, flush=True)
-        print("need: input=text", file=sys.stdout, flush=True)
-        print("need: output=text", file=sys.stdout, flush=True)
-        print("need: expected_behavior=?", file=sys.stdout, flush=True)
+        print("need: intent", file=sys.stdout, flush=True)
+        print("need: behavior", file=sys.stdout, flush=True)
         return
     
     # -------------------------------------------------------------------------
     # 阶段 2: 接收需求并生成代码
     # -------------------------------------------------------------------------
-    print(f"info: intent={intent}", file=sys.stdout, flush=True)
-    
-    # 加载 Skill (这里硬编码一个翻译场景的 Skill)
-    print("loading_skill: translation.md", file=sys.stdout, flush=True)
+    # 加载 Skill
+    print(f"skill: translation", file=sys.stdout, flush=True)
     skill_content = get_translation_skill()
-    print(f"skill_loaded: {len(skill_content)} chars", file=sys.stdout, flush=True)
     
     # 根据 behavior 生成代码
-    print("generating_code: ...", file=sys.stdout, flush=True)
-    
     generated_code = generate_translation_code(intent, behavior or "")
     
-    print("status: code_generated", file=sys.stdout, flush=True)
-    print("code: |", file=sys.stdout, flush=True)
+    print("code:", file=sys.stdout, flush=True)
     for line in generated_code.split('\n'):
-        print(f"    {line}", file=sys.stdout, flush=True)
+        print(f"  {line}", file=sys.stdout, flush=True)
     
     # -------------------------------------------------------------------------
     # 阶段 3: 确认应用
     # -------------------------------------------------------------------------
     if confirm:
-        print("status: applying", file=sys.stdout, flush=True)
-        # 应用代码（这里直接打印，实际应该写入文件）
         apply_code(generated_code)
-        print("status: applied", file=sys.stdout, flush=True)
-        print("capability_id: translation_001", file=sys.stdout, flush=True)
+        print("done", file=sys.stdout, flush=True)
     else:
-        print("need: --confirm to apply", file=sys.stdout, flush=True)
-        print("need: --behavior '具体行为描述' to provide behavior", file=sys.stdout, flush=True)
+        print("need: --confirm", file=sys.stdout, flush=True)
 
 
 # =============================================================================
