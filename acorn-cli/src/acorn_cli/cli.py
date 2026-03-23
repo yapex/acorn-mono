@@ -236,6 +236,27 @@ def path() -> None:
     typer.echo(registry.path_str)
 
 
+# =============================================================================
+# Evolution 子命令 (原型)
+# =============================================================================
+
+@app.command()
+def evolution(
+    intent: str | None = typer.Option(None, "--intent", help="意图"),
+    behavior: str | None = typer.Option(None, "--behavior", help="期望行为"),
+    confirm: bool = typer.Option(False, "--confirm", help="确认应用"),
+    evolve: bool = typer.Option(False, "--evolve", help="进入进化模式"),
+) -> None:
+    """Evolution System - 自我进化原型"""
+    from .evolution import evolution_mode, echo_current
+    import sys
+    
+    if evolve:
+        evolution_mode(intent=intent, behavior=behavior, confirm=confirm)
+    else:
+        typer.echo("请使用 --evolve 进入进化模式")
+
+
 # 动态加载插件命令到主 app
 def load_plugin_commands() -> None:
     """从 entry_points 加载插件贡献的 CLI 命令"""
