@@ -93,10 +93,20 @@ def list_calculators():
     response = acorn.execute(task)
 
     if response.success:
-        calcs = response.data or []
+        data = response.data or {}
+        calcs = data.get("calculators", []) if isinstance(data, dict) else data
         if calcs:
             for calc in calcs:
-                typer.echo(f"  • {calc}")
+                # calc 可能是 dict 或 str
+                if isinstance(calc, dict):
+                    name = calc.get("name", str(calc))
+                    desc = calc.get("description", "")
+                    if desc:
+                        typer.echo(f"  • {name}: {desc}")
+                    else:
+                        typer.echo(f"  • {name}")
+                else:
+                    typer.echo(f"  • {calc}")
         else:
             typer.echo("No calculators found")
     else:
