@@ -500,6 +500,14 @@ class ViCorePlugin:
         # Run each requested calculator via hook
         for calc_name in calculator_names:
             if calc_name not in calc_registry:
+                # 计算器不存在，发布扩展请求事件
+                event_bus = self._event_bus or self._get_default_event_bus()
+                event_bus.publish(
+                    "calculator.extension_needed",
+                    sender=self,
+                    calculator_name=calc_name,
+                    extension_prompt=self._generate_calculator_extension_prompt(calc_name),
+                )
                 continue
 
             calc_spec = calc_registry[calc_name]
@@ -556,19 +564,94 @@ class ViCorePlugin:
         return {"success": True, "data": {"calculators": calc_list}}
 
     def _register_calculator(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Register a calculator dynamically"""
+        """Register a calculator dynamically with sandbox validation"""
         if not self._get_plugin_manager():
             return {"success": False, "error": "Plugin manager not initialized"}
 
+        name = args.get("name")
+        code = args.get("code")
+        required_fields = args.get("required_fields", [])
+
+        # 1. 沙箱验证代码
+        try:
+            from acorn_core.sandbox import validate_calculator_code
+            import pandas as pd
+
+            # 构造测试数据
+            test_data = {
+                "data": {field: pd.Series([1.0, 2.0, 3.0]) for field in required_fields},
+                "config": {}
+            }
+
+            validation = validate_calculator_code(code, test_data, {"pd": pd})
+
+            if not validation["success"]:
+                return {
+                    "success": False,
+                    "error": f"Sandbox validation failed: {validation['error']}"
+                }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Validation error: {str(e)}"
+            }
+
+        # 2. 调用 hook 注册
         result = self._get_plugin_manager().hook.vi_register_calculator(
-            name=args.get("name"),
-            code=args.get("code"),
-            required_fields=args.get("required_fields", []),
+            name=name,
+            code=code,
+            required_fields=required_fields,
             description=args.get("description", ""),
             namespace=args.get("namespace", "dynamic"),
         )
-        return result if result else {"success": True, "data": {"message": "Calculator registered"}}
 
+        return result if result else {"success": True, "data": {"message": f"Calculator '{name}' registered"}}
+
+    def _generate_calculator_extension_prompt(self, calculator_name: str) -> str:
+        """
+        生成 Calculator 扩展 Prompt
+
+        读取 skill 文件内容，告诉 LLM Agent 如何创建新的 Calculator。
+        """
+        from pathlib import Path
+
+        # 尝试读取 skill 文件
+        skill_paths = [
+            Path(".acorn/skills/calculator-creation/SKILL.md"),
+            Path.home() / ".pi/agent/skills/calculator-creation/SKILL.md",
+        ]
+
+        skill_content = None
+        for skill_path in skill_paths:
+            if skill_path.exists():
+                skill_content = skill_path.read_text(encoding="utf-8")
+                break
+
+        if skill_content:
+            # 返回 skill 内容 + 具体请求
+            return f"""## 扩展请求
+
+calculator_name: {calculator_name}
+
+## 创建规范
+
+{skill_content}"""
+        else:
+            # 简单 fallback
+            return f"""要创建计算器 '{calculator_name}'，请提供：
+
+1. field_name: {calculator_name}
+2. required_fields: 需要的输入字段列表
+3. code: 计算器代码
+
+代码格式：
+```python
+REQUIRED_FIELDS = ["field_a", "field_b"]
+
+def calculate(data, config):
+    return data["field_a"] / data["field_b"]
+```"""
 
     def on_load(self) -> None:
         """Called when plugin is loaded (Genes lifecycle)"""

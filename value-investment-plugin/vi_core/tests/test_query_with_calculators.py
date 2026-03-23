@@ -1,6 +1,7 @@
 """Tests for query command with calculators integration"""
 import pytest
 import pluggy
+import pandas as pd
 
 from vi_core import ValueInvestmentSpecs
 from vi_core.plugin import plugin
@@ -24,14 +25,15 @@ class MockProvider:
     
     @vi_hookimpl
     def vi_fetch_financials(self, symbol, fields, end_year, years=10):
-        return {
-            "operating_cash_flow": {2024: 100e8, 2023: 90e8},
-            "capital_expenditure": {2024: 20e8, 2023: 18e8},
-        }
+        return pd.DataFrame({
+            "fiscal_year": [2024, 2023],
+            "operating_cash_flow": [100e8, 90e8],
+            "capital_expenditure": [20e8, 18e8],
+        })
     
     @vi_hookimpl
     def vi_fetch_market(self, symbol, fields):
-        return {"market_cap": {2024: 5000e8}}
+        return pd.DataFrame({"fiscal_year": [2024], "market_cap": [5000e8]})
 
 
 class TestQueryWithCalculators:

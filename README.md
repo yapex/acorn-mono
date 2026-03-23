@@ -13,7 +13,7 @@ acorn-mono/                      # Monorepo 工作空间
 │   │   ├── types.py             # Task, Response 类型
 │   │   ├── models.py            # TaskContext 模型
 │   │   ├── plugins/             # 内置插件
-│   │   │   ├── sandbox.py       # 沙箱隔离 (Namespace/Subprocess)
+│   │   │   ├── sandbox.py       # 沙箱隔离
 │   │   │   └── evo_manager.py   # 进化管理器
 │   │   └── __init__.py          # 导出核心 API
 │   └── tests/                   # 测试
@@ -56,10 +56,13 @@ acorn config disable <plugin>
 acorn config tui
 
 # 查询股票数据 (vi 插件命令)
-acorn vi query 600519 -r roe,gross_margin -y 10
+acorn vi query 600519 --fields roe,gross_margin --years 10
 
 # 列出可用字段
 acorn vi list-fields
+
+# 列出可用计算器
+acorn vi list-calculators
 ```
 
 ## 开发插件
@@ -214,21 +217,6 @@ response = acorn.execute(task)
 # response.error    - 失败时错误信息
 ```
 
-## 沙箱隔离
-
-acorn-core 内置沙箱功能，支持不同隔离级别：
-
-```python
-from acorn_core import get_default_sbox
-from acorn_core.plugins.sandbox import NamespaceSandbox, SubprocessSandbox
-
-# 默认沙箱 (NamespaceSandbox)
-sandbox = get_default_sandbox()
-
-# 进程级隔离
-sandbox = SubprocessSandbox()
-```
-
 ## 测试
 
 ```bash
@@ -246,3 +234,90 @@ for name, _ in acorn.list_plugins():
 ```
 
 内置插件：`acorn_core.plugins.evo_manager` 提供 `capabilities`, `error_log` 命令。
+
+## 进化模式 (Evolution)
+
+通过命令行创建新的计算器（Calculator）。
+
+### 基本流程
+
+```bash
+# 1. 检查计算器是否存在
+acorn evolution --intent check --field-name graham_value
+
+# 输出: not_found: graham_value
+#       intent: create
+#       need: --intent create ...
+
+# 2. 创建计算器
+acorn evolution \
+  --intent create \
+  --field-name graham_value \
+  --formula "sqrt(22.5 * basic_eps * book_value_per_share)" \
+  --required-fields "basic_eps,book_value_per_share,close" \
+  --description "格雷厄姆估值" \
+  --unit "yuan" \
+  --code '<Python 代码>' \
+  --confirm
+```
+
+### 计算器代码规范
+
+```python
+REQUIRED_FIELDS = ["basic_eps", "book_value_per_share", "close"]
+
+def calculate(data, config):
+    """
+    格雷厄姆估值计算器
+    
+    Args:
+        data: dict[str, pd.Series]，字段数据
+        config: dict，用户配置
+        
+    Returns:
+        pd.Series，计算结果
+    """
+    import pandas as pd
+    
+    eps = data["basic_eps"]
+    bps = data["book_value_per_share"]
+    close = data["close"]
+    
+    graham_value = (22.5 * eps * bps) ** 0.5
+    margin_of_safety = (graham_value - close) / graham_value
+    
+    return pd.Series({
+        "graham_value": graham_value,
+        "current_price": close,
+        "margin_of_safety": margin_of_safety,
+    })
+```
+
+### 计算器加载规则
+
+计算器文件保存在执行目录下的 `calculators/` 子目录：
+
+| 执行目录 | calculators 位置 |
+|---------|----------------|
+| `acorn-mono/` | `acorn-mono/calculators/` |
+| `value-investment-plugin/` | `value-investment-plugin/calculators/` |
+| `/tmp` | `/tmp/calculators/` (自动创建) |
+
+加载优先级（后者覆盖前者）：
+1. `builtin` - 内置计算器 (value-investment-plugin/calculators/)
+2. `cwd` - 当前工作目录下的 calculators/
+
+### 常用字段参考
+
+| 字段名 | 说明 |
+|-------|------|
+| `basic_eps` | 基本每股收益 |
+| `book_value_per_share` | 每股净资产 |
+| `close` | 收盘价 |
+| `operating_cash_flow` | 经营现金流 |
+| `market_cap` | 总市值 |
+| `net_profit` | 净利润 |
+| `total_equity` | 所有者权益 |
+| `roe` | 净资产收益率 |
+| `roa` | 资产收益率 |
+| `gross_margin` | 毛利率 |

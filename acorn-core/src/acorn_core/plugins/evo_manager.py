@@ -27,6 +27,7 @@ class EvoManager:
         self.max_log = 100
         self.unsupported_fields: list[dict[str, Any]] = []  # 系统标准字段定义中没有
         self.unfilled_fields: list[dict[str, Any]] = []  # 标准字段中但 Provider 不支持或返回空
+        self.extension_requests: list[dict[str, Any]] = []  # Calculator 扩展请求
         self._event_bus = event_bus  # IOC: 由外部注入或延迟初始化
 
     def _get_default_event_bus(self) -> EventBus:
@@ -58,10 +59,31 @@ class EvoManager:
         if len(self.unfilled_fields) > self.max_log:
             self.unfilled_fields = self.unfilled_fields[-self.max_log:]
 
+    def _on_calculator_extension_needed(self, event_type: str, sender: Any, **kwargs: Any) -> None:
+        """订阅 calculator.extension_needed 事件，打印扩展 Prompt 给 LLM Agent"""
+        calculator_name = kwargs.get("calculator_name", "unknown")
+        extension_prompt = kwargs.get("extension_prompt", "")
+
+        # 记录请求
+        self.extension_requests.append({
+            "calculator_name": calculator_name,
+            "extension_prompt": extension_prompt,
+        })
+        if len(self.extension_requests) > self.max_log:
+            self.extension_requests = self.extension_requests[-self.max_log:]
+
+        # 直接打印给 LLM Agent
+        print(f"\n{'='*60}")
+        print(f"need: calculator_creation")
+        print(f"calculator_name: {calculator_name}")
+        print(f"{'='*60}")
+        print(extension_prompt)
+        print(f"{'='*60}\n")
+
     @property
     def commands(self) -> list[str]:
         """声明支持的命令"""
-        return ["capabilities", "error_log"]
+        return ["capabilities", "error_log", "extension_prompts"]
 
     @hookimpl
     def get_capabilities(self) -> dict[str, Any]:
@@ -81,6 +103,7 @@ class EvoManager:
         self.error_log = []
         self._event_bus.on("vi.field.unsupported")(self._on_field_unsupported)
         self._event_bus.on("vi.field.unfilled")(self._on_field_unfilled)
+        self._event_bus.on("calculator.extension_needed")(self._on_calculator_extension_needed)
 
     @hookimpl
     def handle(self, task: Any) -> dict[str, Any]:
@@ -91,6 +114,8 @@ class EvoManager:
             return {"success": True, "data": self._get_capabilities_report()}
         elif command == "error_log":
             return {"success": True, "data": self._get_error_report()}
+        elif command == "extension_prompts":
+            return {"success": True, "data": self._get_extension_prompts()}
 
         return {
             "success": False,
@@ -139,6 +164,20 @@ class EvoManager:
         lines.append(f"总计: {len(self.error_log)} 条错误记录")
 
         return "\n".join(lines)
+
+    def _get_extension_prompts(self) -> dict[str, Any]:
+        """获取 Calculator 扩展请求的 Prompt 列表"""
+        return {
+            "count": len(self.extension_requests),
+            "prompts": [
+                {
+                    "calculator_name": req["calculator_name"],
+                    "extension_prompt": req["extension_prompt"],
+                    "symbol": req.get("symbol", "unknown"),
+                }
+                for req in self.extension_requests[-10:]  # 最近 10 条
+            ]
+        }
 
     @hookimpl
     def on_unload(self) -> None:

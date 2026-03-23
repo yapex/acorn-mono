@@ -213,6 +213,42 @@ class CalculatorSpec:
         """
         return None
 
+    @vi_hookspec(firstresult=True)
+    def vi_unregister_calculator(
+        self,
+        name: str,
+    ) -> dict[str, Any] | None:
+        """Unregister a calculator
+
+        Args:
+            name: Calculator name
+
+        Returns:
+            {"success": bool, "data": {}, "error": str} or None if not implemented
+        """
+        return None
+
+    @vi_hookspec(firstresult=True)
+    def vi_reload_calculator(
+        self,
+        name: str,
+        code: str | None = None,
+        required_fields: list[str] | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Reload a calculator (optionally with new code)
+
+        Args:
+            name: Calculator name
+            code: New code (optional, if None use existing)
+            required_fields: New required fields (optional)
+            description: New description (optional)
+
+        Returns:
+            {"success": bool, "data": {}, "error": str} or None if not implemented
+        """
+        return None
+
 
 # =============================================================================
 # Command Handler Hooks

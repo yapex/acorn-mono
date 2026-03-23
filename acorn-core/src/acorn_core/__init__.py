@@ -6,7 +6,6 @@
 
 from .kernel import Acorn
 from .models import TaskContext
-from .plugins.sandbox import Sandbox, NamespaceSandbox, SubprocessSandbox, get_default_sandbox
 from .specs import Genes, hookimpl, hookspec
 from .types import Capabilities, ErrorInfo, Response, Task
 
@@ -20,9 +19,4 @@ __all__ = [
     "Genes",
     "hookimpl",
     "hookspec",
-    # Sandbox
-    "Sandbox",
-    "NamespaceSandbox",
-    "SubprocessSandbox",
-    "get_default_sandbox",
 ]

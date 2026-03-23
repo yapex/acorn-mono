@@ -96,11 +96,25 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
 
 
 def get_all_calculators() -> list[dict]:
-    """从所有配置路径加载计算器"""
+    """从所有配置路径加载计算器
+    
+    加载顺序：
+    1. builtin: 可信的内置计算器 (value-investment-plugin/calculators/)
+    2. cwd: 当前工作目录下的 calculators/ (用户临时创建的)
+    3. user: 用户目录下的计算器 (~/.value_investment/calculators/)
+    
+    注意：后面的会覆盖前面的同名计算器
+    """
     calculators = []
     seen = set()
 
-    for namespace, path in DEFAULT_CALC_PATHS.items():
+    # 动态添加 cwd 路径
+    calc_paths = dict(DEFAULT_CALC_PATHS)
+    cwd_calc_path = Path.cwd() / "calculators"
+    if cwd_calc_path.exists() and cwd_calc_path.is_dir():
+        calc_paths["cwd"] = cwd_calc_path
+
+    for namespace, path in calc_paths.items():
         for calc in load_calculators_from_path(path, namespace):
             if calc["name"] not in seen:
                 calculators.append(calc)
@@ -143,6 +157,48 @@ class CalculatorLoaderPlugin(CalculatorSpec):
             for c in self._calculators
         ]
 
+    def _run_in_sandbox(self, calc: dict, data: dict[str, pd.Series], config: dict[str, Any]) -> pd.Series | dict:
+        """在沙箱中运行 Calculator"""
+        from .sandbox import execute_sandbox
+
+        # 获取源代码
+        code = calc.get("_source_code")
+        if not code:
+            # 内置 calculator 没有保存源代码，需要反编译（简化处理：直接运行）
+            try:
+                result = calc["module"].calculate(data, config)
+                return result
+            except Exception as e:
+                return {
+                    "__error__": True,
+                    "calculator": calc["name"],
+                    "namespace": calc.get("namespace", "unknown"),
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                }
+
+        # 动态 calculator：在沙箱中执行
+        try:
+            local_vars = execute_sandbox(code, {"pd": pd})
+            if "calculate" not in local_vars:
+                return {
+                    "__error__": True,
+                    "calculator": calc["name"],
+                    "error": "Missing calculate function",
+                }
+
+            result = local_vars["calculate"](data, config)
+            return result
+
+        except Exception as e:
+            return {
+                "__error__": True,
+                "calculator": calc["name"],
+                "namespace": calc.get("namespace", "unknown"),
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+            }
+
     @vi_hookimpl
     def vi_run_calculator(
         self,
@@ -150,7 +206,7 @@ class CalculatorLoaderPlugin(CalculatorSpec):
         data: dict[str, pd.Series],
         config: dict[str, Any],
     ) -> pd.Series | None:
-        """执行指定名称的计算器
+        """执行指定名称的计算器（统一在沙箱中运行）
         
         Args:
             name: 计算器名称
@@ -162,20 +218,8 @@ class CalculatorLoaderPlugin(CalculatorSpec):
         """
         for calc in self._calculators:
             if calc["name"] == name:
-                try:
-                    result = calc["module"].calculate(data, config)
-                    return result
-                except Exception as e:
-                    # 返回错误信息而不是抛出异常
-                    error_type = type(e).__name__
-                    error_msg = str(e)
-                    return {
-                        "__error__": True,
-                        "calculator": name,
-                        "namespace": calc.get("namespace", "unknown"),
-                        "error_type": error_type,
-                        "error_message": error_msg,
-                    }
+                result = self._run_in_sandbox(calc, data, config)
+                return result
         return None
 
     @vi_hookimpl
@@ -189,6 +233,8 @@ class CalculatorLoaderPlugin(CalculatorSpec):
     ) -> dict[str, Any]:
         """运行时注册新计算器（通过代码字符串）
 
+        代码在运行时会统一在沙箱中执行，注册时无需验证。
+
         Args:
             name: 计算器名称
             code: Python 代码，包含 calculate(results, config) 函数
@@ -198,11 +244,11 @@ class CalculatorLoaderPlugin(CalculatorSpec):
                          可选: builtin, user, dynamic
         """
         try:
-            # 为动态计算器创建隔离的模块命名空间
+            # 2. 为动态计算器创建隔离的模块命名空间
             unique_id = uuid.uuid4().hex[:8]
             module = create_isolated_module(namespace, f"{name}_{unique_id}")
 
-            # 在隔离命名空间中执行代码
+            # 3. 在隔离命名空间中执行代码
             exec(code, module.__dict__)
 
             if not hasattr(module, "calculate"):
@@ -211,7 +257,7 @@ class CalculatorLoaderPlugin(CalculatorSpec):
                     "error": {"code": "INVALID_CODE", "message": "Missing 'calculate' function in code"},
                 }
 
-            # 包装为类实例（保持接口一致）
+            # 4. 包装为类实例（保持接口一致）
             calc_fn = module.calculate
 
             class DynamicCalculator:
@@ -223,6 +269,13 @@ class CalculatorLoaderPlugin(CalculatorSpec):
 
             dynamic_module = DynamicCalculator()
 
+            # 5. 保存源代码用于 reload
+            # 先移除同 namespace 同名的旧 calculator（overwrite 策略）
+            self._calculators = [
+                c for c in self._calculators
+                if not (c["name"] == name and c.get("namespace") == namespace)
+            ]
+
             self._calculators.append({
                 "name": name,
                 "module": dynamic_module,
@@ -230,6 +283,7 @@ class CalculatorLoaderPlugin(CalculatorSpec):
                 "description": description,
                 "namespace": namespace,
                 "module_id": unique_id,
+                "_source_code": code,  # 保存源代码
             })
 
             return {
@@ -255,6 +309,96 @@ class CalculatorLoaderPlugin(CalculatorSpec):
                 "success": False,
                 "error": {"code": "REGISTRATION_FAILED", "message": str(e)},
             }
+
+    def _find_calculator(self, name: str) -> dict | None:
+        """查找计算器"""
+        for calc in self._calculators:
+            if calc["name"] == name:
+                return calc
+        return None
+
+    @vi_hookimpl
+    def vi_unregister_calculator(
+        self,
+        name: str,
+    ) -> dict[str, Any]:
+        """卸载计算器
+
+        Args:
+            name: 计算器名称
+
+        Returns:
+            {"success": True} 或 {"success": False, "error": ...}
+        """
+        calc = self._find_calculator(name)
+        if not calc:
+            return {
+                "success": False,
+                "error": {"code": "NOT_FOUND", "message": f"Calculator '{name}' not found"},
+            }
+
+        # 从列表中移除
+        self._calculators.remove(calc)
+
+        # 清理模块引用（帮助垃圾回收）
+        calc["module"] = None
+
+        return {
+            "success": True,
+            "data": {"name": name, "total_calculators": len(self._calculators)},
+        }
+
+    @vi_hookimpl
+    def vi_reload_calculator(
+        self,
+        name: str,
+        code: str | None = None,
+        required_fields: list[str] | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        """重新加载计算器
+
+        如果提供了 code，用新代码替换；否则重新加载原代码。
+
+        Args:
+            name: 计算器名称
+            code: 新代码（可选）
+            required_fields: 新字段列表（可选）
+            description: 新描述（可选）
+
+        Returns:
+            {"success": True} 或 {"success": False, "error": ...}
+        """
+        calc = self._find_calculator(name)
+        if not calc:
+            return {
+                "success": False,
+                "error": {"code": "NOT_FOUND", "message": f"Calculator '{name}' not found"},
+            }
+
+        # 保存旧值
+        old_code = calc.get("_source_code", "")
+        old_fields = calc["required_fields"]
+        old_desc = calc["description"]
+
+        # 使用新值或保留旧值
+        new_code = code if code is not None else old_code
+        new_fields = required_fields if required_fields is not None else old_fields
+        new_desc = description if description is not None else old_desc
+
+        # 先卸载
+        self._calculators.remove(calc)
+
+        # 重新注册
+        result = self.vi_register_calculator(
+            name=name,
+            code=new_code,
+            required_fields=new_fields,
+            description=new_desc,
+            namespace=calc.get("namespace", "dynamic"),
+        )
+
+        return result
 
 
 # Pluggy 插件实例
