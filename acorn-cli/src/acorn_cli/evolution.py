@@ -1,68 +1,107 @@
 """
-Evolution System - 最小原型
-===========================
+Evolution System - 数据筛选与转换场景
+=====================================
 
-通过 CLI 接口与 LLM Agent 交互，实现自我进化。
+通过 CLI 接口与 LLM Agent 交互，实现文件处理能力。
 
-对话协议：
-- 程序通过 print 输出需求 ("need: xxx")
-- 程序通过 input() 接收信息
-- LLM Agent 读取 stdout，理解后提供输入
+场景：读取 JSON 文件，按条件过滤和排序，输出结果文件。
 """
 
 from __future__ import annotations
 
+import json
 import sys
 
 
 # =============================================================================
-# 当前 Echo 插件能力
+# 当前能力：原样输出文件内容
 # =============================================================================
 
-def echo_current(text: str) -> str:
-    """当前 Echo 实现：原样返回输入"""
-    return text
+def process_file(input_file: str, output_file: str | None = None) -> str:
+    """当前实现：读取文件，原样输出"""
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        if output_file:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+        return content
+    except FileNotFoundError:
+        return f"File not found: {input_file}"
+    except Exception as e:
+        return f"Error: {e}"
 
 
 # =============================================================================
 # Evolution 模式
 # =============================================================================
 
-def evolution_mode(intent: str | None = None, behavior: str | None = None, confirm: bool = False, code: str | None = None):
+def evolution_mode(
+    intent: str | None = None,
+    behavior: str | None = None,
+    input_file: str | None = None,
+    output_file: str | None = None,
+    filter_rule: str | None = None,
+    sort_key: str | None = None,
+    confirm: bool = False,
+    code: str | None = None,
+):
     """
-    进化模式：通过 print/input 与 LLM Agent 交互
+    进化模式：通过 print 与 LLM Agent 交互
     
-    阶段：
-    1. 询问需求 (need: xxx)
-    2. 接收需求 (从 input)
-    3. 生成代码 (loading_skill, generating)
-    4. 确认应用 (confirm)
+    参数说明：
+    - intent: 意图 (如 data_filter_transform)
+    - behavior: 行为描述
+    - input_file: 输入文件路径
+    - output_file: 输出文件路径
+    - filter_rule: 过滤规则
+    - sort_key: 排序字段
+    - code: LLM 生成的处理代码
+    - confirm: 是否确认应用
     """
     
     # -------------------------------------------------------------------------
     # 阶段 1: 询问需求
     # -------------------------------------------------------------------------
+    missing = []
     if not intent:
-        print("need: intent", file=sys.stdout, flush=True)
-        print("need: behavior", file=sys.stdout, flush=True)
+        missing.append("intent")
+    if not behavior:
+        missing.append("behavior")
+    if not input_file:
+        missing.append("input_file")
+    if not output_file:
+        missing.append("output_file")
+    if not filter_rule:
+        missing.append("filter_rule")
+    if not sort_key:
+        missing.append("sort_key")
+    
+    if missing:
+        for item in missing:
+            print(f"need: {item}", file=sys.stdout, flush=True)
         return
     
     # -------------------------------------------------------------------------
-    # 阶段 2: 接收需求
+    # 阶段 2: 检查是否需要代码生成
     # -------------------------------------------------------------------------
-    print(f"skill: translation", file=sys.stdout, flush=True)
+    print(f"intent: {intent}", file=sys.stdout, flush=True)
+    print(f"behavior: {behavior}", file=sys.stdout, flush=True)
+    print(f"input: {input_file}", file=sys.stdout, flush=True)
+    print(f"output: {output_file}", file=sys.stdout, flush=True)
+    print(f"filter: {filter_rule}", file=sys.stdout, flush=True)
+    print(f"sort: {sort_key}", file=sys.stdout, flush=True)
     
-    # 如果没有 code，说明是第一次运行，需要 LLM 生成代码
     if not code:
+        print("skill: data_filter", file=sys.stdout, flush=True)
         print("need: code_generation", file=sys.stdout, flush=True)
-        print("need: --code <generated_code>", file=sys.stdout, flush=True)
         return
     
     # -------------------------------------------------------------------------
     # 阶段 3: 确认应用
     # -------------------------------------------------------------------------
     if confirm:
-        apply_code(code)
+        apply_code(code, input_file, output_file, filter_rule, sort_key)
         print("done", file=sys.stdout, flush=True)
     else:
         print("need: --confirm", file=sys.stdout, flush=True)
@@ -72,103 +111,108 @@ def evolution_mode(intent: str | None = None, behavior: str | None = None, confi
 # Skill 定义
 # =============================================================================
 
-def get_translation_skill() -> str:
+def get_data_filter_skill() -> str:
     """
-    返回翻译场景的 Skill 内容
-    
-    这段内容会被传递给 LLM，让它知道如何生成代码
+    数据筛选与转换的 Skill
     """
-    return '''# Translation Skill
+    return '''# Data Filter Transform Skill
 
 ## 场景
-创建一个翻译函数：中文翻译成英文，英文翻译成中文
+读取 JSON 文件，按条件过滤数据，按指定字段排序，输出到目标文件。
 
-## 输入输出
-- 输入: 字符串文本
-- 输出: 翻译后的字符串
+## 输入
+- input_file: JSON 文件路径（数组格式）
+- filter_rule: 过滤规则描述
+- sort_key: 排序字段
+
+## 输出
+- output_file: 结果 JSON 文件
 
 ## 代码规范
+
+### 函数签名
 ```python
-def translate(text: str) -> str:
+def process(input_file: str, output_file: str, filter_rule: str, sort_key: str) -> None:
     """
-    翻译函数
+    处理数据文件
     
     Args:
-        text: 输入文本
-        
-    Returns:
-        翻译后的文本
+        input_file: 输入 JSON 文件路径
+        output_file: 输出 JSON 文件路径
+        filter_rule: 过滤规则描述
+        sort_key: 排序字段名
     """
-    # 实现翻译逻辑
-    return result
+    # 1. 读取输入文件
+    # 2. 根据 filter_rule 过滤数据
+    # 3. 按 sort_key 排序
+    # 4. 写入输出文件
 ```
 
-## 实现提示
-1. 检测文本是否包含中文字符
-2. 如果是中文，使用翻译逻辑转英文
-3. 如果是英文，使用翻译逻辑转中文
-4. 返回翻译结果
+### 实现提示
+
+1. 读取 JSON 文件
+```python
+with open(input_file, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+```
+
+2. 过滤数据（filter_rule 示例）
+- "年龄 18-30 岁" → item.get('age', 0) >= 18 and item.get('age', 0) <= 30
+- "城市是北京" → item.get('city') == '北京'
+- "名字以张开头" → item.get('name', '').startswith('张')
+
+3. 排序
+```python
+data.sort(key=lambda x: x.get(sort_key, ''))
+```
+
+4. 写入 JSON
+```python
+with open(output_file, 'w', encoding='utf-8') as f:
+    json.dump(result, f, ensure_ascii=False, indent=2)
+```
 
 ## 约束
-- 只允许字符串操作
-- 禁止: eval, exec, open, import
+- 只允许 json, file 操作
+- 禁止: eval, exec, open (除指定文件), import (除 json)
 '''
 
 
 # =============================================================================
-# 代码生成
+# 代码应用
 # =============================================================================
 
-def generate_translation_code(intent: str, behavior: str) -> str:
+def apply_code(
+    code: str,
+    input_file: str,
+    output_file: str,
+    filter_rule: str,
+    sort_key: str
+):
     """
-    根据 intent 和 behavior 生成翻译代码
+    应用生成的代码
     
-    这里是一个简化实现，实际应该调用 LLM
+    解析函数定义，执行并生成结果
     """
-    # 简化：直接生成一个模板代码
-    code = '''def translate(text: str) -> str:
-    """
-    翻译函数: 中文→英文, 英文→中文
+    # 构建全局命名空间
+    namespace = {
+        '__builtins__': {'json': json, 'open': open},
+        'json': json,
+        'open': open,
+    }
     
-    Args:
-        text: 输入文本
-    Returns:
-        翻译后的文本
-    """
-    import re
+    # 执行代码
+    exec(code, namespace)
     
-    # 检测是否包含中文字符
-    has_chinese = bool(re.search(r'[\\u4e00-\\u9fff]', text))
-    
-    if has_chinese:
-        # 中文 → 英文 (简化实现，需要真实翻译 API)
-        chinese_to_english = {
-            "你好": "hello",
-            "谢谢": "thank you",
-            "再见": "goodbye",
-            "早上好": "good morning",
-            "晚上好": "good evening",
-        }
-        return chinese_to_english.get(text, f"[EN:{text}]")
-    else:
-        # 英文 → 中文 (简化实现，需要真实翻译 API)
-        english_to_chinese = {
-            "hello": "你好",
-            "thank you": "谢谢",
-            "goodbye": "再见",
-            "good morning": "早上好",
-            "good evening": "晚上好",
-        }
-        return english_to_chinese.get(text.lower(), f"[中:{text}]")'''
-    
-    return code
-
-
-def apply_code(code: str):
-    """应用生成的代码"""
-    # 简化实现：将代码写入临时模块
-    # 实际应该写入插件目录
-    pass
+    # 调用 process 函数
+    if 'process' in namespace:
+        # 转换相对路径为绝对路径
+        import os
+        abs_input = os.path.abspath(input_file)
+        abs_output = os.path.abspath(output_file)
+        
+        namespace['process'](abs_input, abs_output, filter_rule, sort_key)
+        print(f"output: {abs_output}", file=sys.stdout, flush=True)
 
 
 # =============================================================================
@@ -178,11 +222,15 @@ def apply_code(code: str):
 def main():
     import argparse
     
-    parser = argparse.ArgumentParser(description='Echo with Evolution')
-    parser.add_argument('input', nargs='?', help='输入文本')
+    parser = argparse.ArgumentParser(description='文件处理 + Evolution')
+    parser.add_argument('input', nargs='?', help='输入文件')
     parser.add_argument('--evolve', action='store_true', help='进入进化模式')
     parser.add_argument('--intent', help='意图')
-    parser.add_argument('--behavior', help='期望行为')
+    parser.add_argument('--behavior', help='行为描述')
+    parser.add_argument('--input-file', help='输入文件路径')
+    parser.add_argument('--output-file', help='输出文件路径')
+    parser.add_argument('--filter-rule', help='过滤规则')
+    parser.add_argument('--sort-key', help='排序字段')
     parser.add_argument('--confirm', action='store_true', help='确认应用')
     parser.add_argument('--code', help='LLM 生成的代码')
     
@@ -192,13 +240,18 @@ def main():
         evolution_mode(
             intent=args.intent,
             behavior=args.behavior,
+            input_file=args.input_file,
+            output_file=args.output_file,
+            filter_rule=args.filter_rule,
+            sort_key=args.sort_key,
             confirm=args.confirm,
-            code=args.code
+            code=args.code,
         )
     else:
         # 普通模式
-        result = echo_current(args.input or "")
-        print(result)
+        if args.input:
+            result = process_file(args.input)
+            print(result)
 
 
 if __name__ == "__main__":
