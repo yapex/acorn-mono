@@ -28,7 +28,7 @@ def echo_current(text: str) -> str:
 # Evolution 模式
 # =============================================================================
 
-def evolution_mode(intent: str | None = None, behavior: str | None = None, confirm: bool = False):
+def evolution_mode(intent: str | None = None, behavior: str | None = None, confirm: bool = False, code: str | None = None):
     """
     进化模式：通过 print/input 与 LLM Agent 交互
     
@@ -48,24 +48,21 @@ def evolution_mode(intent: str | None = None, behavior: str | None = None, confi
         return
     
     # -------------------------------------------------------------------------
-    # 阶段 2: 接收需求并生成代码
+    # 阶段 2: 接收需求
     # -------------------------------------------------------------------------
-    # 加载 Skill
     print(f"skill: translation", file=sys.stdout, flush=True)
-    skill_content = get_translation_skill()
     
-    # 根据 behavior 生成代码
-    generated_code = generate_translation_code(intent, behavior or "")
-    
-    print("code:", file=sys.stdout, flush=True)
-    for line in generated_code.split('\n'):
-        print(f"  {line}", file=sys.stdout, flush=True)
+    # 如果没有 code，说明是第一次运行，需要 LLM 生成代码
+    if not code:
+        print("need: code_generation", file=sys.stdout, flush=True)
+        print("need: --code <generated_code>", file=sys.stdout, flush=True)
+        return
     
     # -------------------------------------------------------------------------
     # 阶段 3: 确认应用
     # -------------------------------------------------------------------------
     if confirm:
-        apply_code(generated_code)
+        apply_code(code)
         print("done", file=sys.stdout, flush=True)
     else:
         print("need: --confirm", file=sys.stdout, flush=True)
@@ -187,6 +184,7 @@ def main():
     parser.add_argument('--intent', help='意图')
     parser.add_argument('--behavior', help='期望行为')
     parser.add_argument('--confirm', action='store_true', help='确认应用')
+    parser.add_argument('--code', help='LLM 生成的代码')
     
     args = parser.parse_args()
     
@@ -194,7 +192,8 @@ def main():
         evolution_mode(
             intent=args.intent,
             behavior=args.behavior,
-            confirm=args.confirm
+            confirm=args.confirm,
+            code=args.code
         )
     else:
         # 普通模式
