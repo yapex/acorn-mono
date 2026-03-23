@@ -1,5 +1,5 @@
 [tool.uv]
-workspace = { members = ["acorn-core", "acorn-agent", "acorn-events", "acorn-cli", "examples-plugin"] }
+workspace = { members = ["acorn-core", "acorn-agent", "acorn-events", "acorn-cli", "examples-plugin", "value-investment-plugin/vi_core", "value-investment-plugin/vi_fields_extension", "value-investment-plugin/vi_plugin"] }
 
 [tool.uv.sources]
 acorn-core = { workspace = true }
@@ -7,6 +7,9 @@ acorn-agent = { workspace = true }
 acorn-events = { workspace = true }
 acorn-cli = { workspace = true }
 examples-plugin = { workspace = true }
+vi-core = { workspace = true }
+vi-fields-extension = { workspace = true }
+vi-plugin = { workspace = true }
 
 [tool.poe.tasks]
 start = "bash start-agent.sh"

@@ -22,5 +22,10 @@ packages = ["src/vi_core"]
 [tool.hatch.build.targets.editable]
 packages = ["src/vi_core"]
 
+# VI as single domain plugin entry point
 [project.entry-points."yapex.acorn.plugins"]
-vi_core = "vi_core.plugin:plugin"
+vi = "vi_core.plugin:plugin"
+
+# CLI commands via acorn CLI
+[project.entry-points."acorn.cli.commands"]
+vi = "vi_core.cli:app"

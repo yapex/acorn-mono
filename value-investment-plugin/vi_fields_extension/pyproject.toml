@@ -5,7 +5,7 @@ description = "Field Extension Registry for Value Investment"
 requires-python = ">=3.12"
 
 dependencies = [
-    "vi-core>=0.1.0",
+    "pluggy>=1.5.0",
 ]
 
 [build-system]

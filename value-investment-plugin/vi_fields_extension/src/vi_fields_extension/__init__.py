@@ -16,9 +16,11 @@
 
 或者通过实现 FieldRegistrySpec 直接贡献字段：
 
-    from vi_core.spec import FieldRegistrySpec, vi_hookimpl
+    import pluggy
 
-    class MyFieldsPlugin(FieldRegistrySpec):
+    vi_hookimpl = pluggy.HookimplMarker("value_investment")
+
+    class MyFieldsPlugin:
         @vi_hookimpl
         def vi_fields(self):
             return {

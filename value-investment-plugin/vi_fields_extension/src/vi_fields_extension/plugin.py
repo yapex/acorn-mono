@@ -7,7 +7,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from vi_core.spec import vi_hookimpl, FieldRegistrySpec
+import pluggy
+
+vi_hookimpl = pluggy.HookimplMarker("value_investment")
+
+
+class FieldRegistrySpec:
+    """Hook spec for field registry"""
+
+    @pluggy.HookspecMarker("value_investment")
+    def vi_fields(self) -> dict:
+        """Return fields provided by this plugin
+
+        Returns:
+            {
+                "source": str,       # "ifrs", "custom", "provider_name"
+                "fields": set,       # Set of field names
+                "description": str,   # Description
+            }
+        """
+        return {"source": "", "fields": set(), "description": ""}
 
 from . import _extension_fields
 

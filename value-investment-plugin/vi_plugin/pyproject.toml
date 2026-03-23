@@ -1,18 +1,16 @@
 [project]
 name = "vi-plugin"
 version = "0.1.0"
-description = "Value Investment Plugin for Acorn"
+description = "Value Investment Plugin for Acorn (deprecated - use vi-core)"
 requires-python = ">=3.12"
 dependencies = [
     "acorn-core>=0.1.0",
     "vi-core>=0.1.0",
 ]
 
-[project.entry-points."yapex.acorn.plugins"]
-vi = "vi_plugin:plugin"
-
-[project.entry-points."acorn.cli.commands"]
-vi = "vi_plugin.cli:app"
+# Deprecated: vi_plugin is now part of vi-core
+# Keeping this package for backwards compatibility with direct imports
+# but no longer registering as a standalone plugin
 
 [build-system]
 requires = ["hatchling"]
