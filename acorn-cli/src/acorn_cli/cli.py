@@ -2,16 +2,26 @@
 Acorn CLI
 =========
 插件管理命令行工具，使用 typer 实现。
+
+架构：
+- 后台服务模式：插件只加载一次，命令通过 RPC 调用
+- 首次运行自动启动服务
 """
 
 from __future__ import annotations
 
+import subprocess
+import sys
+from pathlib import Path
 from typing import Optional
 
 import typer
 
 from .registry import PluginRegistry
 from .tui import run_config_tui
+
+# 默认 socket 路径
+DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
 
 # config 子命令应用
 config_app = typer.Typer(help="配置插件")
@@ -21,7 +31,7 @@ app = typer.Typer(
     name="acorn",
     help="🌰 Acorn - 插件化命令行工具\n\n"
          "插件命令:\n"
-         "  echo                         Echo 插件",
+         "  vi                          Value Investment",
     epilog="运行 'acorn <command> --help' 查看详细帮助",
 )
 
@@ -32,6 +42,67 @@ app.add_typer(config_app, name="config")
 def get_registry() -> PluginRegistry:
     """获取注册表实例"""
     return PluginRegistry()
+
+
+def _get_client():
+    """获取 RPC 客户端"""
+    from acorn_cli.client import AcornClient
+    return AcornClient(socket_path=str(DEFAULT_SOCKET_PATH))
+
+
+def _check_server_running() -> bool:
+    """检查服务是否运行"""
+    try:
+        client = _get_client()
+        result = client.execute("health", {})
+        return result.get("success", False)
+    except Exception:
+        return False
+
+
+def _start_server_background() -> None:
+    """后台启动服务"""
+    if DEFAULT_SOCKET_PATH.exists():
+        DEFAULT_SOCKET_PATH.unlink()
+    
+    # 获取 acorn-agent 脚本路径
+    venv_bin = Path(sys.executable).parent
+    acorn_agent_script = venv_bin / "acorn-agent"
+    
+    subprocess.Popen(
+        [str(acorn_agent_script)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def _ensure_server_running() -> bool:
+    """确保服务运行"""
+    if _check_server_running():
+        return True
+    
+    typer.echo("启动 acorn 服务...", err=True)
+    _start_server_background()
+    
+    # 等待服务启动
+    import time
+    for _ in range(10):
+        time.sleep(0.3)
+        if _check_server_running():
+            return True
+    
+    typer.echo("❌ 服务启动失败", err=True)
+    return False
+
+
+def _execute_via_rpc(command: str, args: dict) -> dict:
+    """通过 RPC 执行命令"""
+    if not _ensure_server_running():
+        return {"success": False, "error": {"message": "服务不可用"}}
+    
+    client = _get_client()
+    return client.execute(command, args)
 
 
 @app.command()

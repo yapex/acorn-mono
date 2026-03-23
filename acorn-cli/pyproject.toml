@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 acorn = "acorn_cli.cli:main"
+acorn-agent = "acorn_cli.server:main"
 
 [build-system]
 requires = ["hatchling"]
