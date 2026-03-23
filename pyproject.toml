@@ -1,10 +1,12 @@
 [tool.uv]
-workspace = { members = ["acorn-core", "acorn-agent", "acorn-events"] }
+workspace = { members = ["acorn-core", "acorn-agent", "acorn-events", "acorn-cli", "examples-plugin"] }
 
 [tool.uv.sources]
 acorn-core = { workspace = true }
 acorn-agent = { workspace = true }
 acorn-events = { workspace = true }
+acorn-cli = { workspace = true }
+examples-plugin = { workspace = true }
 
 [tool.poe.tasks]
 start = "bash start-agent.sh"
