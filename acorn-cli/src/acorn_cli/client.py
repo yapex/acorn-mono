@@ -1,51 +1,62 @@
 """
-Client for acorn-agent RPC
+HTTP Client for acorn-agent
 """
 from __future__ import annotations
 
-import json
-import os
-import socket
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
+import httpx
 
-# Default socket path in user directory
-DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
+# 默认地址
+DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 
 
 class AcornClient:
-    """Unix Socket RPC Client"""
+    """HTTP Client for Acorn Agent"""
 
-    def __init__(self, socket_path: Optional[str] = None) -> None:
-        self.socket_path = socket_path or os.environ.get(
-            "ACORN_AGENT_SOCKET",
-            str(DEFAULT_SOCKET_PATH)
-        )
+    def __init__(self, base_url: str = DEFAULT_BASE_URL) -> None:
+        self.base_url = base_url
+        self._client = httpx.Client(timeout=30.0)
 
-    def execute(self, command: str, args: Optional[dict[str, Any]] = None) -> dict:
-        """Execute a command via RPC"""
+    def health_check(self) -> dict[str, Any]:
+        """健康检查"""
+        response = self._client.get(f"{self.base_url}/health")
+        response.raise_for_status()
+        return response.json()
+
+    def status(self) -> dict[str, Any]:
+        """获取系统状态"""
+        response = self._client.get(f"{self.base_url}/status")
+        response.raise_for_status()
+        return response.json()
+
+    def execute(self, command: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
+        """执行命令"""
         if args is None:
             args = {}
+        response = self._client.post(
+            f"{self.base_url}/execute",
+            json={"command": command, "args": args},
+        )
+        response.raise_for_status()
+        return response.json()
 
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        try:
-            sock.connect(self.socket_path)
-            request = json.dumps({"command": command, "args": args})
-            sock.sendall(request.encode())
+    def list_commands(self) -> dict[str, Any]:
+        """列出可用命令"""
+        response = self._client.get(f"{self.base_url}/commands")
+        response.raise_for_status()
+        return response.json()
 
-            # Read all response data (may span multiple recv calls)
-            chunks = []
-            while True:
-                chunk = sock.recv(65536)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-            response = b"".join(chunks)
-            return json.loads(response.decode())
-        finally:
-            sock.close()
-
-    def __call__(self, command: str, **kwargs: Any) -> dict:
-        """Shortcut: client("echo", message="hello")"""
+    def __call__(self, command: str, **kwargs: Any) -> dict[str, Any]:
+        """快捷调用: client("status")"""
         return self.execute(command, kwargs)
+
+    def close(self) -> None:
+        """关闭客户端"""
+        self._client.close()
+
+    def __enter__(self) -> "AcornClient":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
