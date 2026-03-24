@@ -1,6 +1,4 @@
 [tool.uv]
-workspace = { members = ["acorn-core", "acorn-events", "acorn-cli", "examples-plugin", "value-investment-plugin/vi_core", "value-investment-plugin/vi_fields_extension", "value-investment-plugin/vi_plugin", "value-investment-plugin/vi_calculators"] }
-
 [tool.uv.sources]
 acorn-core = { workspace = true }
 acorn-events = { workspace = true }
@@ -8,9 +6,7 @@ acorn-cli = { workspace = true }
 examples-plugin = { workspace = true }
 vi-core = { workspace = true }
 vi-fields-extension = { workspace = true }
-vi-plugin = { workspace = true }
 vi-calculators = { workspace = true }
-
 [dependency-groups]
 dev = [
     "poethepoet>=0.42.1",

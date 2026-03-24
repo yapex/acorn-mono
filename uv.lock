@@ -855,21 +855,13 @@ source = { editable = "value-investment-plugin/vi_calculators" }
 
 [package.dev-dependencies]
 dev = [
-    { name = "diskcache" },
-    { name = "loguru" },
     { name = "pytest" },
-    { name = "typer" },
 ]
 
 [package.metadata]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "diskcache", specifier = ">=5.6.3" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "typer", specifier = ">=0.24.1" },
-]
+dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "vi-core"
@@ -900,12 +892,6 @@ requires-dist = [
 name = "vi-fields-extension"
 version = "0.1.0"
 source = { editable = "value-investment-plugin/vi_fields_extension" }
-dependencies = [
-    { name = "pluggy" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "pluggy", specifier = ">=1.5.0" }]
 
 [[package]]
 name = "vi-plugin"
