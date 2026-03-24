@@ -1,5 +1,5 @@
 [project]
-name = "vi-fields-ifrs"
+name = "vi_fields_ifrs"
 version = "0.1.0"
 description = "IFRS Standard Fields for Value Investment"
 requires-python = ">=3.12"

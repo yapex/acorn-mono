@@ -1,5 +1,5 @@
 [project]
-name = "vi-fields-extension"
+name = "vi_fields_extension"
 version = "0.1.0"
 description = "Field Extension Registry for Value Investment"
 requires-python = ">=3.12"

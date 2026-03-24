@@ -1,5 +1,5 @@
 [project]
-name = "vi-calculators"
+name = "vi_calculators"
 version = "0.1.0"
 description = "Calculator Loader Plugin - Auto-load calculators from directories"
 requires-python = ">=3.12"

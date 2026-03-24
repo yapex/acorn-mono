@@ -1,5 +1,5 @@
 [project]
-name = "vi-cli"
+name = "vi_cli"
 version = "0.1.0"
 description = "Value Investment CLI"
 requires-python = ">=3.12"

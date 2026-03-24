@@ -11,7 +11,7 @@ members = [
     "vi-calculators",
     "vi-core",
     "vi-fields-extension",
-    "vi-plugin",
+    "vi-fields-ifrs",
 ]
 
 [manifest.dependency-groups]
@@ -851,7 +851,7 @@ wheels = [
 [[package]]
 name = "vi-calculators"
 version = "0.1.0"
-source = { editable = "value-investment-plugin/vi_calculators" }
+source = { editable = "value-investment/vi_calculators" }
 
 [package.dev-dependencies]
 dev = [
@@ -866,7 +866,7 @@ dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 [[package]]
 name = "vi-core"
 version = "0.1.0"
-source = { editable = "value-investment-plugin/vi_core" }
+source = { editable = "value-investment/vi_core" }
 dependencies = [
     { name = "acorn-events" },
     { name = "diskcache" },
@@ -891,22 +891,18 @@ requires-dist = [
 [[package]]
 name = "vi-fields-extension"
 version = "0.1.0"
-source = { editable = "value-investment-plugin/vi_fields_extension" }
+source = { editable = "value-investment/vi_fields_extension" }
 
 [[package]]
-name = "vi-plugin"
+name = "vi-fields-ifrs"
 version = "0.1.0"
-source = { editable = "value-investment-plugin/vi_plugin" }
+source = { editable = "value-investment/vi_fields_ifrs" }
 dependencies = [
-    { name = "acorn-core" },
     { name = "vi-core" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "acorn-core", specifier = ">=0.1.0" },
-    { name = "vi-core", specifier = ">=0.1.0" },
-]
+requires-dist = [{ name = "vi-core", specifier = ">=0.1.0" }]
 
 [[package]]
 name = "watchfiles"
