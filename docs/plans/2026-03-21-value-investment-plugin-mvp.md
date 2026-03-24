@@ -7,7 +7,7 @@
 验证 pluggy 插件框架能跑通：
 1. **Provider 插件**：获取财务数据
 2. **Calculator 插件**：计算衍生指标
-3. **CLI/RPC**：命令行和 RPC 调用
+3. **CLI/HTTP**：命令行和 HTTP 调用
 
 ## 验收标准
 

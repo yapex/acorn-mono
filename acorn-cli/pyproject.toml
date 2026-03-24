@@ -7,6 +7,9 @@ dependencies = [
     "acorn-core>=0.1.0",
     "typer>=0.15.0",
     "questionary>=2.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "httpx>=0.25.0",
 ]
 
 [project.scripts]

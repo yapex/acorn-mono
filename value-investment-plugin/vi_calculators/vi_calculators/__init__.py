@@ -33,6 +33,7 @@ import pandas as pd
 from typing import Any
 
 from vi_core.spec import vi_hookimpl, CalculatorSpec  # type: ignore[import]
+from acorn_core.specs import hookimpl  # 框架级 hookimpl
 
 
 # 默认加载路径
@@ -164,24 +165,36 @@ class CalculatorEngine(CalculatorSpec):
             for c in self._calculators
         ]
 
-    def get_evolution_spec(self, name: str) -> str | None:
+    @vi_hookimpl
+    def get_evolution_spec(
+        self,
+        capability_type: str,
+        name: str,
+        context: dict | None = None,
+    ) -> str | None:
         """
         询问是否支持某计算器，如果不支持，返回进化规范
         
         Args:
+            capability_type: 能力类型（如 "calculator"）
             name: 计算器名称
+            context: 上下文信息
             
         Returns:
-            None - 支持此计算器
+            None - 支持此计算器或不关心此类型
             str - 不支持，返回进化规范（给 LLM 的 prompt）
         """
+        # 不关心非 calculator 类型
+        if capability_type != "calculator":
+            return None
+        
         # 检查是否已支持
         for calc in self._calculators:
             if calc["name"] == name:
                 return None
         
         # 不支持，返回进化规范
-        return '''要创建计算器，请按以下格式提供代码：
+        return f'''要创建计算器 `{name}`，请按以下格式提供代码：
 
 ```python
 REQUIRED_FIELDS = ["field_a", "field_b"]

@@ -15,7 +15,7 @@ import pandas as pd
 import pluggy  # type: ignore[import]
 from loguru import logger
 
-from .spec import vi_hookimpl, ValueInvestmentSpecs
+from .spec import vi_hookimpl, ValueInvestmentSpecs, EvolutionSpec
 from vi_fields_extension import StandardFields
 
 if TYPE_CHECKING:
@@ -163,6 +163,9 @@ class ViCorePlugin:
         """Create pluggy plugin manager and discover sub-plugins"""
         pm = pluggy.PluginManager("value_investment")
         pm.add_hookspecs(ValueInvestmentSpecs)
+        
+        # 添加 Evolution Hook（框架级）
+        pm.add_hookspecs(EvolutionSpec)
 
         # Discover and register sub-plugins via entry_points
         for group in VI_ENTRY_POINT_GROUPS:
@@ -393,31 +396,27 @@ class ViCorePlugin:
             fields = provider_fields
         else:
             requested = set(f.strip() for f in fields_str.split(",") if f.strip())
-            # 区分 unsupported 和 unfilled
-            # unsupported: 请求的字段不在系统标准字段定义中（系统能力不足）
-            # unfilled: 请求的字段在标准字段中，但 Provider 不支持或返回空（Provider 实现问题）
+            # 检查缺失的字段（系统能力不足）
+            # unsupported: 请求的字段不在系统标准字段定义中
+            # unfilled: 请求的字段在标准中，但 Provider 不支持
             unsupported = requested - standard_fields  # 系统不知道这个字段
             unfilled = requested & (standard_fields - provider_fields)  # 系统有但 Provider 不支持
 
-            if unsupported:
+            # 发布能力缺失事件（统一使用 evo.capability.missing）
+            if unsupported or unfilled:
                 from acorn_events import AcornEvents
                 event_bus = self._event_bus or self._get_default_event_bus()
-                event_bus.publish(
-                    AcornEvents.FIELD_UNSUPPORTED,
-                    sender=self,
-                    symbol=symbol,
-                    fields=list(unsupported),
-                )
-
-            if unfilled:
-                from acorn_events import AcornEvents
-                event_bus = self._event_bus or self._get_default_event_bus()
-                event_bus.publish(
-                    AcornEvents.FIELD_UNFILLED,
-                    sender=self,
-                    symbol=symbol,
-                    fields=list(unfilled),
-                )
+                
+                # 字段缺失 → 能力缺失
+                missing_fields = list(unsupported | unfilled)
+                if missing_fields:
+                    event_bus.publish(
+                        AcornEvents.EVO_CAPABILITY_MISSING,
+                        sender=self,
+                        capability_type="field",
+                        name=",".join(missing_fields),
+                        context={"symbol": symbol, "unsupported": list(unsupported), "unfilled": list(unfilled)},
+                    )
 
             # 最终使用的字段是请求的字段和 Provider 支持字段的交集
             fields = requested & provider_fields
@@ -545,15 +544,16 @@ class ViCorePlugin:
         # Run each requested calculator via hook
         for calc_name in calculator_names:
             if calc_name not in calc_registry:
-                # 计算器不存在，遍历插件获取进化规范
-                spec = self._find_evolution_spec(calc_name)
-                if spec:
-                    # 有进化规范，直接输出（供 LLM 使用）
-                    print(f"\n{'='*60}")
-                    print(f"EVOLUTION_NEEDED: {calc_name}")
-                    print(f"{'='*60}")
-                    print(spec)
-                    print(f"{'='*60}\n")
+                # 计算器不存在，发布能力缺失事件
+                from acorn_events import AcornEvents
+                event_bus = self._event_bus or self._get_default_event_bus()
+                event_bus.publish(
+                    AcornEvents.EVO_CAPABILITY_MISSING,
+                    sender=self,
+                    capability_type="calculator",
+                    name=calc_name,
+                    context={"symbol": df.index[0] if len(df) > 0 else None},
+                )
                 continue
 
             calc_spec = calc_registry[calc_name]
@@ -594,12 +594,19 @@ class ViCorePlugin:
 
         return results
 
-    def _find_evolution_spec(self, name: str) -> str | None:
+    def _find_evolution_spec(
+        self,
+        capability_type: str,
+        name: str,
+        context: dict | None = None,
+    ) -> str | None:
         """
         遍历所有插件，查找进化规范
         
         Args:
+            capability_type: 能力类型（如 "calculator"）
             name: 能力名称（如计算器名称）
+            context: 上下文信息
             
         Returns:
             None - 没有插件能提供进化规范
@@ -613,7 +620,7 @@ class ViCorePlugin:
         for plugin in pm.get_plugins():
             if hasattr(plugin, "get_evolution_spec"):
                 try:
-                    spec = plugin.get_evolution_spec(name)
+                    spec = plugin.get_evolution_spec(capability_type, name, context)
                     if spec:
                         return spec
                 except Exception:

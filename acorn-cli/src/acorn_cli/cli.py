@@ -2,12 +2,7 @@
 Acorn CLI
 =========
 插件管理命令行工具，使用 typer 实现。
-
-架构：
-- 后台服务模式：插件只加载一次，命令通过 RPC 调用
-- 首次运行自动启动服务
 """
-
 from __future__ import annotations
 
 import subprocess
@@ -17,11 +12,9 @@ from typing import Optional
 
 import typer
 
+from .client import AcornClient
 from .registry import PluginRegistry
 from .tui import run_config_tui
-
-# 默认 socket 路径
-DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
 
 # config 子命令应用
 config_app = typer.Typer(help="配置插件")
@@ -44,33 +37,29 @@ def get_registry() -> PluginRegistry:
     return PluginRegistry()
 
 
-def _get_client():
+def _get_client() -> AcornClient:
     """获取 RPC 客户端"""
-    from acorn_cli.client import AcornClient
-    return AcornClient(socket_path=str(DEFAULT_SOCKET_PATH))
+    return AcornClient()
 
 
 def _check_server_running() -> bool:
     """检查服务是否运行"""
     try:
         client = _get_client()
-        result = client.execute("status", {})
-        return result.get("success", False)
+        result = client.health_check()
+        return result.get("healthy", False)
     except Exception:
         return False
 
 
 def _start_server_background() -> None:
     """后台启动服务"""
-    if DEFAULT_SOCKET_PATH.exists():
-        DEFAULT_SOCKET_PATH.unlink()
-    
-    # 获取 acorn-agent 脚本路径
     venv_bin = Path(sys.executable).parent
     acorn_agent_script = venv_bin / "acorn-agent"
-    
+
     subprocess.Popen(
         [str(acorn_agent_script)],
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
@@ -81,29 +70,42 @@ def _ensure_server_running() -> bool:
     """确保服务运行"""
     if _check_server_running():
         return True
-    
+
     typer.echo("启动 acorn 服务...", err=True)
     _start_server_background()
-    
+
     # 等待服务启动
     import time
-    for _ in range(10):
-        time.sleep(0.3)
+    for _ in range(20):
+        time.sleep(0.5)
         if _check_server_running():
+            typer.echo("服务已启动", err=True)
             return True
-    
+
     typer.echo("❌ 服务启动失败", err=True)
     return False
 
 
 def _execute_via_rpc(command: str, args: dict) -> dict:
-    """通过 RPC 执行命令"""
+    """通过 HTTP 执行命令"""
     if not _ensure_server_running():
         return {"success": False, "error": {"message": "服务不可用"}}
-    
-    client = _get_client()
-    return client.execute(command, args)
 
+    try:
+        client = _get_client()
+        
+        # 对于特定命令，直接调用对应的端点
+        if command == "status":
+            return client.status()
+        
+        return client.execute(command, args)
+    except Exception as e:
+        return {"success": False, "error": {"message": str(e)}}
+
+
+# =============================================================================
+# CLI 命令
+# =============================================================================
 
 @app.command()
 def install(
@@ -111,13 +113,7 @@ def install(
     name: Optional[str] = None,
     entry_point: Optional[str] = None,
 ) -> None:
-    """安装插件
-
-    Args:
-        source: 插件来源 (包名/路径/Git URL)
-        name: 插件名称 (可选)
-        entry_point: 入口点 (可选)
-    """
+    """安装插件"""
     registry = get_registry()
     success, message = registry.install(
         source=source,
@@ -132,12 +128,7 @@ def uninstall(
     name: str,
     yes: bool = typer.Option(False, "--yes", "-y", help="跳过确认"),
 ) -> None:
-    """卸载插件
-
-    Args:
-        name: 插件名称
-        yes: 跳过确认
-    """
+    """卸载插件"""
     registry = get_registry()
 
     if not yes:
@@ -237,28 +228,22 @@ def path() -> None:
 
 
 # =============================================================================
-# Status 命令 - 反向输出系统状态
+# Status 命令
 # =============================================================================
 
 @app.command()
 def status(
     verbose: bool = typer.Option(False, "-v", "--verbose", help="显示详细信息"),
 ) -> None:
-    """显示系统当前状态（可用计算器、字段等）
-    
-    这是与系统首次接触的最佳起点，了解系统当前的能力。
-    """
-    import json
-    
+    """显示系统当前状态"""
     result = _execute_via_rpc("status", {})
-    
+
     if not result.get("success", False):
         typer.echo(f"❌ {result.get('error', {}).get('message', 'Unknown error')}", err=True)
         raise typer.Exit(1)
-    
+
     data = result.get("data", {})
-    
-    # 基本状态
+
     sys_status = data.get("status", "unknown")
     if sys_status == "ok":
         typer.echo("🌰 Acorn 系统状态")
@@ -266,37 +251,33 @@ def status(
     else:
         typer.echo(f"⚠️  系统状态: {sys_status}")
         typer.echo("─" * 60)
-    
-    # 插件列表 - 从各插件的 vi_status 收集
+
     plugins = data.get("plugins", [])
     typer.echo(f"\n📦 已加载插件 ({len(plugins)})")
-    
+
     all_calculators = []
     all_fields = set()
-    
+
     for plugin in plugins:
         name = plugin.get("name", "unknown")
         error = plugin.get("error")
         desc = plugin.get("description", "")
         capabilities = plugin.get("capabilities", {})
-        
+
         status_icon = "✅" if not error else "❌"
         desc_str = f" - {desc}" if desc and verbose else ""
         typer.echo(f"  {status_icon} {name}{desc_str}")
-        
+
         if verbose and error:
             typer.echo(f"      错误: {error}")
-        
-        # 收集计算器
+
         for calc in capabilities.get("calculators", []):
             if calc.get("name") not in [c.get("name") for c in all_calculators]:
                 all_calculators.append(calc)
-        
-        # 收集字段
+
         for field in capabilities.get("fields", []):
             all_fields.add(field)
-    
-    # 计算器列表（去重后）
+
     typer.echo(f"\n🧮 可用计算器 ({len(all_calculators)})")
     if all_calculators:
         for calc in all_calculators:
@@ -311,18 +292,17 @@ def status(
                     typer.echo(f"    必需字段: {', '.join(fields)}")
     else:
         typer.echo("  (无)")
-    
-    # 字段数量
+
     typer.echo(f"\n📋 可用字段 ({len(all_fields)})")
     typer.echo("  使用 'acorn vi list-fields' 查看完整列表")
-    
+
     typer.echo("\n" + "─" * 60)
     typer.echo("💡 提示: 查询示例")
     typer.echo("  acorn vi query 600519 --fields net_profit,operating_cash_flow --years 10")
     typer.echo("  acorn vi query 600519 --calculators implied_growth")
 
 
-# 动态加载插件命令到主 app
+# 动态加载插件命令
 def load_plugin_commands() -> None:
     """从 entry_points 加载插件贡献的 CLI 命令"""
     from importlib.metadata import entry_points

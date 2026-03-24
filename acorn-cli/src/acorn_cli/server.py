@@ -1,163 +1,108 @@
 """
-Unix Socket RPC Server for acorn-core
+FastAPI Server for acorn-core
 """
 from __future__ import annotations
 
-import json
-import socket
-import threading
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 from acorn_core import Acorn, Task  # type: ignore[import]
 
-# Default socket path in user directory
-DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
+# 创建 FastAPI 应用
+app = FastAPI(title="Acorn Agent", version="0.1.0")
+
+# 全局 Acorn 实例
+acorn = Acorn()
+acorn.load_plugins()
 
 
-class AcornServer:
-    """Unix Socket RPC Server"""
+# 请求/响应模型
+class ExecuteRequest(BaseModel):
+    command: str
+    args: dict[str, Any] = {}
 
-    def __init__(self, socket_path: Optional[str] = None) -> None:
-        self.socket_path = socket_path or str(DEFAULT_SOCKET_PATH)
-        self.acorn = Acorn()
-        self.acorn.load_plugins()
-        self._running = False
 
-    def start(self) -> None:
-        """Start the server (blocking)"""
-        # Create directory if needed
-        Path(self.socket_path).parent.mkdir(parents=True, exist_ok=True)
+class ExecuteResponse(BaseModel):
+    success: bool
+    data: Any = None
+    error: dict | None = None
 
-        # Remove existing socket file
-        Path(self.socket_path).unlink(missing_ok=True)
 
-        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        server.bind(self.socket_path)
-        server.listen(5)
+class HealthResponse(BaseModel):
+    healthy: bool
+    version: str = "0.1.0"
 
-        self._running = True
-        print(f"acorn-agent listening on {self.socket_path}")
 
-        while self._running:
+@app.get("/health", response_model=HealthResponse)
+def health_check() -> HealthResponse:
+    """健康检查"""
+    return HealthResponse(healthy=True, version="0.1.0")
+
+
+@app.get("/status")
+def get_status() -> dict[str, Any]:
+    """获取系统状态"""
+    status_info = {
+        "status": "ok",
+        "plugins": [],
+    }
+
+    for name, plugin in acorn.list_plugins():
+        plugin_info = {"name": name}
+
+        if hasattr(plugin, "vi_status"):
             try:
-                conn, _ = server.accept()
-                threading.Thread(target=self._handle_connection, args=(conn,), daemon=True).start()
+                plugin_status = plugin.vi_status()
+                if plugin_status:
+                    plugin_info.update(plugin_status)
             except Exception as e:
-                if self._running:
-                    print(f"Error: {e}")
-
-    def stop(self) -> None:
-        """Stop the server"""
-        self._running = False
-        Path(self.socket_path).unlink(missing_ok=True)
-
-    def _handle_connection(self, conn: socket.socket) -> None:
-        """Handle a single client connection"""
-        try:
-            data = conn.recv(4096)
-            if not data:
-                return
-
-            request = json.loads(data.decode())
-            response = self._execute(request)
-            conn.sendall(json.dumps(response).encode())
-        except Exception as e:
-            error_response = {
-                "success": False,
-                "error": {"code": "SERVER_ERROR", "message": str(e)}
-            }
-            try:
-                conn.sendall(json.dumps(error_response).encode())
-            except Exception:
-                pass
-        finally:
-            conn.close()
-
-    def _execute(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Execute a command"""
-        command = request.get("command")
-        args = request.get("args", {})
-
-        if not command:
-            return {
-                "success": False,
-                "error": {"code": "INVALID_REQUEST", "message": "command is required"}
-            }
-
-        # Built-in status check - 完整输出系统状态
-        if command == "status":
-            status_info = {
-                "status": "ok",
-                "plugins": [],
-            }
-            
-            # 通过 vi_status hook 收集各插件状态
-            # 每个插件贡献自己的状态信息，acorn-core 统一拼接
-            for name, plugin in self.acorn.list_plugins():
-                plugin_info = {"name": name}
-                
-                # 调用 vi_status hook 获取插件状态
-                if hasattr(plugin, "vi_status"):
-                    try:
-                        plugin_status = plugin.vi_status()
-                        if plugin_status:
-                            plugin_info.update(plugin_status)
-                    except Exception as e:
-                        plugin_info["error"] = str(e)
-                        plugin_info["status"] = "error"
-                else:
-                    plugin_info["status"] = "no vi_status hook"
-                
-                status_info["plugins"].append(plugin_info)
-
-            return {
-                "success": True,
-                "data": status_info
-            }
-
-        # Built-in command list
-        if command == "list_commands":
-            capabilities = self.acorn.list_capabilities()
-            return {
-                "success": True,
-                "data": {"commands": capabilities}
-            }
-
-        task = Task(command=command, args=args)
-        response = self.acorn.execute(task)
-
-        if response.success:
-            return {"success": True, "data": response.data}
+                plugin_info["error"] = str(e)
+                plugin_info["status"] = "error"
         else:
-            error = response.error
-            return {
-                "success": False,
-                "error": {
-                    "code": error.code if error else "UNKNOWN",
-                    "message": error.message if error else "Unknown error"
-                }
-            }
+            plugin_info["status"] = "no vi_status hook"
+
+        status_info["plugins"].append(plugin_info)
+
+    return {"success": True, "data": status_info}
+
+
+@app.get("/commands")
+def list_commands() -> dict[str, Any]:
+    """列出可用命令"""
+    capabilities = acorn.list_capabilities()
+    return {"success": True, "data": {"commands": capabilities}}
+
+
+@app.post("/execute", response_model=ExecuteResponse)
+def execute(request: ExecuteRequest) -> ExecuteResponse:
+    """执行命令"""
+    if not request.command:
+        raise HTTPException(status_code=400, detail="command is required")
+
+    task = Task(command=request.command, args=request.args)
+    response = acorn.execute(task)
+
+    if response.success:
+        return ExecuteResponse(success=True, data=response.data)
+    else:
+        error = response.error
+        return ExecuteResponse(
+            success=False,
+            error={
+                "code": error.code if error else "UNKNOWN",
+                "message": error.message if error else "Unknown error",
+            },
+        )
 
 
 def main() -> int:
     """Server entry point"""
-    import signal
+    import uvicorn
 
-    server = AcornServer()
-
-    def handle_signal(signum, frame):
-        print("\nShutting down...")
-        server.stop()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
-
-    server.start()
-    return 0
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":
-    import sys
-    raise SystemExit(main())
+    main()

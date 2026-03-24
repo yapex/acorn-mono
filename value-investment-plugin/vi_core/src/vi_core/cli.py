@@ -1,7 +1,6 @@
 """
 VI CLI Commands
 ===============
-
 CLI commands for Value Investment plugin.
 通过 RPC 调用 acorn 服务执行命令。
 """
@@ -18,36 +17,31 @@ import typer
 
 app = typer.Typer(name="vi", help="Value Investment - 财务数据查询")
 
-# 默认 socket 路径
-DEFAULT_SOCKET_PATH = Path.home() / ".acorn" / "agent.sock"
-
 
 def _get_client():
     """获取 RPC 客户端"""
     from acorn_cli.client import AcornClient
-    return AcornClient(socket_path=str(DEFAULT_SOCKET_PATH))
+    return AcornClient()
 
 
 def _check_server_running() -> bool:
     """检查服务是否运行"""
     try:
         client = _get_client()
-        result = client.execute("health", {})
-        return result.get("success", False)
+        result = client.health_check()
+        return result.get("healthy", False)
     except Exception:
         return False
 
 
 def _start_server_background() -> None:
     """后台启动服务"""
-    if DEFAULT_SOCKET_PATH.exists():
-        DEFAULT_SOCKET_PATH.unlink()
-    
     venv_bin = Path(sys.executable).parent
     acorn_agent_script = venv_bin / "acorn-agent"
-    
+
     subprocess.Popen(
         [str(acorn_agent_script)],
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
@@ -58,15 +52,15 @@ def _ensure_server_running() -> bool:
     """确保服务运行"""
     if _check_server_running():
         return True
-    
+
     typer.echo("启动 acorn 服务...", err=True)
     _start_server_background()
-    
-    for _ in range(10):
-        time.sleep(0.3)
+
+    for _ in range(20):
+        time.sleep(0.5)
         if _check_server_running():
             return True
-    
+
     typer.echo("❌ 服务启动失败", err=True)
     return False
 
@@ -75,7 +69,7 @@ def _execute(command: str, args: dict) -> dict:
     """通过 RPC 执行命令"""
     if not _ensure_server_running():
         return {"success": False, "error": {"message": "服务不可用"}}
-    
+
     client = _get_client()
     return client.execute(command, args)
 
@@ -114,12 +108,7 @@ def list_fields(
     source: Optional[str] = None,
     prefix: Optional[str] = None,
 ):
-    """列出可用字段
-
-    Args:
-        source: 数据源 (可选)
-        prefix: 字段前缀过滤 (可选)
-    """
+    """列出可用字段"""
     response = _execute("vi_list_fields", {
         "source": source,
         "prefix": prefix,
@@ -141,20 +130,13 @@ def list_fields(
 @app.command("list-calculators")
 def list_calculators():
     """列出可用计算器"""
-    from acorn_core import Task, Acorn
+    response = _execute("vi_list_calculators", {})
 
-    acorn = Acorn()
-    acorn.load_plugins()
-
-    task = Task(command="vi_list_calculators", args={})
-    response = acorn.execute(task)
-
-    if response.success:
-        data = response.data or {}
+    if response.get("success"):
+        data = response.get("data") or {}
         calcs = data.get("calculators", []) if isinstance(data, dict) else data
         if calcs:
             for calc in calcs:
-                # calc 可能是 dict 或 str
                 if isinstance(calc, dict):
                     name = calc.get("name", str(calc))
                     desc = calc.get("description", "")
@@ -167,4 +149,5 @@ def list_calculators():
         else:
             typer.echo("No calculators found")
     else:
-        typer.echo(f"✗ Error: {response.error.message}")
+        error = response.get("error", {})
+        typer.echo(f"✗ Error: {error.get('message', error)}")

@@ -9,8 +9,8 @@ dependencies = [
 ]
 
 [project.entry-points."yapex.acorn.plugins"]
-# 内置插件
-evo_manager = "acorn_core.plugins.evo_manager:plugin"
+# 内部插件（通过 entry_points 加载）
+# 注意：EvoManager 是核心插件，由 Kernel 直接实例化并注册，不通过 entry_points 加载
 # 外部插件格式: name = "module:plugin_instance"
 
 [build-system]

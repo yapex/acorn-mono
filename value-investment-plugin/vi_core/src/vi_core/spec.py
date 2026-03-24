@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 import pluggy  # type: ignore[import]
+from acorn_core.specs import hookspec, hookimpl
 
 vi_hookspec = pluggy.HookspecMarker("value_investment")
 vi_hookimpl = pluggy.HookimplMarker("value_investment")
@@ -324,3 +325,41 @@ class ValueInvestmentSpecs(
 ):
     """Combined hook specifications for Value Investment plugins"""
     pass
+
+
+# =============================================================================
+# Evolution Hooks (框架级)
+# 使用 vi_hookspec 装饰器注册到 value_investment 命名空间
+# =============================================================================
+
+from acorn_events import EvolutionSpec as EvolutionSpecInterface
+
+
+class EvolutionSpec(EvolutionSpecInterface):
+    """
+    进化机制 Hook spec
+    
+    继承自 acorn_events.EvolutionSpec，使用 vi_hookspec 装饰器注册到
+    value_investment 命名空间。
+    """
+
+    @vi_hookspec(firstresult=True)
+    def get_evolution_spec(
+        self,
+        capability_type: str,
+        name: str,
+        context: dict | None = None,
+    ) -> str | None:
+        """
+        询问插件是否支持某能力，不支持则返回进化规范
+        
+        Args:
+            capability_type: 能力类型，如 "calculator", "field"
+            name: 具体名称，如 "npcf_ratio"
+            context: 可选的上下文信息
+        
+        Returns:
+            None - 支持此能力或不关心此类型
+            str  - 不支持，返回进化规范（给 LLM 的 prompt）
+        """
+        return None

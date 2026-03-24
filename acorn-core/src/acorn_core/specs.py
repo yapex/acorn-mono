@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Optional
 
 import pluggy
+from acorn_events import EvolutionSpec as EvolutionSpecInterface
 
 hookspec = pluggy.HookspecMarker("evo")
 hookimpl = pluggy.HookimplMarker("evo")
@@ -95,3 +96,33 @@ class Genes(
     生命体的基因 - 定义系统可扩展的核心协议
     """
     pass
+
+
+# =============================================================================
+# Evolution Hooks (框架级，业务无关)
+# =============================================================================
+
+class EvolutionSpec(EvolutionSpecInterface):
+    """
+    进化机制 Hook spec - 框架级通用协议
+    
+    当系统发现能力缺失时，通过此 Hook 询问所有插件：
+    "你能提供这个能力的进化规范吗？"
+    
+    依赖方向：业务插件 → 框架核心（实现此 Hook）
+    
+    使用方式：
+    1. acorn_core/kernel.py 添加此 Hookspec 到 PluginManager
+    2. 业务插件（如 CalculatorEngine）实现此 Hook
+    3. EvoManager 通过 pm.hook.get_evolution_spec() 调用
+    """
+
+    @hookspec(firstresult=True)
+    def get_evolution_spec(
+        self,
+        capability_type: str,
+        name: str,
+        context: dict | None = None,
+    ) -> str | None:
+        """继承自 EvolutionSpecInterface，由 pluggy 添加装饰器"""
+        return None

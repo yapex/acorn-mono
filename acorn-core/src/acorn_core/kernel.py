@@ -49,27 +49,32 @@ class Acorn:
         """加载插件
 
         加载顺序：
-        1. 内部插件 (通过 entry_points)
-        2. 外部路径插件 (可选)
-        3. 已安装的外部插件 (通过 setuptools entry_points)
+        1. 核心插件（EvoManager，直接实例化并注入依赖）
+        2. 其他内部插件 (通过 entry_points)
+        3. 外部路径插件 (可选)
         """
         # 延迟初始化事件总线
         if self._event_bus is None:
             self._event_bus = self._get_default_event_bus()
 
-        # 1. 加载内部插件（内置 + 入口点）
+        # 1. 注册核心插件（EvoManager，需要注入 pm）
+        from acorn_core.plugins.evo_manager import EvoManager
+        evo_manager = EvoManager(pm=self.pm, event_bus=self._event_bus)
+        self.pm.register(evo_manager, name="evo_manager")
+
+        # 2. 加载其他内部插件（入口点）
         self.pm.load_setuptools_entrypoints("yapex.acorn.plugins")
 
-        # 2. 加载外部路径插件
+        # 3. 加载外部路径插件
         if plugin_path:
             self._load_from_path(plugin_path)
 
-        # 3. 发送插件加载完成事件
+        # 4. 发送插件加载完成事件
         from acorn_events import AcornEvents
         for plugin in self.pm.get_plugins():
             plugin_name = self.pm.get_name(plugin)
             if plugin_name:
-                self._event_bus.publish(AcornEvents.PLUGIN_LOADED, sender=self, plugin_name=plugin_name, plugin=plugin)
+                self._event_bus.publish(AcornEvents.SYS_PLUGIN_LOADED, sender=self, plugin_name=plugin_name, plugin=plugin)
 
         self.pm.hook.on_load()
 
