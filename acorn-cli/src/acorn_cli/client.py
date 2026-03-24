@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 
 # 默认地址
-DEFAULT_BASE_URL = "http://127.0.0.1:8000"
+DEFAULT_BASE_URL = "http://127.0.0.1:18732"
 
 
 class AcornClient:
