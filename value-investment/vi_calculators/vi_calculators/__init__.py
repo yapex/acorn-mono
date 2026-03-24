@@ -195,7 +195,36 @@ class CalculatorEngine:
                 return None
         
         # 不支持，返回进化规范
-        return f'''要创建计算器 `{name}`，请按以下格式提供代码：
+        return f'''## 命名规范
+
+创建计算器时，请遵循以下命名规范：
+
+### 文件命名
+- 使用 snake_case 命名法，如 `calc_gross_profit.py`
+- 文件名格式：`calc_<财务指标英文名>.py`
+- **命名要尽可能表达这个计算器的财务指标计算意义**
+- 使用英文完整表达，但也不要太长，控制在 3-5 个单词内
+
+### 函数命名
+- 函数名统一为 `calculate`
+- 变量名使用完整英文，如 `net_profit` 而非 `np`
+
+### 命名示例
+
+| ✅ 正确 | ❌ 错误 | 原因 |
+|--------|--------|------|
+| `calc_gross_profit` | `calc_gp` | 不要缩写 |
+| `calc_net_profit_margin` | `calc_npm` | 不要缩写 |
+| `calc_operating_cash_flow_to_net_profit_ratio` | `calc_cf_ratio` | 过长但可接受 |
+| `calc_interest_coverage_ratio` | `calc_icr` | 可接受，清晰表达含义 |
+| `calc_return_on_equity` | `calc_roe` | ROE 是标准缩写，可接受 |
+| `calc_price_to_earnings_ratio` | `calc_pe` | PE 是标准缩写，可接受 |
+
+---
+
+## 代码模板
+
+要创建计算器 `{name}`，请按以下格式提供代码：
 
 ```python
 REQUIRED_FIELDS = ["field_a", "field_b"]
