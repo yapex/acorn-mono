@@ -5,8 +5,8 @@ description = "Provider Market A (Tushare) for A-Share market"
 requires-python = ">=3.12"
 dependencies = [
     "tushare>=1.4.0",
-    "vi-core>=0.1.0",
-    "vi-fields-ifrs>=0.1.0",
+    "vi_core>=0.1.0",
+    "vi_fields_ifrs>=0.1.0",
 ]
 
 [build-system]

@@ -8,6 +8,7 @@ workspace = { members = [
     "value-investment/vi_fields_extension",
     "value-investment/vi_calculators",
     "value-investment/vi_fields_ifrs",
+    "value-investment/provider_market_a",
 ] }
 
 [tool.uv.sources]
@@ -19,6 +20,7 @@ vi-core = { workspace = true }
 vi-fields-extension = { workspace = true }
 vi-calculators = { workspace = true }
 vi-fields-ifrs = { workspace = true }
+provider-market-a = { workspace = true }
 
 [dependency-groups]
 dev = [
