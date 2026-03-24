@@ -104,6 +104,21 @@ def is_port_in_use(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+@app.on_event("startup")
+def on_startup():
+    """服务启动时的回调"""
+    import sys
+    print("", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
+    print("🌰 Acorn 服务已启动", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
+    print(f"  HTTP API:    http://127.0.0.1:18732", file=sys.stderr)
+    print(f"  Swagger UI:  http://127.0.0.1:18732/docs", file=sys.stderr)
+    print(f"  健康检查:    http://127.0.0.1:18732/health", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
+    print("", file=sys.stderr)
+
+
 def main() -> int:
     """Server entry point"""
     import uvicorn
