@@ -1407,7 +1407,6 @@ dependencies = [
     { name = "loguru" },
     { name = "pandas" },
     { name = "pluggy" },
-    { name = "vi-calculators" },
     { name = "vi-fields-extension" },
 ]
 
@@ -1418,7 +1417,6 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.0" },
     { name = "pandas", specifier = ">=2.0.0,<3.0" },
     { name = "pluggy", specifier = ">=1.5.0" },
-    { name = "vi-calculators", specifier = ">=0.1.0" },
     { name = "vi-fields-extension", specifier = ">=0.1.0" },
 ]
 

@@ -10,7 +10,6 @@ dependencies = [
     "diskcache>=5.0.0",
     "loguru>=0.7.0",
     "vi_fields_extension>=0.1.0",
-    "vi_calculators>=0.1.0",
 ]
 
 [build-system]
