@@ -32,8 +32,9 @@ from pathlib import Path
 import pandas as pd
 from typing import Any
 
-from vi_core.spec import vi_hookimpl, CalculatorSpec  # type: ignore[import]
-from acorn_core.specs import hookimpl  # 框架级 hookimpl
+import pluggy  # type: ignore[import]
+
+vi_hookimpl = pluggy.HookimplMarker("value_investment")
 
 
 # 默认加载路径
@@ -139,7 +140,7 @@ def create_isolated_module(namespace: str, name: str) -> types.ModuleType:
     return module
 
 
-class CalculatorEngine(CalculatorSpec):
+class CalculatorEngine:
     """
     Calculator 引擎
     
