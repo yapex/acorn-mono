@@ -97,11 +97,24 @@ def execute(request: ExecuteRequest) -> ExecuteResponse:
         )
 
 
+def is_port_in_use(port: int) -> bool:
+    """检查端口是否已被占用"""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def main() -> int:
     """Server entry point"""
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=18732)
+    port = 18732
+
+    if is_port_in_use(port):
+        print(f"端口 {port} 已被占用，服务已在运行")
+        return 1
+
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
