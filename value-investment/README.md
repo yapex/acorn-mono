@@ -9,8 +9,8 @@
 │                          vi_core                                 │
 │                    (核心插件 + Plugin Manager)                   │
 │                                                                 │
-│  Commands: query, list_fields, list_calculators                 │
-│  Entry Points: value_investment.{fields,providers,calculators} │
+│  Commands: query, list, list_calculators                       │
+│  Entry Points: value_investment.{fields,providers,calculators}   │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
         ┌───────────────────┼───────────────────┐
@@ -57,11 +57,16 @@ export TUSHARE_TOKEN="your_token_here"
 ### CLI 使用
 
 ```bash
-# 查询财务数据
-acorn vi query 600519 -r roe,gross_margin -y 10
+# 查询财务数据（统一 items 概念）
+acorn vi query 600519 --items revenue,net_profit,implied_growth
+acorn vi query 600519 --items operating_cash_flow,market_cap --years 5
 
-# 列出可用字段
-acorn vi list-fields
+# 列出所有数据项
+acorn vi list
+
+# 按类型筛选
+acorn vi list --category calculator
+acorn vi list --category field
 
 # 列出可用计算器
 acorn vi list-calculators
@@ -74,22 +79,21 @@ from acorn_cli.client import AcornClient
 
 client = AcornClient()
 
-# 查询财务数据
+# 查询财务数据（统一 items 参数）
 result = client.execute("vi_query", {
     "symbol": "600519",
-    "fields": "total_assets,roe,market_cap",
+    "items": "revenue,net_profit,market_cap",
     "years": 5,
 })
 
-# 查询并计算隐含增长率
+# 查询并计算隐含增长率（items 包含字段和计算器）
 result = client.execute("vi_query", {
     "symbol": "600519",
-    "fields": "operating_cash_flow,market_cap",
-    "calculators": "implied_growth",
+    "items": "operating_cash_flow,market_cap,implied_growth",
 })
 
-# 列出所有可用字段
-result = client.execute("vi_list_fields", {})
+# 列出所有可用数据项
+result = client.execute("vi_list", {})
 
 # 列出所有计算器
 result = client.execute("vi_list_calculators", {})
@@ -278,7 +282,7 @@ value-investment-plugin/
 │       └── plugin.py
 ├── calculators/             # 计算器脚本
 │   └── calc_implied_growth.py
-├── vi_cli/                  # CLI 工具（可选）
+├── vi_cli/                  # CLI 工具（已废弃，请使用 acorn run）
 ├── tests/                   # 集成测试
 └── pyproject.toml
 ```

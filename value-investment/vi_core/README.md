@@ -6,9 +6,42 @@ Value Investment 核心插件，定义 Hook Spec 并提供查询引擎。
 
 - 定义所有 Hook Specification（契约）
 - 实现 Pluggy Plugin Manager
-- 提供 `query`、`list_fields`、`list_calculators` 命令
+- 提供 `query`、`list` 命令
 - 协调 Provider、Calculator、Fields 插件
 - 提供 `BaseDataProvider` 模板基类
+- 实现 `QueryEngine` 统一查询接口（预检 + 数据获取 + Calculator 执行）
+
+## QueryEngine
+
+统一查询引擎，负责：
+1. **预检** - 检查 items 可用性，提前发现缺失
+2. **获取数据** - 通过 pluggy hooks 调用 Provider 获取 Field 数据
+3. **运行 Calculator** - 按拓扑排序执行 Calculator（支持依赖链）
+
+### 数据流程
+
+```
+QueryEngine.query(symbol, items)
+    │
+    ├── Prechecker.check() → 预检可用性
+    │
+    ├── _fetch_data() → 通过 vi_fetch_financials/indicators/market hooks
+    │
+    └── _run_calculators() → 通过 vi_run_calculator hook
+         │
+         └── 拓扑排序确保依赖顺序
+             e.g., npcf_ratio → test_chain_a → test_chain_b
+```
+
+### 查询结果
+
+```python
+result = engine.query("600519", ["revenue", "implied_growth"])
+# result.data = {
+#     "revenue": {2024: 1000, 2023: 900},
+#     "implied_growth": {2024: 0.08},
+# }
+```
 
 ## Hook Specs
 
@@ -157,21 +190,29 @@ df = provider.fetch_market("600519", {"market_cap", "pe_ratio"})
 
 | 命令 | 参数 | 说明 |
 |------|------|------|
-| `vi_query` | symbol, fields, end_year?, years?, calculators? | 查询财务数据 |
-| `vi_list_fields` | source?, prefix? | 列出所有可用字段 |
+| `vi_query` | symbol, items?, end_year?, years? | 查询财务数据 |
+| `vi_list` | category?, source? | 列出所有可用数据项 |
 | `vi_list_calculators` | - | 列出所有计算器 |
 | `vi_register_calculator` | name, code, required_fields, description? | 动态注册计算器 |
 
 ### CLI 使用
 
 ```bash
-# 查询财务数据
-acorn vi query 600519 -r roe,gross_margin -y 10
+# 查询财务数据（统一 items 概念，可混合字段和计算器）
+acorn vi query 600519 --items revenue,net_profit,implied_growth
+acorn vi query 600519 --items operating_cash_flow,market_cap --years 5
 
-# 列出可用字段
-acorn vi list-fields --source ifrs
+# 列出所有数据项（统一视图）
+acorn vi list
 
-# 列出可用计算器
+# 按类型筛选
+acorn vi list --category calculator
+acorn vi list --category field
+
+# 按来源筛选
+acorn vi list --source ifrs
+
+# 列出可用计算器（详细视图）
 acorn vi list-calculators
 ```
 

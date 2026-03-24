@@ -77,23 +77,28 @@ def _execute(command: str, args: dict) -> dict:
 @app.command()
 def query(
     symbol: str,
+    items: Optional[str] = None,
     years: int = 10,
-    fields: Optional[str] = None,
-    calculators: Optional[str] = None,
+    end_year: Optional[int] = None,
 ):
     """查询股票财务数据
 
     Args:
-        symbol: 股票代码 (如 600519)
-        years: 查询年份数
-        fields: 字段列表 (逗号分隔)
-        calculators: 计算器列表 (逗号分隔)
+        symbol: 股票代码 (如 600519, 00700)
+        items: 数据项列表 (逗号分隔，可包含字段和计算器)
+        years: 查询年份数 (默认 10)
+        end_year: 结束年份 (默认自动判断)
+        
+    Examples:
+        acorn vi query 600519 --items revenue,net_profit,roe
+        acorn vi query 600519 --items implied_growth
+        acorn vi query 00700 --items revenue,operating_cash_flow --years 5
     """
     response = _execute("vi_query", {
         "symbol": symbol,
+        "items": items,
         "years": years,
-        "fields": fields,
-        "calculators": calculators,
+        "end_year": end_year,
     })
 
     if response.get("success"):
@@ -103,28 +108,56 @@ def query(
         typer.echo(f"✗ Error: {error.get('message', error)}")
 
 
-@app.command("list-fields")
-def list_fields(
+@app.command()
+def list(
+    category: Optional[str] = None,
     source: Optional[str] = None,
-    prefix: Optional[str] = None,
 ):
-    """列出可用字段"""
-    response = _execute("vi_list_fields", {
-        "source": source,
-        "prefix": prefix,
-    })
-
-    if response.get("success"):
-        data = response.get("data") or {}
-        fields = data.get("fields", []) if isinstance(data, dict) else data
-        if fields:
-            for field in fields:
-                typer.echo(f"  • {field}")
-        else:
-            typer.echo("No fields found")
-    else:
-        error = response.get("error", {})
-        typer.echo(f"✗ Error: {error.get('message', error)}")
+    """列出可用的数据项 (统一 items 概念)
+    
+    Args:
+        category: 按分类筛选 (field/calculator)
+        source: 按来源筛选
+        
+    Examples:
+        acorn vi list
+        acorn vi list --category calculator
+        acorn vi list --source ifrs
+    """
+    # 列出字段
+    if category is None or category == "field":
+        response = _execute("vi_list_fields", {
+            "source": source,
+        })
+        if response.get("success"):
+            data = response.get("data") or {}
+            fields_by_source = data.get("by_source", {}) if isinstance(data, dict) else {}
+            if fields_by_source:
+                typer.echo("\n📊 Fields:")
+                for src, fields in fields_by_source.items():
+                    typer.echo(f"  [{src}]")
+                    for field in fields[:10]:
+                        typer.echo(f"    • {field}")
+                    if len(fields) > 10:
+                        typer.echo(f"    ... and {len(fields) - 10} more")
+    
+    # 列出计算器
+    if category is None or category == "calculator":
+        response = _execute("vi_list_calculators", {})
+        if response.get("success"):
+            data = response.get("data") or {}
+            calcs = data.get("calculators", []) if isinstance(data, dict) else data
+            if calcs:
+                typer.echo("\n🧮 Calculators:")
+                for calc in calcs:
+                    if isinstance(calc, dict):
+                        name = calc.get("name", str(calc))
+                        desc = calc.get("description", "")
+                        deps = calc.get("required_fields", [])
+                        deps_str = f" (requires: {', '.join(deps)})" if deps else ""
+                        typer.echo(f"  • {name}{deps_str}")
+                        if desc:
+                            typer.echo(f"    {desc}")
 
 
 @app.command("list-calculators")

@@ -177,6 +177,52 @@ class ViCorePlugin:
 
         return pm
 
+    @classmethod
+    def sync_items_to_registry(cls) -> None:
+        """将所有插件的 items 同步到全局 ItemRegistry
+        
+        同步内容：
+        1. Calculator items (来自 vi_list_calculators hook)
+        2. Field items (来自 vi_fields hook)
+        
+        Calculator 优先于 Field（同名时）
+        """
+        from .items import get_registry, ItemSource
+        
+        registry = get_registry()
+        pm = cls._get_plugin_manager()
+        
+        # 1. 同步 Calculator items
+        calc_list = pm.hook.vi_list_calculators()
+        if calc_list:
+            # Flatten if nested (pluggy returns [[...]])
+            if calc_list and isinstance(calc_list[0], list):
+                calc_list = calc_list[0]
+            
+            for calc in calc_list:
+                registry.register_calculator(
+                    name=calc.get("name", ""),
+                    requires=calc.get("required_fields", []),
+                    description=calc.get("description", ""),
+                    category="analysis",
+                )
+        
+        # 2. 同步 Field items (Calculator 已在上面注册，Field 不会覆盖)
+        for fields_result in pm.hook.vi_fields():
+            if fields_result:
+                source = fields_result.get("source", "unknown")
+                fields_dict = fields_result.get("fields", {})
+                
+                for field_name, field_info in fields_dict.items():
+                    # 只有当 Item 不存在时才注册（Calculator 优先）
+                    existing = registry.get(field_name)
+                    if existing is None:
+                        registry.register_field(
+                            name=field_name,
+                            description=field_info.get("description", ""),
+                            category="financial",
+                        )
+
     # =============================================================================
     # Genes Interface (Acorn Core)
     # =============================================================================
@@ -334,10 +380,11 @@ class ViCorePlugin:
 
         Args:
             symbol: Stock code (e.g. "600519", "000001")
-            fields: Comma-separated field names or "all"
+            items: Comma-separated items (fields and calculators) or "all"
+            fields: Comma-separated field names (legacy, use items instead)
             end_year: End year (default current year)
             years: Number of years to fetch (default 10)
-            calculators: Comma-separated calculator names (e.g. "implied_growth")
+            calculators: Comma-separated calculator names (legacy, use items instead)
             calculator_config: Dict of {calculator_name: config_dict}
 
         Returns:
@@ -347,10 +394,12 @@ class ViCorePlugin:
         if not symbol:
             return {"success": False, "error": "Missing required argument: symbol"}
 
+        # 支持统一的 items 参数，同时兼容 legacy fields/calculators
+        items_str = args.get("items") or ""
         fields_str = args.get("fields") or ""
+        calculators_str = args.get("calculators") or ""
         end_year = args.get("end_year")
         years = args.get("years", 10)
-        calculators_str = args.get("calculators") or ""
         calculator_config = args.get("calculator_config") or {}
 
         # Parse end_year: 智能判断默认值
@@ -368,58 +417,63 @@ class ViCorePlugin:
             end_year = int(end_year)
         years = int(years)
 
-        # Parse calculators
-        requested_calculators = set(
-            c.strip() for c in calculators_str.split(",") if c.strip()
-        )
-
-        # Parse fields
         if not self._get_plugin_manager():
             return {"success": False, "error": "Plugin manager not initialized"}
+
+        # 获取 Calculator 列表用于区分 items
+        calc_list = self._get_plugin_manager().hook.vi_list_calculators()
+        if calc_list and isinstance(calc_list[0], list):
+            calc_list = calc_list[0]
+        calculator_names = {c["name"] for c in calc_list} if calc_list else set()
 
         # 获取系统标准字段（vi_fields hook 返回所有插件定义的字段）
         standard_fields: set[str] = set()
         for result in self._get_plugin_manager().hook.vi_fields():
             if result:
-                # vi_fields 返回格式: {field_name: {description: ...}}
                 fields_dict = result.get("fields", {})
                 standard_fields.update(fields_dict.keys())
 
-        # 获取 Provider 支持的字段（vi_supported_fields hook 返回 Provider 实际能提供的字段）
+        # 获取 Provider 支持的字段
         provider_fields: set[str] = set()
         for result in self._get_plugin_manager().hook.vi_supported_fields():
             if result:
                 provider_fields.update(result)
 
-        if fields_str.lower() == "all":
-            requested = standard_fields
-            fields = provider_fields
+        # 解析 items: 统一 items 参数
+        if items_str:
+            if items_str.lower() == "all":
+                requested_items = standard_fields | calculator_names
+            else:
+                requested_items = set(i.strip() for i in items_str.split(",") if i.strip())
         else:
-            requested = set(f.strip() for f in fields_str.split(",") if f.strip())
-            # 检查缺失的字段（系统能力不足）
-            # unsupported: 请求的字段不在系统标准字段定义中
-            # unfilled: 请求的字段在标准中，但 Provider 不支持
-            unsupported = requested - standard_fields  # 系统不知道这个字段
-            unfilled = requested & (standard_fields - provider_fields)  # 系统有但 Provider 不支持
+            # Legacy: 从 fields 和 calculators 合并
+            field_items = set(f.strip() for f in fields_str.split(",") if f.strip())
+            calc_items = set(c.strip() for c in calculators_str.split(",") if c.strip())
+            requested_items = field_items | calc_items
 
-            # 发布能力缺失事件（统一使用 evo.capability.missing）
-            if unsupported or unfilled:
-                from acorn_events import AcornEvents
-                event_bus = self._event_bus or self._get_default_event_bus()
-                
-                # 字段缺失 → 能力缺失
-                missing_fields = list(unsupported | unfilled)
-                if missing_fields:
-                    event_bus.publish(
-                        AcornEvents.EVO_CAPABILITY_MISSING,
-                        sender=self,
-                        capability_type="field",
-                        name=",".join(missing_fields),
-                        context={"symbol": symbol, "unsupported": list(unsupported), "unfilled": list(unfilled)},
-                    )
+        # 分离 fields 和 calculators
+        requested_calculators = requested_items & calculator_names
+        requested_fields = requested_items - calculator_names
 
-            # 最终使用的字段是请求的字段和 Provider 支持字段的交集
-            fields = requested & provider_fields
+        # 检查缺失的字段
+        unsupported = requested_fields - standard_fields
+        unfilled = requested_fields & (standard_fields - provider_fields)
+
+        if unsupported or unfilled:
+            from acorn_events import AcornEvents
+            event_bus = self._event_bus or self._get_default_event_bus()
+            missing_fields = list(unsupported | unfilled)
+            if missing_fields:
+                event_bus.publish(
+                    AcornEvents.EVO_CAPABILITY_MISSING,
+                    sender=self,
+                    capability_type="field",
+                    name=",".join(missing_fields),
+                    context={"symbol": symbol, "unsupported": list(unsupported), "unfilled": list(unfilled)},
+                )
+
+        # 最终使用的字段
+        fields = requested_fields & provider_fields
 
         if not fields and not requested_calculators:
             return {"success": False, "error": "No valid fields specified"}

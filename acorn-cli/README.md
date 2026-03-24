@@ -49,8 +49,8 @@ acorn config path                 # 显示注册表路径
 acorn status                      # 查看系统状态
 
 # 插件命令 (由插件贡献)
-acorn vi query 600519 -r roe      # VI 插件查询
-acorn vi list-fields              # 列出可用字段
+acorn vi query 600519 --items revenue,roe      # VI 插件查询
+acorn vi list                    # 列出可用数据项
 ```
 
 ## 命令详解
@@ -111,8 +111,8 @@ acorn status
 
 ────────────────────────────────────────────────────
 💡 提示: 查询示例
-  acorn vi query 600519 --fields net_profit,operating_cash_flow --years 10
-  acorn vi query 600519 --calculators implied_growth
+  acorn vi query 600519 --items revenue,net_profit,roe --years 10
+  acorn vi query 600519 --items implied_growth
 ```
 
 ### `acorn config`
@@ -138,10 +138,10 @@ with AcornClient() as client:
     health = client.health_check()
     print(health)  # {'healthy': True, 'version': '0.1.0'}
 
-    # 执行命令
+    # 执行命令（统一 items 参数）
     result = client.execute("vi_query", {
         "symbol": "600519",
-        "fields": "roe,gross_margin",
+        "items": "revenue,roe,gross_margin",
         "years": 10,
     })
 
