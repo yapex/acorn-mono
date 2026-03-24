@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from acorn_core.specs import hookimpl
 
 if TYPE_CHECKING:
-    from acorn_events import EventBus
+    from acorn_events import EventBus, AcornEvents
 
 
 class EvoManager:
@@ -89,8 +89,25 @@ class EvoManager:
     def get_capabilities(self) -> dict[str, Any]:
         """声明能力清单"""
         return {
-            "commands": ["capabilities", "error_log"],
+            "commands": ["capabilities", "error_log", "extension_prompts"],
             "args": {}
+        }
+
+    def vi_status(self) -> dict[str, Any]:
+        """返回 EvoManager 状态"""
+        return {
+            "name": "evo_manager",
+            "description": "Evolution Manager - 进化管理器，追踪系统能力缺口",
+            "version": "1.0.0",
+            "capabilities": {
+                "extension_requests": len(self.extension_requests),
+                "unsupported_fields": len(self.unsupported_fields),
+                "unfilled_fields": len(self.unfilled_fields),
+            },
+            "recent_extension_requests": [
+                {"calculator_name": req.get("calculator_name", "unknown")}
+                for req in self.extension_requests[-5:]
+            ],
         }
 
     @hookimpl
@@ -101,9 +118,12 @@ class EvoManager:
             self._event_bus = self._get_default_event_bus()
 
         self.error_log = []
-        self._event_bus.on("vi.field.unsupported")(self._on_field_unsupported)
-        self._event_bus.on("vi.field.unfilled")(self._on_field_unfilled)
-        self._event_bus.on("calculator.extension_needed")(self._on_calculator_extension_needed)
+        
+        # 使用事件常量订阅
+        from acorn_events import AcornEvents
+        self._event_bus.on(AcornEvents.FIELD_UNSUPPORTED)(self._on_field_unsupported)
+        self._event_bus.on(AcornEvents.FIELD_UNFILLED)(self._on_field_unfilled)
+        self._event_bus.on(AcornEvents.CALCULATOR_EXTENSION_NEEDED)(self._on_calculator_extension_needed)
 
     @hookimpl
     def handle(self, task: Any) -> dict[str, Any]:

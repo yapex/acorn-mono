@@ -138,8 +138,15 @@ def create_isolated_module(namespace: str, name: str) -> types.ModuleType:
     return module
 
 
-class CalculatorLoaderPlugin(CalculatorSpec):
-    """Calculator 加载器插件"""
+class CalculatorEngine(CalculatorSpec):
+    """
+    Calculator 引擎
+    
+    职责：
+    - 发现和加载计算器
+    - 运行计算器
+    - 提供进化规范
+    """
 
     def __init__(self):
         self._calculators = get_all_calculators()
@@ -156,6 +163,54 @@ class CalculatorLoaderPlugin(CalculatorSpec):
             }
             for c in self._calculators
         ]
+
+    def get_evolution_spec(self, name: str) -> str | None:
+        """
+        询问是否支持某计算器，如果不支持，返回进化规范
+        
+        Args:
+            name: 计算器名称
+            
+        Returns:
+            None - 支持此计算器
+            str - 不支持，返回进化规范（给 LLM 的 prompt）
+        """
+        # 检查是否已支持
+        for calc in self._calculators:
+            if calc["name"] == name:
+                return None
+        
+        # 不支持，返回进化规范
+        return '''要创建计算器，请按以下格式提供代码：
+
+```python
+REQUIRED_FIELDS = ["field_a", "field_b"]
+
+def calculate(data, config):
+    """
+    计算说明
+    
+    Args:
+        data: dict[str, pd.Series] - 字段数据
+        config: dict - 用户配置
+        
+    Returns:
+        pd.Series - 计算结果
+    """
+    return data["field_a"] / data["field_b"].replace(0, float('nan'))
+```
+
+字段映射参考：
+- operating_cash_flow = 经营现金流
+- net_profit = 净利润
+- total_assets = 总资产
+- total_equity = 净资产
+- interest_bearing_debt = 有息负债
+- ebitda = 息税折旧摊销前利润
+- market_cap = 市值
+- basic_eps = 每股收益
+- book_value_per_share = 每股净资产
+'''
 
     def _run_in_sandbox(self, calc: dict, data: dict[str, pd.Series], config: dict[str, Any]) -> pd.Series | dict:
         """在沙箱中运行 Calculator"""
@@ -402,4 +457,4 @@ class CalculatorLoaderPlugin(CalculatorSpec):
 
 
 # Pluggy 插件实例
-plugin = CalculatorLoaderPlugin()
+plugin = CalculatorEngine()

@@ -59,17 +59,17 @@ _calculator_entry_points = [
 def _setup_plugins() -> Any:
     """Setup pluggy plugin manager and register all plugins"""
     # Import calculator loader
-    from vi_calculators import CalculatorLoaderPlugin  # type: ignore[import]
-
+    from vi_calculators import CalculatorEngine  # type: ignore[import]
+    
     pm = pluggy.PluginManager("value_investment")
     pm.add_hookspecs(ValueInvestmentSpecs)
 
     # Register core plugin
     pm.register(vi_core_plugin, name="vi_core")
 
-    # Register calculator loader
-    calc_loader = CalculatorLoaderPlugin()
-    pm.register(calc_loader, name="calculators")
+    # Register calculator engine
+    calc_engine = CalculatorEngine()
+    pm.register(calc_engine, name="calculators")
 
     # Register providers and fields via entry_points
     _entry_point_configs = [

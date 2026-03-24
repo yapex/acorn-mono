@@ -54,7 +54,7 @@ def _check_server_running() -> bool:
     """检查服务是否运行"""
     try:
         client = _get_client()
-        result = client.execute("health", {})
+        result = client.execute("status", {})
         return result.get("success", False)
     except Exception:
         return False
@@ -237,24 +237,89 @@ def path() -> None:
 
 
 # =============================================================================
-# Evolution 子命令 (原型)
+# Status 命令 - 反向输出系统状态
 # =============================================================================
 
 @app.command()
-def evolution(
-    intent: str | None = typer.Option(None, "--intent", help="意图"),
-    behavior: str | None = typer.Option(None, "--behavior", help="期望行为"),
-    confirm: bool = typer.Option(False, "--confirm", help="确认应用"),
-    evolve: bool = typer.Option(False, "--evolve", help="进入进化模式"),
+def status(
+    verbose: bool = typer.Option(False, "-v", "--verbose", help="显示详细信息"),
 ) -> None:
-    """Evolution System - 自我进化原型"""
-    from .evolution import evolution_mode, echo_current
-    import sys
+    """显示系统当前状态（可用计算器、字段等）
     
-    if evolve:
-        evolution_mode(intent=intent, behavior=behavior, confirm=confirm)
+    这是与系统首次接触的最佳起点，了解系统当前的能力。
+    """
+    import json
+    
+    result = _execute_via_rpc("status", {})
+    
+    if not result.get("success", False):
+        typer.echo(f"❌ {result.get('error', {}).get('message', 'Unknown error')}", err=True)
+        raise typer.Exit(1)
+    
+    data = result.get("data", {})
+    
+    # 基本状态
+    sys_status = data.get("status", "unknown")
+    if sys_status == "ok":
+        typer.echo("🌰 Acorn 系统状态")
+        typer.echo("─" * 60)
     else:
-        typer.echo("请使用 --evolve 进入进化模式")
+        typer.echo(f"⚠️  系统状态: {sys_status}")
+        typer.echo("─" * 60)
+    
+    # 插件列表 - 从各插件的 vi_status 收集
+    plugins = data.get("plugins", [])
+    typer.echo(f"\n📦 已加载插件 ({len(plugins)})")
+    
+    all_calculators = []
+    all_fields = set()
+    
+    for plugin in plugins:
+        name = plugin.get("name", "unknown")
+        error = plugin.get("error")
+        desc = plugin.get("description", "")
+        capabilities = plugin.get("capabilities", {})
+        
+        status_icon = "✅" if not error else "❌"
+        desc_str = f" - {desc}" if desc and verbose else ""
+        typer.echo(f"  {status_icon} {name}{desc_str}")
+        
+        if verbose and error:
+            typer.echo(f"      错误: {error}")
+        
+        # 收集计算器
+        for calc in capabilities.get("calculators", []):
+            if calc.get("name") not in [c.get("name") for c in all_calculators]:
+                all_calculators.append(calc)
+        
+        # 收集字段
+        for field in capabilities.get("fields", []):
+            all_fields.add(field)
+    
+    # 计算器列表（去重后）
+    typer.echo(f"\n🧮 可用计算器 ({len(all_calculators)})")
+    if all_calculators:
+        for calc in all_calculators:
+            name = calc.get("name", "unknown")
+            desc = calc.get("description", "")
+            fields = calc.get("required_fields", [])
+            typer.echo(f"  • {name}")
+            if verbose:
+                if desc:
+                    typer.echo(f"    描述: {desc}")
+                if fields:
+                    typer.echo(f"    必需字段: {', '.join(fields)}")
+    else:
+        typer.echo("  (无)")
+    
+    # 字段数量
+    typer.echo(f"\n📋 可用字段 ({len(all_fields)})")
+    typer.echo("  使用 'acorn vi list-fields' 查看完整列表")
+    
+    typer.echo("\n" + "─" * 60)
+    typer.echo("💡 提示: 查询示例")
+    typer.echo("  acorn vi query 600519 --fields net_profit,operating_cash_flow --years 10")
+    typer.echo("  acorn vi query 600519 --calculators implied_growth")
 
 
 # 动态加载插件命令到主 app

@@ -19,18 +19,21 @@ except ImportError:
     HAS_QUESTIONARY = False
 
 
-# 自定义样式
-CUSTOM_STYLE = Style([
-    ('qmark', 'fg:cyan bold'),
-    ('question', 'fg:white bold'),
-    ('answer', 'fg:green bold'),
-    ('pointer', 'fg:cyan bold'),
-    ('highlighted', 'fg:cyan bold'),
-    ('selected', 'fg:green'),
-    ('separator', 'fg:gray'),
-    ('instruction', 'fg:gray'),
-    ('text', 'fg:white'),
-])
+# 自定义样式 (仅在 questionary 可用时)
+if HAS_QUESTIONARY:
+    CUSTOM_STYLE = Style([
+        ('qmark', 'fg:cyan bold'),
+        ('question', 'fg:white bold'),
+        ('answer', 'fg:green bold'),
+        ('pointer', 'fg:cyan bold'),
+        ('highlighted', 'fg:cyan bold'),
+        ('selected', 'fg:green'),
+        ('separator', 'fg:gray'),
+        ('instruction', 'fg:gray'),
+        ('text', 'fg:white'),
+    ])
+else:
+    CUSTOM_STYLE = None
 
 
 def format_plugin_entry(entry: PluginEntry, max_name: int = 20) -> str:

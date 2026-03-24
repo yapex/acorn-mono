@@ -203,19 +203,62 @@ class ViCorePlugin:
             "description": "Core - fields defined by plugins",
         }
 
-    def get_health_info(self) -> dict[str, Any]:
-        """Return health info including sub-plugins"""
-        sub_plugins = []
-        if self._get_plugin_manager():
-            for plugin in self._get_plugin_manager().get_plugins():
-                name = self._get_plugin_manager().get_name(plugin)
-                if name:
-                    sub_plugins.append(name)
-
-        return {
-            "sub_plugins": sub_plugins,
-            "entry_point_groups": list(VI_ENTRY_POINT_GROUPS),
+    @vi_hookimpl
+    def vi_status(self) -> dict[str, Any]:
+        """Return plugin status for acorn status command
+        
+        收集所有子插件的状态信息，拼接成完整的状态报告。
+        """
+        status = {
+            "name": "vi",
+            "description": "Value Investment - 财务数据查询",
+            "version": "1.0.0",
+            "capabilities": {
+                "calculators": [],
+                "fields": [],
+                "providers": [],
+            },
+            "config": {},
         }
+        
+        pm = self._get_plugin_manager()
+        if not pm:
+            return status
+        
+        # 收集计算器
+        calc_list = pm.hook.vi_list_calculators()
+        if calc_list:
+            if calc_list and isinstance(calc_list[0], list):
+                calc_list = calc_list[0]
+            status["capabilities"]["calculators"] = [
+                {
+                    "name": calc.get("name"),
+                    "description": calc.get("description", ""),
+                    "required_fields": calc.get("required_fields", []),
+                }
+                for calc in calc_list
+            ]
+        
+        # 收集字段
+        seen_fields = set()
+        for fields_result in pm.hook.vi_fields():
+            if fields_result:
+                source = fields_result.get("source", "unknown")
+                fields_dict = fields_result.get("fields", {})
+                for field_name in fields_dict.keys():
+                    if field_name not in seen_fields:
+                        seen_fields.add(field_name)
+                        status["capabilities"]["fields"].append(field_name)
+        
+        # 收集数据源
+        for market_result in pm.hook.vi_markets():
+            if market_result:
+                if isinstance(market_result, list):
+                    status["capabilities"]["providers"].extend(market_result)
+                else:
+                    status["capabilities"]["providers"].append(market_result)
+        
+        return status
 
     @vi_hookimpl
     def vi_handle(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -301,11 +344,11 @@ class ViCorePlugin:
         if not symbol:
             return {"success": False, "error": "Missing required argument: symbol"}
 
-        fields_str = args.get("fields", "")
+        fields_str = args.get("fields") or ""
         end_year = args.get("end_year")
         years = args.get("years", 10)
-        calculators_str = args.get("calculators", "")
-        calculator_config = args.get("calculator_config", {})
+        calculators_str = args.get("calculators") or ""
+        calculator_config = args.get("calculator_config") or {}
 
         # Parse end_year: 智能判断默认值
         # 年报通常在次年 4 月发布
@@ -357,18 +400,20 @@ class ViCorePlugin:
             unfilled = requested & (standard_fields - provider_fields)  # 系统有但 Provider 不支持
 
             if unsupported:
+                from acorn_events import AcornEvents
                 event_bus = self._event_bus or self._get_default_event_bus()
                 event_bus.publish(
-                    "vi.field.unsupported",
+                    AcornEvents.FIELD_UNSUPPORTED,
                     sender=self,
                     symbol=symbol,
                     fields=list(unsupported),
                 )
 
             if unfilled:
+                from acorn_events import AcornEvents
                 event_bus = self._event_bus or self._get_default_event_bus()
                 event_bus.publish(
-                    "vi.field.unfilled",
+                    AcornEvents.FIELD_UNFILLED,
                     sender=self,
                     symbol=symbol,
                     fields=list(unfilled),
@@ -500,14 +545,15 @@ class ViCorePlugin:
         # Run each requested calculator via hook
         for calc_name in calculator_names:
             if calc_name not in calc_registry:
-                # 计算器不存在，发布扩展请求事件
-                event_bus = self._event_bus or self._get_default_event_bus()
-                event_bus.publish(
-                    "calculator.extension_needed",
-                    sender=self,
-                    calculator_name=calc_name,
-                    extension_prompt=self._generate_calculator_extension_prompt(calc_name),
-                )
+                # 计算器不存在，遍历插件获取进化规范
+                spec = self._find_evolution_spec(calc_name)
+                if spec:
+                    # 有进化规范，直接输出（供 LLM 使用）
+                    print(f"\n{'='*60}")
+                    print(f"EVOLUTION_NEEDED: {calc_name}")
+                    print(f"{'='*60}")
+                    print(spec)
+                    print(f"{'='*60}\n")
                 continue
 
             calc_spec = calc_registry[calc_name]
@@ -547,6 +593,33 @@ class ViCorePlugin:
                     results[calc_name] = pd.Series(calc_result)
 
         return results
+
+    def _find_evolution_spec(self, name: str) -> str | None:
+        """
+        遍历所有插件，查找进化规范
+        
+        Args:
+            name: 能力名称（如计算器名称）
+            
+        Returns:
+            None - 没有插件能提供进化规范
+            str - 进化规范（给 LLM 的 prompt）
+        """
+        pm = self._get_plugin_manager()
+        if not pm:
+            return None
+        
+        # 遍历所有插件，查找实现 get_evolution_spec 的
+        for plugin in pm.get_plugins():
+            if hasattr(plugin, "get_evolution_spec"):
+                try:
+                    spec = plugin.get_evolution_spec(name)
+                    if spec:
+                        return spec
+                except Exception:
+                    pass
+        
+        return None
 
     def _list_calculators(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available calculators"""

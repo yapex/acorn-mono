@@ -85,27 +85,35 @@ class AcornServer:
                 "error": {"code": "INVALID_REQUEST", "message": "command is required"}
             }
 
-        # Built-in health check
-        if command == "health":
-            plugins_info = []
+        # Built-in status check - 完整输出系统状态
+        if command == "status":
+            status_info = {
+                "status": "ok",
+                "plugins": [],
+            }
+            
+            # 通过 vi_status hook 收集各插件状态
+            # 每个插件贡献自己的状态信息，acorn-core 统一拼接
             for name, plugin in self.acorn.list_plugins():
                 plugin_info = {"name": name}
-                # 如果插件有 get_health_info 方法，获取详细信息
-                if hasattr(plugin, "get_health_info"):
+                
+                # 调用 vi_status hook 获取插件状态
+                if hasattr(plugin, "vi_status"):
                     try:
-                        detailed = plugin.get_health_info()
-                        if detailed:
-                            plugin_info["details"] = detailed
+                        plugin_status = plugin.vi_status()
+                        if plugin_status:
+                            plugin_info.update(plugin_status)
                     except Exception as e:
                         plugin_info["error"] = str(e)
-                plugins_info.append(plugin_info)
+                        plugin_info["status"] = "error"
+                else:
+                    plugin_info["status"] = "no vi_status hook"
+                
+                status_info["plugins"].append(plugin_info)
 
             return {
                 "success": True,
-                "data": {
-                    "status": "ok",
-                    "plugins": plugins_info
-                }
+                "data": status_info
             }
 
         # Built-in command list

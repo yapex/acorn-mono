@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 模拟 LLM Agent 与 Evolution System 交互
-场景：数据筛选与转换
+场景：Calculator 创建
 """
 
 import subprocess
@@ -17,118 +17,107 @@ def run_evolution(args: list[str]) -> tuple[str, int]:
     return result.stdout, result.returncode
 
 
-def simulate_llm_agent(user_goal: str):
-    print(f"🎯 用户: {user_goal}")
+def simulate_llm_agent(user_question: str):
+    print(f"🎯 用户: {user_question}")
     print()
     
-    import os
-    # 获取项目根目录
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    input_file = os.path.join(project_root, "test_data", "people.json")
-    output_file = os.path.join(project_root, "test_data", "result.json")
+    # 阶段1: 检查计算器是否存在
+    print("📤 阶段1: 检查计算器是否存在")
     
-    # 阶段1: 提供基本信息
-    print("📤 阶段1: 提供 intent, behavior")
+    # 从用户问题中提取字段名
+    # 简化：假设用户问的是 debt_to_ebitda
+    field_name = "debt_to_ebitda"
+    
     output, _ = run_evolution([
-        "--evolve",
-        "--intent", "data_filter_transform",
-        "--behavior", "过滤并排序",
+        "--intent", "check",
+        "--field-name", field_name,
     ])
     print(output)
     
-    # 检测是否需要更多参数
-    needs_more = "need: input_file" in output or "need: filter_rule" in output
-    
-    if needs_more:
-        print("📤 阶段1.5: 提供文件路径和过滤规则")
-        output, _ = run_evolution([
-            "--evolve",
-            "--intent", "data_filter_transform",
-            "--behavior", "过滤并排序",
-            "--input-file", input_file,
-            "--output-file", output_file,
-            "--filter-rule", "年龄 18-30 岁",
-            "--sort-key", "name",
-        ])
-        print(output)
-    
-    # 检测是否需要代码生成
-    if "need: code_generation" in output:
-        print("📤 阶段2: LLM Agent 生成代码")
-        
-        # 模拟 LLM 根据 skill 生成的代码
-        generated_code = '''def process(input_file: str, output_file: str, filter_rule: str, sort_key: str) -> None:
-    """
-    处理数据文件
-    
-    Args:
-        input_file: 输入 JSON 文件路径
-        output_file: 输出 JSON 文件路径
-        filter_rule: 过滤规则描述
-        sort_key: 排序字段名
-    """
-    # 读取输入文件
-    with open(input_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    
-    # 过滤: 年龄 18-30 岁
-    def matches_filter(item):
-        age = item.get('age', 0)
-        return age >= 18 and age <= 30
-    
-    result = [item for item in data if matches_filter(item)]
-    
-    # 排序: 按 name
-    result.sort(key=lambda x: x.get(sort_key, ''))
-    
-    # 写入输出文件
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-'''
-        
-        print(f"生成代码长度: {len(generated_code)} 字符")
+    # 检查结果
+    if "not_found:" in output:
+        print(f"📤 字段 {field_name} 不存在，需要创建")
         print()
         
-        # 继续执行，提供 code
+        # 阶段2: 创建计算器 - 提供基本信息
+        print("📤 阶段2: 创建计算器 - 提供基本信息")
         output, _ = run_evolution([
-            "--evolve",
-            "--intent", "data_filter_transform",
-            "--behavior", "过滤并排序",
-            "--input-file", input_file,
-            "--output-file", output_file,
-            "--filter-rule", "年龄 18-30 岁",
-            "--sort-key", "name",
-            "--code", generated_code,
-        ])
-        print(output)
-    
-    # 阶段3: 确认
-    if "need: --confirm" in output:
-        print("📤 阶段3: 确认应用")
-        output, _ = run_evolution([
-            "--evolve",
-            "--intent", "data_filter_transform",
-            "--behavior", "过滤并排序",
-            "--input-file", input_file,
-            "--output-file", output_file,
-            "--filter-rule", "年龄 18-30 岁",
-            "--sort-key", "name",
-            "--code", generated_code,
-            "--confirm",
+            "--intent", "create",
+            "--field-name", field_name,
+            "--formula", "interest_bearing_debt / ebitda",
+            "--required-fields", "interest_bearing_debt,ebitda",
+            "--description", "债务/EBITDA比率，用于评估偿债能力",
+            "--unit", "ratio",
         ])
         print(output)
         
-        # 检查输出文件
-        try:
-            with open("test_data/result.json", 'r', encoding='utf-8') as f:
-                result = json.load(f)
-            print("📄 输出结果:")
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-        except FileNotFoundError:
-            print("⚠️ 结果文件未生成（代码执行部分未完整实现）")
+        # 检查是否需要代码
+        if "need: code_generation" in output:
+            print("📤 阶段2.5: LLM Agent 根据 Skill 生成代码")
+            
+            # 根据 Skill 生成的代码
+            generated_code = '''REQUIRED_FIELDS = ["interest_bearing_debt", "ebitda"]
+
+def calculate(data, config):
+    """
+    债务/EBITDA比率，用于评估偿债能力
+    
+    公式: 有息负债 / EBITDA
+    
+    Args:
+        data: dict[str, pd.Series]，字段数据
+        config: dict，用户配置
+        
+    Returns:
+        pd.Series，计算结果
+    """
+    debt = data["interest_bearing_debt"]
+    ebitda = data["ebitda"]
+    
+    # 避免除零
+    result = debt / ebitda.replace(0, float('nan'))
+    return result'''
+            
+            print(f"生成代码长度: {len(generated_code)} 字符")
+            print()
+            
+            # 继续执行，提供代码
+            output, _ = run_evolution([
+                "--intent", "create",
+                "--field-name", field_name,
+                "--formula", "interest_bearing_debt / ebitda",
+                "--required-fields", "interest_bearing_debt,ebitda",
+                "--description", "债务/EBITDA比率，用于评估偿债能力",
+                "--unit", "ratio",
+                "--code", generated_code,
+            ])
+            print(output)
+            
+            # 阶段3: 确认
+            if "need: --confirm" in output:
+                print("📤 阶段3: 确认应用")
+                output, _ = run_evolution([
+                    "--intent", "create",
+                    "--field-name", field_name,
+                    "--formula", "interest_bearing_debt / ebitda",
+                    "--required-fields", "interest_bearing_debt,ebitda",
+                    "--description", "债务/EBITDA比率，用于评估偿债能力",
+                    "--unit", "ratio",
+                    "--code", generated_code,
+                    "--confirm",
+                ])
+                print(output)
+                
+                # 验证：再次检查
+                print("📤 验证: 再次检查计算器")
+                output, _ = run_evolution([
+                    "--intent", "check",
+                    "--field-name", field_name,
+                ])
+                print(output)
     
     print("✅ 完成")
 
 
 if __name__ == "__main__":
-    simulate_llm_agent("读取 people.json，过滤出 18-30 岁的人，按姓名排序")
+    simulate_llm_agent("能帮我计算 debt_to_ebitda 吗？")

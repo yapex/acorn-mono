@@ -16,6 +16,14 @@ force-include = { "../calculators" = "calculators" }
 [tool.hatch.build.targets.editable]
 packages = ["vi_calculators"]
 
+[dependency-groups]
+dev = [
+    "diskcache>=5.6.3",
+    "loguru>=0.7.3",
+    "pytest>=9.0.2",
+    "typer>=0.24.1",
+]
+
 # Pluggy entry point
 [project.entry-points."value_investment.calculators"]
 vi_calculators = "vi_calculators:plugin"

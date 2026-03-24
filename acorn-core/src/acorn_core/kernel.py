@@ -65,10 +65,11 @@ class Acorn:
             self._load_from_path(plugin_path)
 
         # 3. 发送插件加载完成事件
+        from acorn_events import AcornEvents
         for plugin in self.pm.get_plugins():
             plugin_name = self.pm.get_name(plugin)
             if plugin_name:
-                self._event_bus.publish("acorn.plugin.loaded", sender=self, plugin_name=plugin_name, plugin=plugin)
+                self._event_bus.publish(AcornEvents.PLUGIN_LOADED, sender=self, plugin_name=plugin_name, plugin=plugin)
 
         self.pm.hook.on_load()
 

@@ -7,6 +7,9 @@ Acorn EventBus - 事件发布-订阅系统
 - publish(event_type, sender, **data): 发布事件
 - on(event_type): 装饰器订阅事件
 - register_event(event_type): 注册事件类型
+
+事件常量：
+- AcornEvents: 系统事件类型常量
 """
 
 from __future__ import annotations
@@ -19,6 +22,66 @@ from .context import get_trace_id, set_trace_id
 
 if TYPE_CHECKING:
     from blinker import Signal
+
+
+# =============================================================================
+# 系统事件常量
+# =============================================================================
+
+class AcornEvents:
+    """
+    Acorn 系统事件常量
+    
+    所有系统事件都应使用这些常量定义，避免硬编码字符串。
+    订阅方可以直接导入使用：
+    
+    Example:
+        from acorn_events import EventBus, AcornEvents
+        
+        bus.on(AcornEvents.FIELD_UNSUPPORTED)(self._on_field_unsupported)
+        
+        bus.publish(AcornEvents.CALCULATOR_EXTENSION_NEEDED, sender=self, calculator_name="xxx")
+    """
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # 字段相关事件
+    # ─────────────────────────────────────────────────────────────────────
+    
+    #: 系统不支持某字段（字段不在标准字段定义中）
+    FIELD_UNSUPPORTED = "vi.field.unsupported"
+    
+    #: 字段无法填充（字段在标准中但 Provider 不支持或返回空）
+    FIELD_UNFILLED = "vi.field.unfilled"
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # 计算器相关事件
+    # ─────────────────────────────────────────────────────────────────────
+    
+    #: 需要扩展计算器（请求的计算器不存在）
+    CALCULATOR_EXTENSION_NEEDED = "calculator.extension_needed"
+    
+    #: 计算器已注册
+    CALCULATOR_REGISTERED = "calculator.registered"
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # 系统生命周期事件
+    # ─────────────────────────────────────────────────────────────────────
+    
+    #: 系统启动完成
+    SYSTEM_STARTUP = "system.startup"
+    
+    #: 系统关闭
+    SYSTEM_SHUTDOWN = "system.shutdown"
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # 插件生命周期事件
+    # ─────────────────────────────────────────────────────────────────────
+    
+    #: 插件加载完成
+    PLUGIN_LOADED = "acorn.plugin.loaded"
+    
+    #: 插件卸载
+    PLUGIN_UNLOADED = "acorn.plugin.unloaded"
 
 
 class EventBus:
@@ -124,3 +187,5 @@ class EventBus:
 
 # 全局单例实例
 EventBus = EventBus()  # type: ignore[assignment, misc]  # noqa: N816
+
+__all__ = ["EventBus", "AcornEvents", "get_trace_id", "set_trace_id"]

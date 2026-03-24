@@ -28,7 +28,7 @@ class TestCalculatorNameCollision:
     """Test name collision handling for calculators"""
 
     def setup_method(self):
-        """Setup plugin manager with CalculatorLoaderPlugin"""
+        """Setup plugin manager with CalculatorEngine"""
         from vi_calculators import plugin as calculators_plugin
         
         self.pm = pluggy.PluginManager("value_investment")

@@ -281,6 +281,37 @@ class CommandHandlerSpec:
 
 
 # =============================================================================
+# Status Hooks
+# =============================================================================
+
+class StatusSpec:
+    """Hook spec for system status reporting"""
+
+    @vi_hookspec
+    def vi_status(self) -> dict[str, Any]:
+        """Return plugin status for acorn status command
+        
+        每个插件贡献自己的状态信息，acorn-core 统一收集拼接。
+        
+        Returns:
+            {
+                "name": str,           # 插件名称
+                "description": str,    # 插件描述
+                "version": str,        # 插件版本
+                "capabilities": {      # 插件贡献的能力
+                    "calculators": [
+                        {"name": str, "description": str, "required_fields": [...]}
+                    ],
+                    "fields": [...],   # 字段名列表
+                    "providers": [...], # 数据源列表
+                },
+                "config": {},          # 插件配置
+            }
+        """
+        return {}
+
+
+# =============================================================================
 # Combined Specs
 # =============================================================================
 
@@ -289,6 +320,7 @@ class ValueInvestmentSpecs(
     FieldProviderSpec,
     CalculatorSpec,
     CommandHandlerSpec,
+    StatusSpec,
 ):
     """Combined hook specifications for Value Investment plugins"""
     pass
