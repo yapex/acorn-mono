@@ -9,6 +9,8 @@ workspace = { members = [
     "value-investment/vi_calculators",
     "value-investment/vi_fields_ifrs",
     "value-investment/provider_market_a",
+    "value-investment/provider_market_hk",
+    "value-investment/provider_market_us",
 ] }
 
 [tool.uv.sources]
@@ -21,6 +23,8 @@ vi-fields-extension = { workspace = true }
 vi-calculators = { workspace = true }
 vi-fields-ifrs = { workspace = true }
 provider-market-a = { workspace = true }
+provider-market-hk = { workspace = true }
+provider-market-us = { workspace = true }
 
 [dependency-groups]
 dev = [
