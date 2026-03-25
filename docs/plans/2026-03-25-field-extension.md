@@ -457,9 +457,196 @@ git add value-investment/vi_core/src/vi_core/query.py
 git commit -m "feat: update QueryEngine to use vi_provide_items hook"
 ```
 
-**注意：** 实际的命令处理路径在 `plugin.py._query` 中。该方法也需要：
-1. 调用 `vi_provide_items` hook 获取数据
-2. 实现 fallback 机制：当 `vi_provide_items` 返回空时，回退到 legacy `vi_fetch_*` hooks
+---
+
+## Task 4B: 在 plugin.py._query 中实现 vi_provide_items 与 fallback
+
+**Files:**
+- Modify: `value-investment/vi_core/src/vi_core/plugin.py`
+
+**Step 1: 修改 _query 方法使用 vi_provide_items**
+
+在 `_query` 方法中，添加调用 `vi_provide_items` hook 获取数据的逻辑：
+
+```python
+# 使用 vi_provide_items 统一获取数据
+dfs: list[pd.DataFrame] = []
+for result in self._get_plugin_manager().hook.vi_provide_items(
+    items=list(fields),
+    symbol=symbol,
+    market=market,
+    end_year=end_year,
+    years=years,
+):
+    if result is not None and not result.empty:
+        dfs.append(result)
+```
+
+**Step 2: 实现 fallback 机制**
+
+当 `vi_provide_items` 返回空时，回退到 legacy `vi_fetch_*` hooks：
+
+```python
+# Fallback: 如果 vi_provide_items 没有返回数据，尝试旧的 vi_fetch_* hooks
+if not dfs:
+    # Categorize fields
+    indicator_fields = fields & {
+        "roe", "roa", "gross_margin", "net_profit_margin",
+        "current_ratio", "quick_ratio", "debt_ratio",
+        # ... 更多指标字段
+    }
+    
+    market_fields = fields & {
+        "market_cap", "circ_market_cap", "pe_ratio", "pb_ratio",
+        # ... 更多市场字段
+    }
+    
+    financial_fields = fields - indicator_fields - market_fields
+    
+    # Fetch from providers using legacy hooks
+    if financial_fields:
+        for result in self._get_plugin_manager().hook.vi_fetch_financials(
+            symbol=symbol,
+            fields=financial_fields,
+            end_year=end_year,
+            years=years,
+        ):
+            if result is not None and not result.empty:
+                dfs.append(result)
+    
+    if indicator_fields:
+        for result in self._get_plugin_manager().hook.vi_fetch_indicators(
+            symbol=symbol,
+            fields=indicator_fields,
+            end_year=end_year,
+            years=years,
+        ):
+            if result is not None and not result.empty:
+                dfs.append(result)
+    
+    if market_fields:
+        for result in self._get_plugin_manager().hook.vi_fetch_market(
+            symbol=symbol,
+            fields=market_fields,
+        ):
+            if result is not None and not result.empty:
+                dfs.append(result)
+```
+
+**Step 3: Commit**
+
+```bash
+git add value-investment/vi_core/src/vi_core/plugin.py
+git commit -m "fix: update _query to use vi_provide_items with fallback"
+```
+
+---
+
+## Task 4C: 在 A Provider 中实现 vi_provide_items
+
+**Files:**
+- Modify: `value-investment/provider_market_a/src/provider_market_a/plugin.py`
+
+**Step 1: 在 ProviderAPlugin 类中添加 vi_provide_items 实现**
+
+与 HK/US Provider 类似，但 market 检查为 "A"：
+
+```python
+    @vi_hookimpl
+    def vi_provide_items(
+        self,
+        items: list[str],
+        symbol: str,
+        market: str,
+        end_year: int,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
+        """A Provider 实现 vi_provide_items
+        
+        只响应 A 市场的请求，筛选出支持的字段并获取数据。
+        """
+        # 市场过滤：只响应 A 市场
+        if market != "A":
+            return None
+        
+        provider = _get_provider()
+        
+        # 获取 Provider 支持的所有字段
+        supported = provider.get_supported_fields()
+        
+        # 筛选出请求中支持的字段
+        available = set(items) & supported
+        
+        if not available:
+            return None
+        
+        # 分类字段
+        financial_fields = set()
+        indicator_fields = set()
+        market_fields = set()
+        
+        # 从 FIELD_MAPPINGS 中分类
+        for category, mapping in provider.FIELD_MAPPINGS.items():
+            category_fields = set(mapping.values())
+            if category in ["balance_sheet", "income_statement", "cash_flow"]:
+                financial_fields.update(category_fields)
+            elif category == "indicators":
+                indicator_fields.update(category_fields)
+            elif category == "market":
+                market_fields.update(category_fields)
+        
+        # 筛选出各类别中请求的字段
+        request_financial = available & financial_fields
+        request_indicators = available & indicator_fields
+        request_market = available & market_fields
+        
+        # 收集 DataFrames
+        dfs: list[pd.DataFrame] = []
+        
+        # 获取财务数据
+        if request_financial:
+            df = provider.fetch_financials(symbol, request_financial, end_year, years)
+            if df is not None and not df.empty:
+                dfs.append(df)
+        
+        # 获取指标数据
+        if request_indicators:
+            df = provider.fetch_indicators(symbol, request_indicators, end_year, years)
+            if df is not None and not df.empty:
+                dfs.append(df)
+        
+        # 获取市场数据
+        if request_market:
+            df = provider.fetch_market(symbol, request_market)
+            if df is not None and not df.empty:
+                dfs.append(df)
+        
+        # 合并数据
+        if not dfs:
+            return None
+        
+        return self._merge_dfs(dfs)
+    
+    def _merge_dfs(self, dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
+        """合并多个 DataFrame（与 HK/US Provider 相同）"""
+        # ... 与 HK Provider 相同的实现
+```
+
+**Step 2: 运行测试确保无语法错误**
+
+```bash
+cd /Users/yapex/workspace/acorn-mono
+python -c "from provider_market_a.plugin import ProviderAPlugin; print('OK')"
+```
+
+Expected: OK
+
+**Step 3: Commit**
+
+```bash
+git add value-investment/provider_market_a/src/provider_market_a/plugin.py
+git commit -m "feat: implement vi_provide_items in A provider"
+```
 
 ---
 
