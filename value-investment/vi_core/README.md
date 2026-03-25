@@ -10,6 +10,7 @@ Value Investment 核心插件，定义 Hook Spec 并提供查询引擎。
 - 协调 Provider、Calculator、Fields 插件
 - 提供 `BaseDataProvider` 模板基类
 - 实现 `QueryEngine` 统一查询接口（预检 + 数据获取 + Calculator 执行）
+- 实现 `vi_provide_items` 统一字段获取接口（推荐）
 
 ## QueryEngine
 
@@ -25,7 +26,9 @@ QueryEngine.query(symbol, items)
     │
     ├── Prechecker.check() → 预检可用性
     │
-    ├── _fetch_data() → 通过 vi_fetch_financials/indicators/market hooks
+    ├── _fetch_data() → 通过 vi_provide_items hook（优先）
+    │   │
+    │   └── Fallback → vi_fetch_financials/indicators/market hooks（如果 vi_provide_items 返回空）
     │
     └── _run_calculators() → 通过 vi_run_calculator hook
          │
@@ -65,6 +68,34 @@ def vi_fields(self) -> dict:
 
 ### 2. FieldProviderSpec - 数据提供
 
+#### vi_provide_items（新接口，推荐实现）
+
+```python
+@vi_hookspec
+def vi_provide_items(
+    self,
+    items: list[str],
+    symbol: str,
+    market: str,
+    end_year: int,
+    years: int = 10,
+) -> pd.DataFrame | None:
+    """统一字段获取接口
+    
+    Provider 主动协作：
+    1. 市场过滤：只响应自己的市场
+    2. 字段筛选：只返回支持的字段
+    3. 分类获取：财务/指标/市场数据
+    4. 合并返回：统一 DataFrame（fiscal_year index）
+    
+    Returns:
+        DataFrame with fiscal_year index and requested fields columns,
+        或 None 如果不支持此市场/字段
+    """
+```
+
+#### vi_fetch_*（旧接口，向后兼容）
+
 ```python
 @vi_hookspec
 def vi_markets(self) -> list[str]:
@@ -75,21 +106,23 @@ def vi_supported_fields(self) -> list[str]:
     """能获取的字段列表"""
 
 @vi_hookspec
-def vi_fetch_financials(self, symbol, fields, end_year, years) -> dict | None:
-    """获取财务报表数据，返回 {field: {year: value}}"""
+def vi_fetch_financials(self, symbol, fields, end_year, years) -> pd.DataFrame | None:
+    """获取财务报表数据，返回 DataFrame"""
 
 @vi_hookspec
-def vi_fetch_indicators(self, symbol, fields, end_year, years) -> dict | None:
-    """获取财务指标，返回 {field: {year: value}}"""
+def vi_fetch_indicators(self, symbol, fields, end_year, years) -> pd.DataFrame | None:
+    """获取财务指标，返回 DataFrame"""
 
 @vi_hookspec
-def vi_fetch_market(self, symbol, fields) -> dict:
-    """获取市场数据，返回 {field: value}"""
+def vi_fetch_market(self, symbol, fields) -> pd.DataFrame | None:
+    """获取市场数据，返回 DataFrame"""
 
 @vi_hookspec
-def vi_fetch_historical(self, symbol, start_date, end_date, adjust) -> dict | None:
-    """获取历史交易数据，返回 {"date": [...], "open": [...], ...}"""
+def vi_fetch_historical(self, symbol, start_date, end_date, adjust) -> pd.DataFrame | None:
+    """获取历史交易数据，返回 DataFrame"""
 ```
+
+**注意**：当 `vi_provide_items` 返回空时，系统会自动 fallback 到 `vi_fetch_*` hooks。
 
 ### 3. CalculatorSpec - 计算器
 
@@ -183,8 +216,11 @@ df = provider.fetch_market("600519", {"market_cap", "pe_ratio"})
 
 ### 已实现的 Provider
 
-- `provider_market_a` - A 股 (Tushare)
-- `provider_market_hk` - 港股 (AKShare)
+| Provider | 市场 | 数据源 | vi_provide_items |
+|----------|------|--------|------------------|
+| `provider_market_a` | A 股 | Tushare | ✅ |
+| `provider_market_hk` | 港股 | AKShare | ✅ |
+| `provider_market_us` | 美股 | AKShare | ✅ |
 
 ## 命令
 
@@ -250,4 +286,7 @@ builtin = "vi_calculators.plugin:plugin"
 - [字段扩展开发](../vi_fields_extension/README.md)
 - [Provider Market A 开发](../provider_market_a/README.md)
 - [Provider Market HK 开发](../provider_market_hk/README.md)
+- [Provider Market US 开发](../provider_market_us/README.md)
 - [Calculator 开发](../vi_calculators/README.md)
+- [字段扩展架构设计](../../docs/field-extension-design.md)
+- [实现计划](../../docs/plans/2026-03-25-field-extension.md)
