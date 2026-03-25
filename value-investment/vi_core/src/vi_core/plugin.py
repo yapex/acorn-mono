@@ -482,7 +482,9 @@ class ViCorePlugin:
         indicator_fields = fields & {
             "roe", "roa", "gross_margin", "net_profit_margin",
             "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
-            "receivable_turnover", "roic", "basic_eps", "diluted_eps",
+            "receivable_turnover", "roic",
+            # basic_eps 从 financials 获取历史数据更完整
+            "diluted_eps",
             "book_value_per_share", "cash_ratio", "ocf_to_debt",
             "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
             "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
@@ -614,14 +616,31 @@ class ViCorePlugin:
             required_fields = list(calc_spec.get("required_fields", []))
 
             # Check if all required fields are available
-            missing = set(required_fields) - set(df.columns)
+            # 支持字段别名
+            available_fields = set(df.columns)
+            resolved_fields = {}  # {required: actual}
+            
+            for req_field in required_fields:
+                if req_field in available_fields:
+                    resolved_fields[req_field] = req_field
+                else:
+                    # 检查是否有别名
+                    aliases = calc_spec.get("field_aliases", {}).get(req_field, [])
+                    for alias in aliases:
+                        if alias in available_fields:
+                            resolved_fields[req_field] = alias
+                            break
+            
+            missing = set(required_fields) - set(resolved_fields.keys())
             if missing:
                 continue  # Skip this calculator
 
             # Extract only the required fields from DataFrame
             # Build dict format: {field: pd.Series}
+            # 使用解析后的实际字段名
             calc_data: dict[str, pd.Series] = {
-                field: df[field] for field in required_fields if field in df.columns
+                req_field: df[actual_field] 
+                for req_field, actual_field in resolved_fields.items()
             }
 
             # Call hook to run calculator

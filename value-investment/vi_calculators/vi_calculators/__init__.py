@@ -81,6 +81,7 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
                     continue
 
                 required_fields = getattr(module, "REQUIRED_FIELDS", [])
+                field_aliases = getattr(module, "FIELD_ALIASES", {})
                 description = getattr(module, "__doc__", "") or ""
                 name = file.stem.replace("calc_", "")
 
@@ -88,6 +89,7 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
                     "name": name,
                     "module": module,
                     "required_fields": required_fields,
+                    "field_aliases": field_aliases,
                     "description": description.strip().split("\n")[0],
                     "namespace": namespace,
                 })
@@ -160,6 +162,7 @@ class CalculatorEngine:
             {
                 "name": c["name"],
                 "required_fields": c["required_fields"],
+                "field_aliases": c.get("field_aliases", {}),
                 "description": c["description"],
                 "namespace": c.get("namespace", "unknown"),
             }

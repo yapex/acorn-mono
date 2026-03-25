@@ -69,6 +69,8 @@ class HKProvider(BaseDataProvider):
             "除税前溢利": StandardFields.profit_before_tax,
             "除税后溢利": StandardFields.profit_after_tax,
             "股东应占溢利": StandardFields.parent_net_profit,
+            # EPS
+            "每股基本盈利": StandardFields.basic_eps,
             # 费用
             "营业成本": StandardFields.operating_cost,
             "行政开支": StandardFields.administrative_expenses,
@@ -97,8 +99,8 @@ class HKProvider(BaseDataProvider):
             # 收益类
             "营业总收入": StandardFields.total_revenue,
             "净利润": StandardFields.net_profit,
-            # 每股数据
-            "基本每股收益(元)": StandardFields.basic_eps,
+            # 每股数据 - 从利润表获取更准确的历史数据
+            # "基本每股收益(元)": StandardFields.basic_eps,  # 移除，使用利润表中的每股基本盈利
             "每股净资产(元)": StandardFields.book_value_per_share,
             "每股经营现金流(元)": StandardFields.operating_cash_flow_per_share,
             "每股股息TTM(港元)": StandardFields.hk_dividend_per_share,
@@ -119,6 +121,8 @@ class HKProvider(BaseDataProvider):
             # 估值
             "市盈率": StandardFields.pe_ratio,
             "市净率": StandardFields.pb_ratio,
+            # 股价 (从日线数据获取)
+            "close": StandardFields.close,
             # 股息
             "股息率TTM(%)": StandardFields.hk_dividend_yield_ttm,
             "派息比率(%)": StandardFields.hk_dividend_payout_ratio,
@@ -215,17 +219,33 @@ class HKProvider(BaseDataProvider):
             return None
 
     def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
-        """获取市场数据"""
+        """获取市场数据
+        
+        从日线数据获取最新收盘价。
+        """
         try:
-            df = ak.stock_hk_financial_indicator_em(symbol=symbol)
+            # 获取历史日线数据
+            df = ak.stock_hk_daily(symbol=symbol, adjust="qfq")
             if df is None or df.empty:
                 return None
             
-            # 添加 year 列（用于与其他数据合并）
-            df = df.copy()
-            df[StandardFields.fiscal_year] = pd.to_datetime(df["REPORT_DATE"]).dt.year if "REPORT_DATE" in df.columns else 2024
+            # 确认列名
+            if "close" not in df.columns and "收盘" not in df.columns:
+                return None
             
-            return df
+            close_col = "close" if "close" in df.columns else "收盘"
+            
+            # 取最新收盘价
+            df = df.sort_values("date" if "date" in df.columns else "日期", ascending=False)
+            latest_close = df[close_col].iloc[0]
+            
+            # 返回包含最新收盘价的 DataFrame
+            result = pd.DataFrame({
+                StandardFields.fiscal_year: [2024],  # 使用最新年份
+                StandardFields.close: [latest_close],
+            })
+            
+            return result
         except Exception:
             return None
 

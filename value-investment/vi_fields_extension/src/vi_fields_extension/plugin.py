@@ -28,7 +28,8 @@ class FieldRegistrySpec:
         """
         return {"source": "", "fields": set(), "description": ""}
 
-from . import _extension_fields
+
+from .standard_fields import FIELD_DEFINITIONS
 
 
 class ViFieldsExtensionPlugin(FieldRegistrySpec):
@@ -40,11 +41,11 @@ class ViFieldsExtensionPlugin(FieldRegistrySpec):
 
         This hook is called by vi_core to collect all extension fields.
         """
-        all_fields: dict[str, dict] = {}
-
-        # Built-in custom fields
-        for source, fields in _extension_fields.items():
-            all_fields.update(fields)
+        # 从 FIELD_DEFINITIONS 构建字段字典
+        all_fields: dict[str, dict] = {
+            name: {"description": info.get("description", "")}
+            for name, info in FIELD_DEFINITIONS.items()
+        }
 
         return {
             "source": "extension",

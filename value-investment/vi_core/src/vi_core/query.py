@@ -154,11 +154,12 @@ class QueryEngine:
         indicator_fields = {
             "roe", "roa", "gross_margin", "net_profit_margin",
             "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
-            "receivable_turnover", "roic", "basic_eps", "diluted_eps",
+            "receivable_turnover", "roic", "diluted_eps",
             "book_value_per_share", "cash_ratio", "ocf_to_debt",
             "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
             "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
         }
+        # basic_eps 可从 financials 或 indicators 获取，优先从 financials 获取历史数据
         
         market_fields = {
             "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",

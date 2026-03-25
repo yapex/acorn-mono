@@ -97,6 +97,57 @@ result = vi_handle("query", {
 # result["data"]["implied_growth"] = {2023: 0.12}
 ```
 
+### laotang_valuation - 老唐估值法
+
+基于唐朝《手把手教你读财报》的估值方法。
+
+**计算逻辑**：
+1. 计算最近5年净利润年化增长率 (CAGR)
+2. 预估3年后净利润 = 当前净利润 × (1 + CAGR)³
+3. 合理市值 = 3年后净利润 × 25倍PE
+4. 理想买入价 = 合理市值 × 50%（安全边际已包含）
+5. 卖出价 = 合理市值 × 200%
+
+**必需字段**：
+- `net_profit` - 净利润
+- `basic_eps` - 每股收益
+- `close` - 当前股价
+
+**配置参数**：
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `pe_ratio` | 25 | 合理PE倍数 |
+| `buy_ratio` | 0.50 | 买入折扣（安全边际） |
+| `sell_ratio` | 2.00 | 卖出倍数 |
+| `min_years` | 5 | 计算CAGR所需最小年数 |
+
+**使用示例**：
+```bash
+# CLI
+acorn vi query 600519 --items net_profit,basic_eps,close,laotang_valuation --years 5
+```
+
+```python
+# Python
+result = vi_handle("query", {
+    "symbol": "600519",
+    "items": "net_profit,basic_eps,close,laotang_valuation",
+    "years": 5,
+})
+# 返回:
+# {
+#   "buy_price": 1335.5,      # 理想买入价（每股）
+#   "sell_price": 5342.02,    # 卖出价（每股）
+#   "current_price": 1407.33, # 当前股价
+#   "gap": -5.1,              # 与买入价差距 (%)
+#   ...
+# }
+```
+
+**gap 解读**：
+- 正值：当前股价低于买入价，可以考虑买入
+- 负值：当前股价高于买入价，需要等待
+
 ## 添加新计算器
 
 ### 1. 创建脚本文件
