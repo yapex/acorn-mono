@@ -7,25 +7,25 @@
     "acorn-events/src",
     "acorn-agent/src",
     "examples-plugin/src",
-    "value-investment-plugin/vi_core/src",
-    "value-investment-plugin/vi_fields_ifrs/src",
-    "value-investment-plugin/vi_fields_extension/src",
-    "value-investment-plugin/provider_tushare/src"
+    "value-investment/vi_core/src",
+    "value-investment/vi_fields_ifrs/src",
+    "value-investment/vi_fields_extension/src",
+    "value-investment/provider_tushare/src"
   ],
   "exclude": [
     "**/__pycache__",
     ".venv",
-    "value-investment-plugin/.venv"
+    "value-investment/.venv"
   ],
   "extraPaths": [
     "acorn-events/src",
     "acorn-core/src",
-    "value-investment-plugin/vi_core/src",
-    "value-investment-plugin/vi_fields_ifrs/src",
-    "value-investment-plugin/vi_fields_extension/src",
-    "value-investment-plugin/provider_tushare/src",
-    "value-investment-plugin/calculators",
-    "value-investment-plugin/vi_calculators"
+    "value-investment/vi_core/src",
+    "value-investment/vi_fields_ifrs/src",
+    "value-investment/vi_fields_extension/src",
+    "value-investment/provider_tushare/src",
+    "value-investment/calculators",
+    "value-investment/vi_calculators"
   ],
   "venvPath": ".",
   "venv": ".venv",
