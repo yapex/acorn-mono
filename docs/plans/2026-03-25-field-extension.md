@@ -897,9 +897,11 @@ git commit -m "test: add tests for fallback mechanism"
 **Files:**
 - Modify: `docs/field-extension-design.md`
 
+**注意：** 之前的 commit `5d6f7b8` 已经更新了待办事项，但未包含 Task 4A 和 Task 4B。需要再次更新以包含所有任务。
+
 **Step 1: 更新待办事项**
 
-在 `docs/field-extension-design.md` 的待办事项部分，将已完成的任务标记为完成：
+在 `docs/field-extension-design.md` 的待办事项部分，将已完成的任务标记为完成（包含所有任务编号）：
 
 ```markdown
 ## 7. 待办事项
@@ -917,7 +919,7 @@ git commit -m "test: add tests for fallback mechanism"
 
 ```bash
 git add docs/field-extension-design.md
-git commit -m "docs: update todo list for field extension"
+git commit -m "docs: update todo list with all task references"
 ```
 
 ---
