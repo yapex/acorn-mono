@@ -148,6 +148,33 @@ class FieldProviderSpec:
         """
         return None
 
+    @vi_hookspec
+    def vi_provide_items(
+        self,
+        items: list[str],
+        symbol: str,
+        market: str,
+        end_year: int,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
+        """Provider 返回它能提供的 items 数据
+        
+        统一的字段获取接口，替代 vi_fetch_financials/vi_fetch_indicators/vi_fetch_market。
+        Provider 内部根据 items 类型决定从哪个数据源获取。
+        
+        Args:
+            items: 请求的字段列表（标准字段名）
+            symbol: 股票代码
+            market: 市场代码 (A/HK/US)
+            end_year: 结束年份
+            years: 查询年数
+        
+        Returns:
+            DataFrame with fiscal_year index and requested fields columns,
+            或 None 如果不支持此市场/字段
+        """
+        return None
+
 
 # =============================================================================
 # Calculator Hooks
