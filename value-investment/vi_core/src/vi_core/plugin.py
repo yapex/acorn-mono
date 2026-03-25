@@ -329,6 +329,27 @@ class ViCorePlugin:
             return self._register_calculator(args)
         return {"success": False, "error": f"Unknown command: {command}"}
 
+    def _infer_market(self, symbol: str) -> str:
+        """从股票代码推断市场
+        
+        Args:
+            symbol: 股票代码
+            
+        Returns:
+            市场代码: "A", "HK", 或 "US"
+        """
+        # A股：纯数字（6位）
+        if symbol.isdigit() and len(symbol) == 6:
+            return "A"
+        # 港股：5位数字（如00700）
+        if len(symbol) == 5 and symbol.isdigit():
+            return "HK"
+        # 美股：字母（如AAPL）
+        if symbol.isalpha():
+            return "US"
+        # 默认尝试HK
+        return "HK"
+
     def _list_fields(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available fields from all plugins"""
         all_fields: dict[str, dict] = {}
@@ -478,57 +499,69 @@ class ViCorePlugin:
         if not fields and not requested_calculators:
             return {"success": False, "error": "No valid fields specified"}
 
-        # Categorize fields
-        indicator_fields = fields & {
-            "roe", "roa", "gross_margin", "net_profit_margin",
-            "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
-            "receivable_turnover", "roic",
-            # basic_eps 从 financials 获取历史数据更完整
-            "diluted_eps",
-            "book_value_per_share", "cash_ratio", "ocf_to_debt",
-            "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
-            "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
-        }
+        # 推断市场
+        market = self._infer_market(symbol)
 
-        # 市场数据 + 交易数据都通过 vi_fetch_market 获取
-        market_fields = fields & {
-            "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",
-            "close", "open", "high", "low", "volume",
-        }
-
-        financial_fields = fields - indicator_fields - market_fields
-
-        # 收集所有 DataFrame
+        # 使用 vi_provide_items 统一获取数据
         dfs: list[pd.DataFrame] = []
+        for result in self._get_plugin_manager().hook.vi_provide_items(
+            items=list(fields),
+            symbol=symbol,
+            market=market,
+            end_year=end_year,
+            years=years,
+        ):
+            if result is not None and not result.empty:
+                dfs.append(result)
 
-        # Fetch from providers
-        if financial_fields:
-            for result in self._get_plugin_manager().hook.vi_fetch_financials(
-                symbol=symbol,
-                fields=financial_fields,
-                end_year=end_year,
-                years=years,
-            ):
-                if result is not None and not result.empty:
-                    dfs.append(result)
+        # Fallback: 如果 vi_provide_items 没有返回数据，尝试旧的 vi_fetch_* hooks
+        if not dfs:
+            # Categorize fields
+            indicator_fields = fields & {
+                "roe", "roa", "gross_margin", "net_profit_margin",
+                "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
+                "receivable_turnover", "roic",
+                "diluted_eps",
+                "book_value_per_share", "cash_ratio", "ocf_to_debt",
+                "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
+                "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
+            }
 
-        if indicator_fields:
-            for result in self._get_plugin_manager().hook.vi_fetch_indicators(
-                symbol=symbol,
-                fields=indicator_fields,
-                end_year=end_year,
-                years=years,
-            ):
-                if result is not None and not result.empty:
-                    dfs.append(result)
+            market_fields = fields & {
+                "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",
+                "close", "open", "high", "low", "volume",
+            }
 
-        if market_fields:
-            for result in self._get_plugin_manager().hook.vi_fetch_market(
-                symbol=symbol,
-                fields=market_fields,
-            ):
-                if result is not None and not result.empty:
-                    dfs.append(result)
+            financial_fields = fields - indicator_fields - market_fields
+
+            # Fetch from providers using legacy hooks
+            if financial_fields:
+                for result in self._get_plugin_manager().hook.vi_fetch_financials(
+                    symbol=symbol,
+                    fields=financial_fields,
+                    end_year=end_year,
+                    years=years,
+                ):
+                    if result is not None and not result.empty:
+                        dfs.append(result)
+
+            if indicator_fields:
+                for result in self._get_plugin_manager().hook.vi_fetch_indicators(
+                    symbol=symbol,
+                    fields=indicator_fields,
+                    end_year=end_year,
+                    years=years,
+                ):
+                    if result is not None and not result.empty:
+                        dfs.append(result)
+
+            if market_fields:
+                for result in self._get_plugin_manager().hook.vi_fetch_market(
+                    symbol=symbol,
+                    fields=market_fields,
+                ):
+                    if result is not None and not result.empty:
+                        dfs.append(result)
 
         # Merge DataFrames
         merged_df = _merge_dfs(dfs)
