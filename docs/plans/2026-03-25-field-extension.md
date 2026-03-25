@@ -8,7 +8,12 @@
 1. 在 `spec.py` 中新增 `vi_provide_items` hook 规范
 2. 各 Provider Plugin 实现 `vi_provide_items` 方法，内部进行市场过滤和字段筛选
 3. 修改 `QueryEngine._fetch_data` 使用新 hook 替代原有的多个独立 fetch hooks
-4. 保持向后兼容，现有 `vi_fetch_*` hooks 继续可用
+4. 保持向后兼容，现有 `vi_fetch_*` hooks 继续可用（通过 fallback 机制）
+
+**重要说明：**
+- `daily` 类别（日线 OHLCV 数据：close, open, high, low, volume）暂不支持 `vi_provide_items`，
+  通过 `vi_fetch_historical` 获取
+- 实现包含 fallback 机制：当 `vi_provide_items` 返回空时，自动回退到 legacy `vi_fetch_*` hooks
 
 **Tech Stack:** Python, Pluggy, Pandas, pytest
 
@@ -276,7 +281,7 @@ git commit -m "feat: implement vi_provide_items in HK provider"
         
         # 获取财务数据
         if request_financial:
-            df =            df = provider.fetch_financials(symbol, request_financial, end_year, years)
+            df = provider.fetch_financials(symbol, request_financial, end_year, years)
             if df is not None and not df.empty:
                 dfs.append(df)
         
@@ -653,12 +658,16 @@ git commit -m "docs: update todo list for field extension"
 完成以上任务后，字段扩展架构的核心功能就已经实现：
 
 1. **新增 `vi_provide_items` hook**：统一的字段获取接口
-2. **Provider 实现**：HK 和 US Provider 实现了新方法
+2. **Provider 实现**：HK、US、A Provider 均实现了新方法
 3. **QueryEngine 更新**：使用新 hook 获取数据
 4. **市场推断**：根据股票代码自动推断市场
 5. **测试覆盖**：单元测试和集成测试
+6. **Fallback 机制**：确保向后兼容，legacy `vi_fetch_*` hooks 继续可用
+
+**已知限制：**
+- `daily` 类别（OHLCV 字段）暂不支持 `vi_provide_items`，通过 `vi_fetch_historical` 获取
 
 **下一步（可选）：**
-- 在 A Provider 中实现 `vi_provide_items`
 - 添加更多 Provider 的集成测试
 - 实现动态扩展机制（Evolution）
+- 优化 `daily` 类别支持
