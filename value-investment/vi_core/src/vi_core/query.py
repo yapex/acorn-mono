@@ -16,7 +16,7 @@ from .precheck import Prechecker, PrecheckResult
 from .items import ItemRegistry, ItemSource
 
 if TYPE_CHECKING:
-    import pluggy
+    import pluggy  # type: ignore[import]
 
 
 @dataclass
@@ -99,8 +99,11 @@ class QueryEngine:
         data = self._fetch_data(symbol, precheck_result.available)
         
         # 3. 运行 Calculator（如果有待计算的 items）
-        calc_items = [item for item in precheck_result.available 
-                      if self._registry.get(item).source == ItemSource.CALCULATOR]
+        calc_items = [
+            item for item in precheck_result.available 
+            if (item_def := self._registry.get(item)) is not None 
+            and item_def.source == ItemSource.CALCULATOR
+        ]
         if calc_items:
             calc_results = self._run_calculators(calc_items, data)
             data.update(calc_results)
@@ -206,7 +209,8 @@ class QueryEngine:
         # After .T: rows=fields, columns=years
         try:
             df = pd.DataFrame(field_data).T  # 转置：field 为行，year 为列
-            df.columns = df.columns.astype(int)  # 列名是年份
+            # 安全转换列名为整数年份
+            df.columns = pd.Index([int(c) for c in df.columns])
             # index 现在是 field names
         except Exception:
             return {}
@@ -252,10 +256,23 @@ class QueryEngine:
             
             # 接受 pd.Series 或 dict
             if isinstance(calc_result, pd.Series):
-                result_dict = {int(year): val for year, val in calc_result.items()}
+                # 安全转换年份键为整数
+                def _series_key(k: Any) -> Any:
+                    if isinstance(k, int):
+                        return k
+                    if isinstance(k, str) and k.isdigit():
+                        return int(k)
+                    return k
+                result_dict = {_series_key(year): val for year, val in calc_result.items()}
             elif isinstance(calc_result, dict):
-                result_dict = {int(year) if str(year).isdigit() else year: val 
-                             for year, val in calc_result.items()}
+                def _safe_int_key(k: Any) -> Any:
+                    """安全转换为整数年份键"""
+                    if isinstance(k, int):
+                        return k
+                    if isinstance(k, str) and k.isdigit():
+                        return int(k)
+                    return k
+                result_dict = {_safe_int_key(year): val for year, val in calc_result.items()}
             else:
                 continue
             
