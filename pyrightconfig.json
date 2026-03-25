@@ -10,7 +10,8 @@
     "value-investment/vi_core/src",
     "value-investment/vi_fields_ifrs/src",
     "value-investment/vi_fields_extension/src",
-    "value-investment/provider_tushare/src"
+    "value-investment/provider_tushare/src",
+    "value-investment/provider_market_us/src"
   ],
   "exclude": [
     "**/__pycache__",
@@ -24,6 +25,7 @@
     "value-investment/vi_fields_ifrs/src",
     "value-investment/vi_fields_extension/src",
     "value-investment/provider_tushare/src",
+    "value-investment/provider_market_us/src",
     "value-investment/calculators",
     "value-investment/vi_calculators"
   ],
