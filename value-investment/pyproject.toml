@@ -6,3 +6,7 @@ dev-dependencies = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.pyright]
+pythonVersion = "3.14"
+extraPaths = ["vi_core/src", "vi_fields_ifrs/src", "vi_fields_extension/src", "provider_market_a/src", "provider_market_hk/src"]
