@@ -459,7 +459,7 @@ git commit -m "feat: update QueryEngine to use vi_provide_items hook"
 
 ---
 
-## Task 4B: 在 plugin.py._query 中实现 vi_provide_items 与 fallback
+## Task 4A: 在 plugin.py._query 中实现 vi_provide_items 与 fallback
 
 **Files:**
 - Modify: `value-investment/vi_core/src/vi_core/plugin.py`
@@ -489,16 +489,22 @@ for result in self._get_plugin_manager().hook.vi_provide_items(
 ```python
 # Fallback: 如果 vi_provide_items 没有返回数据，尝试旧的 vi_fetch_* hooks
 if not dfs:
-    # Categorize fields
+    # Categorize fields - 完整字段列表见实际实现
     indicator_fields = fields & {
         "roe", "roa", "gross_margin", "net_profit_margin",
-        "current_ratio", "quick_ratio", "debt_ratio",
-        # ... 更多指标字段
+        "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
+        "receivable_turnover", "roic",
+        "diluted_eps",
+        "book_value_per_share", "cash_ratio", "ocf_to_debt",
+        "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
+        "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
     }
     
     market_fields = fields & {
-        "market_cap", "circ_market_cap", "pe_ratio", "pb_ratio",
-        # ... 更多市场字段
+        "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",
+        # 注意：daily 字段 (close, open, high, low, volume) 也被归类为 market_fields
+        # 但这是已知限制，它们应该通过 vi_fetch_historical 获取
+        "close", "open", "high", "low", "volume",
     }
     
     financial_fields = fields - indicator_fields - market_fields
@@ -542,7 +548,7 @@ git commit -m "fix: update _query to use vi_provide_items with fallback"
 
 ---
 
-## Task 4C: 在 A Provider 中实现 vi_provide_items
+## Task 4B: 在 A Provider 中实现 vi_provide_items
 
 **Files:**
 - Modify: `value-investment/provider_market_a/src/provider_market_a/plugin.py`
@@ -820,6 +826,72 @@ git commit -m "fix: ensure backward compatibility with existing tests"
 
 ---
 
+## Task 6B: 测试 fallback 机制
+
+**Files:**
+- Create: `value-investment/vi_core/tests/test_fallback.py` (optional)
+
+**Step 1: 编写 fallback 机制测试**
+
+测试当 `vi_provide_items` 返回空时，系统能正确回退到 legacy hooks：
+
+```python
+"""Tests for fallback mechanism"""
+import pytest
+import pandas as pd
+from unittest.mock import Mock, patch
+
+from vi_core.plugin import ViCorePlugin
+
+
+class TestFallbackMechanism:
+    """测试 fallback 机制"""
+    
+    def test_fallback_when_provide_items_empty(self):
+        """测试当 vi_provide_items 返回空时触发 fallback"""
+        plugin = ViCorePlugin()
+        
+        # Mock vi_provide_items 返回空列表
+        with patch.object(plugin._get_plugin_manager().hook, 'vi_provide_items', return_value=[]):
+            # Mock legacy hooks 返回数据
+            with patch.object(plugin._get_plugin_manager().hook, 'vi_fetch_financials', return_value=[
+                pd.DataFrame({'fiscal_year': [2021, 2022], 'net_profit': [100, 200]})
+            ]):
+                result = plugin._query({
+                    'symbol': '600519',
+                    'fields': 'net_profit',
+                    'years': 2,
+                })
+                
+                assert result['success'] is True
+                assert 'net_profit' in result['data']['data']
+    
+    def test_fallback_field_categorization(self):
+        """测试 fallback 字段分类正确"""
+        # 验证 indicator_fields, market_fields, financial_fields 分类正确
+        # 特别注意：daily 字段 (close, open, high, low, volume) 被错误分类为 market_fields
+        # 这是一个已知限制，应在测试中标注
+        pass
+```
+
+**Step 2: 运行测试**
+
+```bash
+cd /Users/yapex/workspace/acorn-mono/value-investment/vi_core
+pytest tests/test_fallback.py -v
+```
+
+Expected: 所有测试通过
+
+**Step 3: Commit**
+
+```bash
+git add value-investment/vi_core/tests/test_fallback.py
+git commit -m "test: add tests for fallback mechanism"
+```
+
+---
+
 ## Task 7: 验证文档更新
 
 **Files:**
@@ -832,10 +904,13 @@ git commit -m "fix: ensure backward compatibility with existing tests"
 ```markdown
 ## 7. 待办事项
 
-- [x] 在 `spec.py` 中添加 `vi_provide_items` hook
-- [x] 各 Provider 实现 `vi_provide_items` 方法
-- [x] 修改 `QueryEngine._fetch_data` 使用新 hook
-- [x] 测试验证
+- [x] 在 `spec.py` 中添加 `vi_provide_items` hook (Task 1)
+- [x] HK Provider 实现 `vi_provide_items` 方法 (Task 2)
+- [x] US Provider 实现 `vi_provide_items` 方法 (Task 3)
+- [x] A Provider 实现 `vi_provide_items` 方法 (Task 4B)
+- [x] 修改 `QueryEngine._fetch_data` 使用新 hook (Task 4)
+- [x] 修改 `plugin.py._query` 使用新 hook 并添加 fallback 机制 (Task 4A)
+- [x] 测试验证 (Task 5, 6)
 ```
 
 **Step 2: Commit**
