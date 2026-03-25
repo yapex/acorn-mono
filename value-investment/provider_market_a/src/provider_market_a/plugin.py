@@ -92,6 +92,120 @@ class ProviderAPlugin:
         provider = _get_provider()
         return provider.fetch_historical(symbol, start_date, end_date, adjust)
 
+    @vi_hookimpl
+    def vi_provide_items(
+        self,
+        items: list[str],
+        symbol: str,
+        market: str,
+        end_year: int,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
+        """A Provider 实现 vi_provide_items
+        
+        只响应 A 市场的请求，筛选出支持的字段并获取数据。
+        """
+        # 市场过滤：只响应 A 市场
+        if market != "A":
+            return None
+        
+        provider = _get_provider()
+        
+        # 获取 Provider 支持的所有字段
+        supported = provider.get_supported_fields()
+        
+        # 筛选出请求中支持的字段
+        available = set(items) & supported
+        
+        if not available:
+            return None
+        
+        # 分类字段
+        financial_fields = set()
+        indicator_fields = set()
+        market_fields = set()
+        
+        # 从 FIELD_MAPPINGS 中分类
+        for category, mapping in provider.FIELD_MAPPINGS.items():
+            category_fields = set(mapping.values())
+            if category in ["balance_sheet", "income_statement", "cash_flow"]:
+                financial_fields.update(category_fields)
+            elif category == "indicators":
+                indicator_fields.update(category_fields)
+            elif category == "market":
+                market_fields.update(category_fields)
+        
+        # 筛选出各类别中请求的字段
+        request_financial = available & financial_fields
+        request_indicators = available & indicator_fields
+        request_market = available & market_fields
+        
+        # 收集 DataFrames
+        dfs: list[pd.DataFrame] = []
+        
+        # 获取财务数据
+        if request_financial:
+            df = provider.fetch_financials(symbol, request_financial, end_year, years)
+            if df is not None and not df.empty:
+                dfs.append(df)
+        
+        # 获取指标数据
+        if request_indicators:
+            df = provider.fetch_indicators(symbol, request_indicators, end_year, years)
+            if df is not None and not df.empty:
+                dfs.append(df)
+        
+        # 获取市场数据
+        if request_market:
+            df = provider.fetch_market(symbol, request_market)
+            if df is not None and not df.empty:
+                dfs.append(df)
+        
+        # 合并数据
+        if not dfs:
+            return None
+        
+        return self._merge_dfs(dfs)
+    
+    def _merge_dfs(self, dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
+        """合并多个 DataFrame"""
+        if not dfs:
+            return None
+        
+        fiscal_year = "fiscal_year"
+        result = dfs[0].copy()
+        
+        # 确保 fiscal_year 是 index
+        if fiscal_year in result.columns:
+            result = result.set_index(fiscal_year)
+        
+        for df in dfs[1:]:
+            if df is None or df.empty:
+                continue
+            
+            df_to_merge = df.copy()
+            if fiscal_year in df_to_merge.columns:
+                df_to_merge = df_to_merge.set_index(fiscal_year)
+            
+            # 找出新列
+            cols_to_add = [c for c in df_to_merge.columns if c not in result.columns]
+            if not cols_to_add:
+                continue
+            
+            # 单行数据广播
+            if len(df_to_merge) == 1:
+                for col in cols_to_add:
+                    result[col] = df_to_merge[col].iloc[0]
+            else:
+                result = result.merge(
+                    df_to_merge[cols_to_add],
+                    left_index=True,
+                    right_index=True,
+                    how="left"
+                )
+        
+        return result
+
 
 # Plugin instance for pluggy registration
 plugin = ProviderAPlugin()
