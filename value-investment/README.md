@@ -98,20 +98,19 @@ export TUSHARE_TOKEN="your_token_here"
 
 ### CLI 使用
 
+**注意：** `acorn vi` CLI 已移除，请使用 Python API 或 `acorn run` 直接调用：
+
 ```bash
-# 查询财务数据（统一 items 概念）
-acorn vi query 600519 --items revenue,net_profit,implied_growth
-acorn vi query 600519 --items operating_cash_flow,market_cap --years 5
+# 通过 Python API
+python -c "
+from acorn_cli.client import AcornClient
+client = AcornClient()
+result = client.execute('vi_query', {'symbol': '600519', 'items': 'revenue,net_profit'})
+print(result['data'])
+"
 
-# 列出所有数据项
-acorn vi list
-
-# 按类型筛选
-acorn vi list --category calculator
-acorn vi list --category field
-
-# 列出可用计算器
-acorn vi list-calculators
+# 或通过 acorn run（如果支持）
+acorn run vi_query --symbol 600519 --items revenue,net_profit
 ```
 
 ### Python API

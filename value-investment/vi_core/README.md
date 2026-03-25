@@ -231,32 +231,28 @@ df = provider.fetch_market("600519", {"market_cap", "pe_ratio"})
 | `vi_list_calculators` | - | 列出所有计算器 |
 | `vi_register_calculator` | name, code, required_fields, description? | 动态注册计算器 |
 
-### CLI 使用
+### Python API
 
-```bash
-# 查询财务数据（统一 items 概念，可混合字段和计算器）
-acorn vi query 600519 --items revenue,net_profit,implied_growth
-acorn vi query 600519 --items operating_cash_flow,market_cap --years 5
+```python
+from acorn_cli.client import AcornClient
 
-# 列出所有数据项（统一视图）
-acorn vi list
+client = AcornClient()
 
-# 按类型筛选
-acorn vi list --category calculator
-acorn vi list --category field
+# 查询财务数据
+result = client.execute("vi_query", {
+    "symbol": "600519",
+    "items": "revenue,net_profit,implied_growth",
+    "years": 5,
+})
 
-# 按来源筛选
-acorn vi list --source ifrs
+# 列出所有数据项
+result = client.execute("vi_list", {})
 
-# 列出可用计算器（详细视图）
-acorn vi list-calculators
+# 列出所有计算器
+result = client.execute("vi_list_calculators", {})
 ```
 
-### RPC 调用
-
-```bash
-echo '{"command": "vi_query", "args": {"symbol": "600519", "fields": "roe"}}' | nc -U ~/.acorn/agent.sock
-```
+**注意：** `acorn vi` CLI 命令已移除（冗余的 RPC 包装层），请使用 Python API 直接调用。
 
 ## 插件发现
 
