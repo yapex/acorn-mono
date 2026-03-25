@@ -1,11 +1,5 @@
 """Tests for vi_provide_items hook"""
-import sys
-from pathlib import Path
-
 import pandas as pd
-
-# Add src to path for imports (vi_core/tests -> vi_core/src)
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from vi_core.query import QueryEngine
 
