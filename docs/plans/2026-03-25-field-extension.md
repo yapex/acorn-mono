@@ -859,9 +859,13 @@ git commit -m "docs: update todo list for field extension"
 6. **Fallback 机制**：确保向后兼容，legacy `vi_fetch_*` hooks 继续可用
 
 **已知限制：**
-- `daily` 类别（OHLCV 字段）暂不支持 `vi_provide_items`，通过 `vi_fetch_historical` 获取
+- `daily` 类别（OHLCV 字段：close, open, high, low, volume）暂不支持 `vi_provide_items`
+- Fallback 机制将 `daily` 字段归类为 `market_fields` 并通过 `vi_fetch_market` 获取，但 `vi_fetch_market` 返回单点快照值而非时间序列
+- 正确的 `daily` 字段获取应通过 `vi_fetch_historical`，但当前 fallback 未实现此逻辑
+- 建议：未来优化 fallback 机制，将 `daily` 字段通过 `vi_fetch_historical` 获取
 
 **下一步（可选）：**
 - 添加更多 Provider 的集成测试
 - 实现动态扩展机制（Evolution）
-- 优化 `daily` 类别支持
+- 优化 fallback 机制：将 `daily` 字段（OHLCV）通过 `vi_fetch_historical` 而非 `vi_fetch_market` 获取
+- 优化 `daily` 类别支持：在 `vi_provide_items` 中添加 `daily` 类别处理
