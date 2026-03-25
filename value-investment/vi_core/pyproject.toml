@@ -26,6 +26,6 @@ packages = ["src/vi_core"]
 [project.entry-points."yapex.acorn.plugins"]
 vi = "vi_core.plugin:plugin"
 
-# CLI commands via acorn CLI
-[project.entry-points."acorn.cli.commands"]
-vi = "vi_core.cli:app"
+# NOTE: vi_core.cli removed - use Python API or acorn run directly
+# [project.entry-points."acorn.cli.commands"]
+# vi = "vi_core.cli:app"
