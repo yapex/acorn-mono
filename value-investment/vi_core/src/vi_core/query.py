@@ -124,9 +124,10 @@ class QueryEngine:
         return self._prechecker.check(symbol, items)
     
     def _fetch_data(self, symbol: str, items: list[str]) -> dict[str, Any]:
-        """获取数据
+        """获取数据 - 使用 vi_provide_items
         
         通过 pluggy hooks 调用 Provider 获取 Field 数据。
+        新的 vi_provide_items hook 让 Provider 主动决定能提供哪些字段。
         
         Args:
             symbol: 股票代码
@@ -138,74 +139,23 @@ class QueryEngine:
         if not self._pm or not items:
             return {}
         
+        # 推断市场
+        market = self._infer_market(symbol)
+        
         # 计算 end_year
         end_year = self._get_end_year()
         
-        # 分离 Field items 和 Calculator items（不应该在这里处理 Calculator）
-        field_items = [
-            item for item in items 
-            if self._registry.get(item).source == ItemSource.FIELD
-        ]
+        # 广播给所有 Provider
+        results = self._pm.hook.vi_provide_items(
+            items=items,
+            symbol=symbol,
+            market=market,
+            end_year=end_year,
+            years=self.years,
+        )
         
-        if not field_items:
-            return {}
-        
-        # 定义字段分类
-        indicator_fields = {
-            "roe", "roa", "gross_margin", "net_profit_margin",
-            "current_ratio", "quick_ratio", "debt_ratio", "asset_turnover",
-            "receivable_turnover", "roic", "diluted_eps",
-            "book_value_per_share", "cash_ratio", "ocf_to_debt",
-            "interest_bearing_debt", "ebitda", "currentdebt_to_debt",
-            "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
-        }
-        # basic_eps 可从 financials 或 indicators 获取，优先从 financials 获取历史数据
-        
-        market_fields = {
-            "market_cap", "circ_market_cap", "circ_shares", "pe_ratio", "pb_ratio",
-            "close", "open", "high", "low", "volume",
-        }
-        
-        # 分类
-        request_indicators = set(field_items) & indicator_fields
-        request_market = set(field_items) & market_fields
-        request_financial = set(field_items) - request_indicators - request_market
-        
-        # 收集 DataFrames
-        dfs: list[pd.DataFrame] = []
-        
-        # Fetch financial fields
-        if request_financial:
-            for result in self._pm.hook.vi_fetch_financials(
-                symbol=symbol,
-                fields=request_financial,
-                end_year=end_year,
-                years=self.years,
-            ):
-                if result is not None and not result.empty:
-                    dfs.append(result)
-        
-        # Fetch indicator fields
-        if request_indicators:
-            for result in self._pm.hook.vi_fetch_indicators(
-                symbol=symbol,
-                fields=request_indicators,
-                end_year=end_year,
-                years=self.years,
-            ):
-                if result is not None and not result.empty:
-                    dfs.append(result)
-        
-        # Fetch market fields
-        if request_market:
-            for result in self._pm.hook.vi_fetch_market(
-                symbol=symbol,
-                fields=request_market,
-            ):
-                if result is not None and not result.empty:
-                    dfs.append(result)
-        
-        # Merge DataFrames
+        # 合并所有 Provider 返回的 DataFrames
+        dfs = [r for r in results if r is not None and not r.empty]
         merged_df = self._merge_dfs(dfs)
         
         # 转换为 {field: {year: value}} 格式
@@ -406,6 +356,27 @@ class QueryEngine:
             return now.year - 2
         else:
             return now.year - 1
+    
+    def _infer_market(self, symbol: str) -> str:
+        """从股票代码推断市场
+        
+        Args:
+            symbol: 股票代码
+            
+        Returns:
+            市场代码: "A", "HK", 或 "US"
+        """
+        # A股：纯数字（6位）
+        if symbol.isdigit() and len(symbol) == 6:
+            return "A"
+        # 港股：以0开头的5位数字（如00700）
+        if len(symbol) == 5 and symbol.isdigit():
+            return "HK"
+        # 美股：字母（如AAPL）
+        if symbol.isalpha():
+            return "US"
+        # 默认尝试HK
+        return "HK"
     
     def _merge_dfs(self, dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
         """合并多个 DataFrame
