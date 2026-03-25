@@ -826,7 +826,7 @@ git commit -m "fix: ensure backward compatibility with existing tests"
 
 ---
 
-## Task 6B: 测试 fallback 机制
+## Task 6A: 测试 fallback 机制
 
 **Files:**
 - Create: `value-investment/vi_core/tests/test_fallback.py` (optional)
@@ -910,7 +910,7 @@ git commit -m "test: add tests for fallback mechanism"
 - [x] A Provider 实现 `vi_provide_items` 方法 (Task 4B)
 - [x] 修改 `QueryEngine._fetch_data` 使用新 hook (Task 4)
 - [x] 修改 `plugin.py._query` 使用新 hook 并添加 fallback 机制 (Task 4A)
-- [x] 测试验证 (Task 5, 6)
+- [x] 测试验证 (Task 5, 6, 6A)
 ```
 
 **Step 2: Commit**
