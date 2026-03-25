@@ -8,12 +8,16 @@
 1. 在 `spec.py` 中新增 `vi_provide_items` hook 规范
 2. 各 Provider Plugin 实现 `vi_provide_items` 方法，内部进行市场过滤和字段筛选
 3. 修改 `QueryEngine._fetch_data` 使用新 hook 替代原有的多个独立 fetch hooks
-4. 保持向后兼容，现有 `vi_fetch_*` hooks 继续可用（通过 fallback 机制）
+4. 修改 `plugin.py._query` 使用 `vi_provide_items` 并添加 fallback 机制
+5. 保持向后兼容，现有 `vi_fetch_*` hooks 继续可用（通过 fallback 机制）
 
 **重要说明：**
 - `daily` 类别（日线 OHLCV 数据：close, open, high, low, volume）暂不支持 `vi_provide_items`，
   通过 `vi_fetch_historical` 获取
 - 实现包含 fallback 机制：当 `vi_provide_items` 返回空时，自动回退到 legacy `vi_fetch_*` hooks
+- 注意：存在两个代码路径使用 `vi_provide_items`：
+  - `QueryEngine._fetch_data` - 用于测试和独立查询
+  - `plugin.py._query` - 主命令处理路径，包含 fallback 逻辑
 
 **Tech Stack:** Python, Pluggy, Pandas, pytest
 
@@ -453,6 +457,10 @@ git add value-investment/vi_core/src/vi_core/query.py
 git commit -m "feat: update QueryEngine to use vi_provide_items hook"
 ```
 
+**注意：** 实际的命令处理路径在 `plugin.py._query` 中。该方法也需要：
+1. 调用 `vi_provide_items` hook 获取数据
+2. 实现 fallback 机制：当 `vi_provide_items` 返回空时，回退到 legacy `vi_fetch_*` hooks
+
 ---
 
 ## Task 5: 编写测试验证 vi_provide_items
@@ -563,8 +571,7 @@ class TestQueryEngineMarketInference:
         assert engine._infer_market("600519") == "A"
         assert engine._infer_market("000001") == "A"
     
-    def test
-_infer_hk_market(self):
+    def test_infer_hk_market(self):
         """测试推断港股市场"""
         engine = QueryEngine()
         assert engine._infer_market("00700") == "HK"
