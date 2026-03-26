@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-03-25T15:46:52.149336",
+  "plugins": {
+    "value_investment": {
+      "name": "value_investment",
+      "entry_point": "value_investment:plugin",
+      "version": "unknown",
+      "enabled": true,
+      "source": "local",
+      "source_path": "value-investment",
+      "installed_at": "2026-03-25T15:46:52.149281",
+      "description": ""
+    }
+  }
+}

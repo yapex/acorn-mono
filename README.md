@@ -6,35 +6,29 @@
 
 ## 🚀 3 分钟上手
 
-### CLI 命令
+### 1. 安装
 
 ```bash
-# 查询贵州茅台 ROE（最近 5 年）
-acorn vi query 600519 --items roe --years 5
+git clone https://github.com/yapex/acorn-mono.git
+cd acorn-mono
 
-# 查询苹果净利润（最近 10 年）
-acorn vi query AAPL --items net_profit --years 10
+# 方式 1: 使用 uv tool (推荐)
+uv tool install -e acorn-cli --with-editable value-investment/vi_cli
 
-# 查询腾讯 + 计算隐含增长率（统一 items 参数）
-acorn vi query 00700 --items operating_cash_flow,market_cap,implied_growth
-
-# 列出所有数据项
-acorn vi list
-
-# 按类型筛选
-acorn vi list --category calculator
-
-# 查看系统状态
-acorn status
-
-# 列出已安装插件
-acorn list
+# 方式 2: 开发环境
+uv sync
 ```
 
-### HTTP API
+### 2. 配置 API Token（可选）
 
 ```bash
-# 启动服务
+# A 股数据 (Tushare) - 查询 A 股时需要
+export TUSHARE_TOKEN="your_token_here"
+```
+
+### 3. 启动服务
+
+```bash
 acorn-agent
 ```
 
@@ -42,63 +36,50 @@ acorn-agent
 - API: `http://localhost:18732`
 - Swagger: `http://localhost:18732/docs`
 
-**执行命令：**
+### 4. CLI 命令
 
 ```bash
-curl -X POST http://localhost:18732/execute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "command": "vi_query",
-    "args": {
-      "symbol": "600519",
-      "fields": "roe",
-      "years": 5
-    }
-  }'
+# 查看系统状态（验证安装）
+acorn status
+
+# 查询贵州茅台 ROE（最近 5 年）
+acorn vi query 600519 --items roe --years 5
+
+# 查询苹果净利润（最近 10 年）
+acorn vi query AAPL --items net_profit --years 10
+
+# 查询腾讯 + 计算隐含增长率
+acorn vi query 00700 --items operating_cash_flow,market_cap,implied_growth
+
+# 列出所有字段和计算器
+acorn vi list
+
+# 按类型筛选
+acorn vi list --category calculator
+
+# 列出已安装插件
+acorn list
 ```
 
-**Python Client：**
+### Python Client
 
 ```python
 from acorn_cli.client import AcornClient
 
 client = AcornClient()
 
-# 查询财务数据（统一 items 参数）
+# 查询财务数据
 result = client.execute("vi_query", {
     "symbol": "600519",
     "items": "revenue,roe,market_cap",
     "years": 5,
 })
 
-# 查询并计算隐含增长率（items 包含字段和计算器）
-result = client.execute("vi_query", {
-    "symbol": "600519",
-    "items": "operating_cash_flow,market_cap,implied_growth",
-})
-
-# 列出所有数据项
-result = client.execute("vi_list", {})
+# 列出所有字段
+result = client.execute("vi_list_fields", {})
 
 # 列出所有计算器
 result = client.execute("vi_list_calculators", {})
-```
-
----
-
-## 安装
-
-```bash
-git clone https://github.com/yapex/acorn-mono.git
-cd acorn-mono
-uv sync
-```
-
-### 配置 API Token（可选）
-
-```bash
-# A 股数据 (Tushare)
-export TUSHARE_TOKEN="your_token_here"
 ```
 
 ---
@@ -112,9 +93,10 @@ export TUSHARE_TOKEN="your_token_here"
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                     acorn-cli                            │
-│  • CLI 命令 (typer)                                     │
-│  • HTTP API (FastAPI)                                  │
+│                     命令行层                              │
+│  • acorn (插件管理)                                      │
+│  • acorn vi (价值投资查询 - 插件贡献)                     │
+│  • acorn-agent (HTTP 服务)                                │
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
@@ -130,7 +112,8 @@ export TUSHARE_TOKEN="your_token_here"
 │                      插件层                              │
 │  • vi_core (查询引擎)                                   │
 │  • vi_calculators (计算器)                              │
-│  • providers (数据源)                                    │
+│  • vi_fields_* (字段定义)                                │
+│  • provider_market_* (数据源)                            │
 │  • ...                                                 │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -145,7 +128,8 @@ acorn-mono/
 ├── acorn-cli/               # CLI 工具 + HTTP API 服务
 ├── acorn-events/            # 事件常量定义
 ├── value-investment/         # 价值投资领域插件
-│   ├── vi_core/            # 核心包 (查询引擎)
+│   ├── vi_cli/             # CLI 入口 (typer，通过 entry_points 注册)
+│   ├── vi_core/            # 核心包 (查询引擎，pluggy 插件)
 │   ├── vi_calculators/     # 计算器引擎
 │   ├── vi_fields_extension/ # 字段扩展
 │   ├── vi_fields_ifrs/     # IFRS 标准字段
@@ -170,7 +154,7 @@ def calculate(data, config):
     return ocf / np_.replace(0, float('nan'))
 ```
 
-重启 CLI 即可自动加载。
+通过 entry_points 注册，重启 CLI 即可自动加载。
 
 ### 贡献字段
 

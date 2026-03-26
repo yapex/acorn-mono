@@ -19,6 +19,9 @@ from .tui import run_config_tui
 # config 子命令应用
 config_app = typer.Typer(help="配置插件")
 
+# vi 子命令应用
+vi_app = typer.Typer(help="Value Investment - 财务数据查询")
+
 # 主应用
 app = typer.Typer(
     name="acorn",
@@ -28,8 +31,9 @@ app = typer.Typer(
     epilog="运行 'acorn <command> --help' 查看详细帮助",
 )
 
-# 将 config_app 注册为子命令
+# 注册子命令
 app.add_typer(config_app, name="config")
+app.add_typer(vi_app, name="vi")
 
 
 def get_registry() -> PluginRegistry:

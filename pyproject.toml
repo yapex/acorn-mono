@@ -4,6 +4,7 @@ workspace = { members = [
     "acorn-events",
     "acorn-cli",
     "examples-plugin",
+    "value-investment/vi_cli",
     "value-investment/vi_core",
     "value-investment/vi_fields_extension",
     "value-investment/vi_calculators",

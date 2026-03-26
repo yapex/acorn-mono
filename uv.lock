@@ -12,6 +12,7 @@ members = [
     "provider-market-hk",
     "provider-market-us",
     "vi-calculators",
+    "vi-cli",
     "vi-core",
     "vi-fields-extension",
     "vi-fields-ifrs",
@@ -1396,6 +1397,21 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.0.2" }]
+
+[[package]]
+name = "vi-cli"
+version = "0.1.0"
+source = { editable = "value-investment/vi_cli" }
+dependencies = [
+    { name = "acorn-cli" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "acorn-cli", specifier = ">=0.1.0" },
+    { name = "typer", specifier = ">=0.15.0" },
+]
 
 [[package]]
 name = "vi-core"

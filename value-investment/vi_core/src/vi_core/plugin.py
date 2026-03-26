@@ -350,6 +350,50 @@ class ViCorePlugin:
         # 默认尝试HK
         return "HK"
 
+    def _get_provider_fields_for_market(self, market: str) -> set[str]:
+        """获取特定市场支持的 Provider 字段
+        
+        按市场过滤 Provider，只收集支持该市场的 Provider 的字段。
+        解决港股缺失字段被 A 股 Provider "掩盖" 的问题。
+        
+        Args:
+            market: 市场代码 ("A", "HK", "US")
+            
+        Returns:
+            该市场所有 Provider 支持的字段集合
+        """
+        pm = self._get_plugin_manager()
+        if not pm:
+            return set()
+        
+        provider_fields: set[str] = set()
+        
+        # 获取所有插件
+        plugins = pm.get_plugins()
+        
+        for plugin in plugins:
+            # 检查该 Provider 是否支持目标市场
+            supported_markets = []
+            if hasattr(plugin, 'vi_markets'):
+                try:
+                    result = plugin.vi_markets()
+                    if isinstance(result, list):
+                        supported_markets = result
+                except Exception:
+                    pass
+            
+            # 如果 Provider 支持目标市场，收集其字段
+            if market in supported_markets:
+                if hasattr(plugin, 'vi_supported_fields'):
+                    try:
+                        fields = plugin.vi_supported_fields()
+                        if isinstance(fields, list):
+                            provider_fields.update(fields)
+                    except Exception:
+                        pass
+        
+        return provider_fields
+
     def _list_fields(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available fields from all plugins"""
         all_fields: dict[str, dict] = {}
@@ -447,6 +491,9 @@ class ViCorePlugin:
             calc_list = calc_list[0]
         calculator_names = {c["name"] for c in calc_list} if calc_list else set()
 
+        # 推断市场
+        market = self._infer_market(symbol)
+
         # 获取系统标准字段（vi_fields hook 返回所有插件定义的字段）
         standard_fields: set[str] = set()
         for result in self._get_plugin_manager().hook.vi_fields():
@@ -454,11 +501,10 @@ class ViCorePlugin:
                 fields_dict = result.get("fields", {})
                 standard_fields.update(fields_dict.keys())
 
-        # 获取 Provider 支持的字段
-        provider_fields: set[str] = set()
-        for result in self._get_plugin_manager().hook.vi_supported_fields():
-            if result:
-                provider_fields.update(result)
+        # 获取 Provider 支持的字段（按市场过滤）
+        # 关键修复：只收集支持目标市场的 Provider 的字段
+        # 避免港股缺失字段被 A 股 Provider "掩盖"
+        provider_fields: set[str] = self._get_provider_fields_for_market(market)
 
         # 解析 items: 统一 items 参数
         if items_str:
@@ -498,9 +544,6 @@ class ViCorePlugin:
 
         if not fields and not requested_calculators:
             return {"success": False, "error": "No valid fields specified"}
-
-        # 推断市场
-        market = self._infer_market(symbol)
 
         # 使用 vi_provide_items 统一获取数据
         dfs: list[pd.DataFrame] = []
