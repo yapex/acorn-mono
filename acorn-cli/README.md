@@ -96,17 +96,17 @@ acorn status
 🌰 Acorn 系统状态
 ────────────────────────────────────────────────────
 
-📦 已加载插件 (3)
+📦 已加载插件 (2)
   ✅ evo_manager
-  ✅ echo
   ✅ vi
 
-🧮 可用计算器 (3)
+🧮 可用计算器 (4)
   • implied_growth
+  • laotang_valuation
   • graham_value
   • npcf_ratio
 
-📋 可用字段 (85)
+📋 可用字段 (118)
   使用 'acorn vi list-fields' 查看完整列表
 
 ────────────────────────────────────────────────────
@@ -199,4 +199,4 @@ acorn my hello world
 
 - [主 README](../README.md)
 - [acorn-core](../acorn-core/)
-- [value-investment-plugin](../value-investment-plugin/)
+- [value-investment](../value-investment/)

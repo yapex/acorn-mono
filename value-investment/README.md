@@ -77,6 +77,7 @@
 | [vi_calculators](./vi_calculators/README.md) | 计算器加载器插件 | [README](./vi_calculators/README.md) |
 | [provider_market_a](./provider_market_a/README.md) | A 股数据提供者 (Tushare) | [README](./provider_market_a/README.md) |
 | [provider_market_hk](./provider_market_hk/README.md) | 港股数据提供者 (AKShare) | [README](./provider_market_hk/README.md) |
+| [provider_market_us](./provider_market_us/README.md) | 美股数据提供者 (AKShare) | [README](./provider_market_us/README.md) |
 | [calculators](./calculators/README.md) | 内置计算器脚本 | [README](./calculators/README.md) |
 
 ## 快速开始
@@ -85,7 +86,7 @@
 
 ```bash
 # 使用 uv 安装
-cd value-investment-plugin
+cd value-investment
 uv sync
 ```
 
@@ -98,9 +99,11 @@ export TUSHARE_TOKEN="your_token_here"
 
 ### CLI 使用
 
-**注意：** `acorn vi` CLI 已移除，请使用 Python API 或 `acorn run` 直接调用：
-
 ```bash
+# 通过 CLI
+acorn vi query 600519 --items revenue,net_profit --years 5
+acorn vi list
+
 # 通过 Python API
 python -c "
 from acorn_cli.client import AcornClient
@@ -108,9 +111,6 @@ client = AcornClient()
 result = client.execute('vi_query', {'symbol': '600519', 'items': 'revenue,net_profit'})
 print(result['data'])
 "
-
-# 或通过 acorn run（如果支持）
-acorn run vi_query --symbol 600519 --items revenue,net_profit
 ```
 
 ### Python API
@@ -454,7 +454,7 @@ pytest -m integration
 ## 目录结构
 
 ```
-value-investment-plugin/
+value-investment/
 ├── vi_core/                    # 核心插件
 │   ├── src/vi_core/
 │   │   ├── spec.py            # Hook Specs (vi_provide_items, vi_fetch_*)
@@ -489,7 +489,7 @@ value-investment-plugin/
 │       └── plugin.py          # 实现 vi_provide_items
 ├── calculators/                # 计算器脚本
 │   └── calc_implied_growth.py
-├── vi_cli/                     # CLI 工具（已废弃，请使用 acorn run）
+├── vi_cli/                     # CLI 入口 (typer，通过 acorn vi 调用)
 ├── tests/                      # 集成测试
 └── pyproject.toml
 ```

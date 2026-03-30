@@ -13,7 +13,15 @@ git clone https://github.com/yapex/acorn-mono.git
 cd acorn-mono
 
 # 方式 1: 使用 uv tool (推荐)
-uv tool install -e acorn-cli --with-editable value-investment/vi_cli
+uv tool install -e acorn-cli \
+  --with-editable value-investment/vi_cli \
+  --with-editable value-investment/vi_core \
+  --with-editable value-investment/vi_fields_extension \
+  --with-editable value-investment/vi_fields_ifrs \
+  --with-editable value-investment/vi_calculators \
+  --with-editable value-investment/provider_market_a \
+  --with-editable value-investment/provider_market_hk \
+  --with-editable value-investment/provider_market_us
 
 # 方式 2: 开发环境
 uv sync
