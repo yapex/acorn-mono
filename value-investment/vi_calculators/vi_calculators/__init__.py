@@ -279,6 +279,20 @@ class CalculatorEngine:
                 
                 result = self._run_in_sandbox(calc, data)
                 return result
+
+        # 懒加载：在当前工作目录下的 calculators/ 中查找
+        cwd_calc_path = Path.cwd() / "calculators"
+        if cwd_calc_path.exists() and cwd_calc_path.is_dir():
+            found = load_calculators_from_path(cwd_calc_path, "cwd")
+            calc = next((c for c in found if c["name"] == name), None)
+            if calc:
+                # 缓存起来，下次直接用
+                self._calculators.append(calc)
+                supported_markets = calc.get("supported_markets", ["A", "HK", "US"])
+                if market_code and market_code not in supported_markets:
+                    return pd.Series(dtype=float)
+                return self._run_in_sandbox(calc, data)
+
         return None
 
     @vi_hookimpl
