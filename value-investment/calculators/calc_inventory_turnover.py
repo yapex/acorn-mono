@@ -2,7 +2,7 @@
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 REQUIRED_FIELDS = ["operating_cost", "inventory"]
 
-def calculate(data, config):
+def calculate(data):
     import pandas as pd
     cost = data["operating_cost"]
     inv = data["inventory"]
