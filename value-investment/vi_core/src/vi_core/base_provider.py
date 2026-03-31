@@ -232,6 +232,8 @@ class BaseDataProvider(ABC):
         self,
         symbol: str,
         fields: set[str],
+        end_year: int | None = None,
+        years: int = 10,
         force_refresh: bool = False,
     ) -> pd.DataFrame | None:
         """获取市场数据（模板方法）
@@ -239,6 +241,8 @@ class BaseDataProvider(ABC):
         Args:
             symbol: 股票代码
             fields: 需要的字段集合
+            end_year: 结束年份（可选，用于过滤返回数据）
+            years: 查询年份数（默认10年）
             force_refresh: 是否强制刷新缓存
             
         Returns:
@@ -258,9 +262,14 @@ class BaseDataProvider(ABC):
             if cached is not None:
                 df = cached
                 df = self._apply_mapping(df)
+                # 按年份过滤
+                if end_year is not None:
+                    start_year = end_year - years + 1
+                    if StandardFields.fiscal_year in df.columns:
+                        df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
                 return self._filter_to_mapped_fields(df, fields)
 
-        df = self._fetch_market_impl(normalized_symbol)
+        df = self._fetch_market_impl(normalized_symbol, end_year, years)
         if df is None or df.empty:
             return None
 
@@ -269,6 +278,12 @@ class BaseDataProvider(ABC):
             self._cache.set(cache_key, df.copy(), ttl=self._get_market_ttl())
 
         df = self._apply_mapping(df)
+
+        # 按年份过滤
+        if end_year is not None:
+            start_year = end_year - years + 1
+            if StandardFields.fiscal_year in df.columns:
+                df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
 
         # 过滤：只保留映射后的字段和日期列，返回拷贝
         return self._filter_to_mapped_fields(df, fields)
@@ -401,14 +416,21 @@ class BaseDataProvider(ABC):
         pass
 
     @abstractmethod
-    def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
+    def _fetch_market_impl(
+        self,
+        symbol: str,
+        end_year: int | None = None,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
         """获取市场数据
         
         Args:
             symbol: 标准化后的股票代码
+            end_year: 结束年份（可选）
+            years: 查询年份数（默认10年）
             
         Returns:
-            原始 DataFrame
+            原始 DataFrame，包含 fiscal_year 列
         """
         pass
 

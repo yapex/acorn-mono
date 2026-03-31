@@ -218,10 +218,17 @@ class HKProvider(BaseDataProvider):
         except Exception:
             return None
 
-    def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
+    def _fetch_market_impl(
+        self,
+        symbol: str,
+        end_year: int | None = None,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
         """获取市场数据
         
-        从日线数据获取最新收盘价。
+        从日线数据获取年末收盘价。
+        如果指定了年份范围，返回每年最后一个交易日的收盘价。
+        如果未指定年份，返回每年最后一个交易日的收盘价（最多10年）。
         """
         try:
             # 获取历史日线数据
@@ -230,22 +237,48 @@ class HKProvider(BaseDataProvider):
                 return None
             
             # 确认列名
-            if "close" not in df.columns and "收盘" not in df.columns:
-                return None
-            
+            date_col = "date" if "date" in df.columns else "日期"
             close_col = "close" if "close" in df.columns else "收盘"
             
-            # 取最新收盘价
-            df = df.sort_values("date" if "date" in df.columns else "日期", ascending=False)
-            latest_close = df[close_col].iloc[0]
+            if date_col not in df.columns or close_col not in df.columns:
+                return None
             
-            # 返回包含最新收盘价的 DataFrame
-            result = pd.DataFrame({
-                StandardFields.fiscal_year: [2024],  # 使用最新年份
-                StandardFields.close: [latest_close],
-            })
+            # 转换日期列
+            df[date_col] = pd.to_datetime(df[date_col])
+            df = df.sort_values(date_col)
             
-            return result
+            # 提取年份
+            df["_year"] = df[date_col].dt.year
+            
+            # 确定年份范围
+            available_years = sorted(df["_year"].unique(), reverse=True)
+            
+            # 计算起始年份
+            start_year = (end_year - years + 1) if end_year else None
+            
+            if start_year and end_year:
+                target_years = [y for y in available_years if start_year <= y <= end_year]
+            elif end_year:
+                target_years = [y for y in available_years if y <= end_year]
+            else:
+                # 默认取最近years年
+                target_years = available_years[:years]
+            
+            # 取每年最后一个交易日的收盘价
+            result_rows = []
+            for year in target_years:
+                year_data = df[df["_year"] == year]
+                if not year_data.empty:
+                    last_day = year_data.iloc[-1]
+                    result_rows.append({
+                        StandardFields.fiscal_year: year,
+                        StandardFields.close: last_day[close_col],
+                    })
+            
+            if not result_rows:
+                return None
+            
+            return pd.DataFrame(result_rows)
         except Exception:
             return None
 

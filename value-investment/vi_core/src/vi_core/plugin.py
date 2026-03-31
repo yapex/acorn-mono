@@ -522,8 +522,23 @@ class ViCorePlugin:
         requested_calculators = requested_items & calculator_names
         requested_fields = requested_items - calculator_names
 
-        # 检查缺失的字段
-        unsupported = requested_fields - standard_fields
+        # 检查未知的 calculators（不在 calculator_names 中，也不在标准字段中）
+        # 这些可能是用户想要创建的新计算器，触发 evolution
+        potential_calculators = requested_fields - standard_fields
+        if potential_calculators:
+            from acorn_events import AcornEvents
+            event_bus = self._event_bus or self._get_default_event_bus()
+            for calc_name in potential_calculators:
+                event_bus.publish(
+                    AcornEvents.EVO_CAPABILITY_MISSING,
+                    sender=self,
+                    capability_type="calculator",
+                    name=calc_name,
+                    context={"symbol": symbol},
+                )
+
+        # 检查缺失的标准字段
+        unsupported = requested_fields & standard_fields - provider_fields
         unfilled = requested_fields & (standard_fields - provider_fields)
 
         if unsupported or unfilled:

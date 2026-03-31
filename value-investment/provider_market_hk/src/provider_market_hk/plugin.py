@@ -157,7 +157,7 @@ class ProviderHKPlugin:
         
         # 获取市场数据
         if request_market:
-            df = provider.fetch_market(symbol, request_market)
+            df = provider.fetch_market(symbol, request_market, end_year=end_year, years=years)
             if df is not None and not df.empty:
                 dfs.append(df)
         

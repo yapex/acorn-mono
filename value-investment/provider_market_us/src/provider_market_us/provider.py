@@ -300,7 +300,12 @@ class USProvider(BaseDataProvider):
         except Exception:
             return None
 
-    def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
+    def _fetch_market_impl(
+        self,
+        symbol: str,
+        end_year: int | None = None,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
         """获取市场数据
         
         使用 yfinance 获取市值数据。

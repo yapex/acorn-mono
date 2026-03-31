@@ -315,7 +315,12 @@ class TushareProvider(BaseDataProvider):
         except Exception:
             return None
 
-    def _fetch_market_impl(self, symbol: str) -> pd.DataFrame | None:
+    def _fetch_market_impl(
+        self,
+        symbol: str,
+        end_year: int | None = None,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
         """获取市场数据（仅最新一条）"""
         try:
             df = self.api.daily_basic(ts_code=symbol)

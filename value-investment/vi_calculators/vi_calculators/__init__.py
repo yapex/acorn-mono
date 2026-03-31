@@ -198,64 +198,11 @@ class CalculatorEngine:
                 return None
         
         # 不支持，返回进化规范
-        return f'''## 命名规范
+        # 提示 Agent 读取 skill 文件，不要硬编码路径
+        skill_name = "acorn-vi-calculator-creation"
+        return f'''要创建计算器 `{name}`，请读取 skill `{skill_name}` 获取完整的创建指南。
 
-创建计算器时，请遵循以下命名规范：
-
-### 文件命名
-- 使用 snake_case 命名法，如 `calc_gross_profit.py`
-- 文件名格式：`calc_<财务指标英文名>.py`
-- **命名要尽可能表达这个计算器的财务指标计算意义**
-- 使用英文完整表达，但也不要太长，控制在 3-5 个单词内
-
-### 函数命名
-- 函数名统一为 `calculate`
-- 变量名使用完整英文，如 `net_profit` 而非 `np`
-
-### 命名示例
-
-| ✅ 正确 | ❌ 错误 | 原因 |
-|--------|--------|------|
-| `calc_gross_profit` | `calc_gp` | 不要缩写 |
-| `calc_net_profit_margin` | `calc_npm` | 不要缩写 |
-| `calc_operating_cash_flow_to_net_profit_ratio` | `calc_cf_ratio` | 过长但可接受 |
-| `calc_interest_coverage_ratio` | `calc_icr` | 可接受，清晰表达含义 |
-| `calc_return_on_equity` | `calc_roe` | ROE 是标准缩写，可接受 |
-| `calc_price_to_earnings_ratio` | `calc_pe` | PE 是标准缩写，可接受 |
-
----
-
-## 代码模板
-
-要创建计算器 `{name}`，请按以下格式提供代码：
-
-```python
-REQUIRED_FIELDS = ["field_a", "field_b"]
-
-def calculate(data, config):
-    """
-    计算说明
-    
-    Args:
-        data: dict[str, pd.Series] - 字段数据
-        config: dict - 用户配置
-        
-    Returns:
-        pd.Series - 计算结果
-    """
-    return data["field_a"] / data["field_b"].replace(0, float('nan'))
-```
-
-字段映射参考：
-- operating_cash_flow = 经营现金流
-- net_profit = 净利润
-- total_assets = 总资产
-- total_equity = 净资产
-- interest_bearing_debt = 有息负债
-- ebitda = 息税折旧摊销前利润
-- market_cap = 市值
-- basic_eps = 每股收益
-- book_value_per_share = 每股净资产
+如果系统中未安装该 skill，请报错："Calculator creation skill not found: {skill_name}"
 '''
 
     def _run_in_sandbox(self, calc: dict, data: dict[str, pd.Series], config: dict[str, Any]) -> pd.Series | dict:
