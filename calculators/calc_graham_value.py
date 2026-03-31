@@ -1,7 +1,7 @@
 
 REQUIRED_FIELDS = ["basic_eps", "book_value_per_share", "close"]
 
-def calculate(data, config):
+def calculate(data):
     import pandas as pd
     eps = data["basic_eps"]
     bps = data["book_value_per_share"]

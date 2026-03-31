@@ -6,7 +6,7 @@
 
 REQUIRED_FIELDS = ["operating_cash_flow", "net_profit"]
 
-def calculate(data, config):
+def calculate(data):
     """
     计算净现比
     
@@ -15,7 +15,6 @@ def calculate(data, config):
     
     Args:
         data: dict[str, pd.Series] - 字段数据
-        config: dict - 用户配置
         
     Returns:
         pd.Series - 计算结果
