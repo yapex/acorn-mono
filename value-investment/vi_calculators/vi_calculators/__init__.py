@@ -323,7 +323,7 @@ class CalculatorEngine:
 
             class DynamicCalculator:
                 REQUIRED_FIELDS = required_fields
-                SUPPORTED_MARKETS = market_codes or ["A", "HK", "US"]
+                SUPPORTED_MARKETS = supported_markets or ["A", "HK", "US"]
                 __doc__ = description
 
                 def calculate(self, data):
@@ -342,7 +342,7 @@ class CalculatorEngine:
                 "name": name,
                 "module": dynamic_module,
                 "required_fields": required_fields,
-                "supported_markets": market_codes or ["A", "HK", "US"],
+                "supported_markets": supported_markets or ["A", "HK", "US"],
                 "description": description,
                 "namespace": namespace,
                 "module_id": unique_id,
@@ -414,54 +414,83 @@ class CalculatorEngine:
     @vi_hookimpl
     def vi_reload_calculator(
         self,
-        name: str,
-        code: str | None,
-        required_fields: list[str] | None,
-        description: str | None,
+        name: str | None = None,
+        code: str | None = None,
+        required_fields: list[str] | None = None,
+        description: str | None = None,
     ) -> dict[str, Any]:
         """重新加载计算器
 
-        如果提供了 code，用新代码替换；否则重新加载原代码。
+        name 为 None 时：重新扫描所有目录，加载新增/修改的文件计算器，保留动态计算器。
+        name 指定时：仅重新加载指定计算器（从文件系统重新读取）。
 
         Args:
-            name: 计算器名称
-            code: 新代码（可选）
-            required_fields: 新字段列表（可选）
-            description: 新描述（可选）
+            name: 计算器名称（None 表示全部重新扫描）
+            code: 新代码（可选，仅 name 指定时有效）
+            required_fields: 新字段列表（可选，仅 name 指定时有效）
+            description: 新描述（可选，仅 name 指定时有效）
 
         Returns:
-            {"success": True} 或 {"success": False, "error": ...}
+            {"success": True, "data": {}} 或 {"success": False, "error": ...}
         """
-        calc = self._find_calculator(name)
-        if not calc:
+        # 保留动态计算器（运行时注册的，没有对应文件）
+        dynamic_calcs = [c for c in self._calculators if c.get("_source_code")]
+
+        if name is None:
+            # 全量重新扫描
+            file_calcs = get_all_calculators()
+            self._calculators = file_calcs + dynamic_calcs
+
             return {
-                "success": False,
-                "error": {"code": "NOT_FOUND", "message": f"Calculator '{name}' not found"},
+                "success": True,
+                "data": {
+                    "total_calculators": len(self._calculators),
+                    "file_calculators": len(file_calcs),
+                    "dynamic_calculators": len(dynamic_calcs),
+                },
             }
 
-        # 保存旧值
-        old_code = calc.get("_source_code", "")
-        old_fields = calc["required_fields"]
-        old_desc = calc["description"]
+        # 指定名称：从文件系统重新加载
+        # 先重新扫描文件计算器
+        file_calcs = get_all_calculators()
+        found = next((c for c in file_calcs if c["name"] == name), None)
 
-        # 使用新值或保留旧值
-        new_code = code if code is not None else old_code
-        new_fields = required_fields if required_fields is not None else old_fields
-        new_desc = description if description is not None else old_desc
+        if not found:
+            # 文件里没有，看看动态计算器里有没有
+            dyn_found = next((c for c in dynamic_calcs if c["name"] == name), None)
+            if dyn_found:
+                if code is not None:
+                    dyn_found["_source_code"] = code
+                if required_fields is not None:
+                    dyn_found["required_fields"] = required_fields
+                if description is not None:
+                    dyn_found["description"] = description
+                return {
+                    "success": True,
+                    "data": {"name": name, "namespace": "dynamic", "source": "dynamic_updated"},
+                }
+            return {
+                "success": False,
+                "error": {"code": "NOT_FOUND", "message": f"Calculator '{name}' not found in files or dynamic"},
+            }
 
-        # 先卸载
-        self._calculators.remove(calc)
+        # 如果传了新代码，用新代码覆盖文件版本（按动态方式注册）
+        if code is not None:
+            self._calculators = file_calcs + dynamic_calcs
+            return self.vi_register_calculator(
+                name=name,
+                code=code,
+                required_fields=required_fields or found["required_fields"],
+                description=description or found["description"],
+                namespace=found.get("namespace", "builtin"),
+            )
 
-        # 重新注册
-        result = self.vi_register_calculator(
-            name=name,
-            code=new_code,
-            required_fields=new_fields,
-            description=new_desc,
-            namespace=calc.get("namespace", "dynamic"),
-        )
-
-        return result
+        # 否则用文件系统的最新版本替换内存中的旧版本
+        self._calculators = file_calcs + dynamic_calcs
+        return {
+            "success": True,
+            "data": {"name": name, "source": "file_rescanned"},
+        }
 
 
 # Pluggy 插件实例
