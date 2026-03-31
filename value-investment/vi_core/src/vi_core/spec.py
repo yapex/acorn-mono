@@ -266,16 +266,19 @@ class CalculatorSpec:
     @vi_hookspec(firstresult=True)
     def vi_reload_calculator(
         self,
-        name: str,
-        code: str | None,
-        required_fields: list[str] | None,
-        description: str | None,
+        name: str | None = None,
+        code: str | None = None,
+        required_fields: list[str] | None = None,
+        description: str | None = None,
     ) -> dict[str, Any] | None:
-        """Reload a calculator (optionally with new code)
+        """Reload calculator(s) by rescanning filesystem directories.
+
+        name=None: rescan all directories, reload file-based calculators, keep dynamic ones.
+        name specified: reload only that calculator from filesystem.
 
         Args:
-            name: Calculator name
-            code: New code (optional, if None use existing)
+            name: Calculator name (None = rescan all)
+            code: New code (optional, only when name is specified)
             required_fields: New required fields (optional)
             description: New description (optional)
 
