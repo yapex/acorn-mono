@@ -55,6 +55,7 @@ FIELD_DEFINITIONS: dict[str, dict] = {
     "net_profit": {"description": "净利润", "category": "income_statement", "source": "ifrs"},
     "operating_profit": {"description": "营业利润", "category": "income_statement", "source": "ifrs"},
     "operating_cost": {"description": "营业成本", "category": "income_statement", "source": "ifrs"},
+    "income_tax": {"description": "所得税费用", "category": "income_statement", "source": "ifrs"},
 
     # Cash Flow
     "operating_cash_flow": {"description": "经营活动现金流量净额", "category": "cash_flow", "source": "ifrs"},

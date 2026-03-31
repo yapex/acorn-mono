@@ -66,6 +66,7 @@ class TushareProvider(BaseDataProvider):
             "non_oper_income": StandardFields.non_operating_income,
             "invest_income": StandardFields.investment_income,
             "fv_value_chg_gain": StandardFields.fair_value_change,
+            "income_tax": StandardFields.income_tax,
         },
         "cash_flow": {
             "n_cashflow_act": StandardFields.operating_cash_flow,

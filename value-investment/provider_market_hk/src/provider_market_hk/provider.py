@@ -76,6 +76,7 @@ class HKProvider(BaseDataProvider):
             "行政开支": StandardFields.administrative_expenses,
             "销售及分销费用": StandardFields.selling_distribution_expenses,
             "融资成本": StandardFields.finance_cost,
+            "税项": StandardFields.income_tax,
             # 其他
             "利息收入": StandardFields.interest_income,
             "折旧及摊销": StandardFields.depreciation_amortization,

@@ -93,7 +93,9 @@ class USProvider(BaseDataProvider):
             "归属于母公司股东净利润": StandardFields.parent_net_profit,
             "基本每股收益-普通股": StandardFields.basic_eps,
             "摊薄每股收益-普通股": StandardFields.diluted_eps,
+            "基本加权平均股数-普通股": StandardFields.total_shares,
             "营业成本": StandardFields.operating_cost,
+            "所得税": StandardFields.income_tax,
         },
         "cash_flow": {
             "经营活动产生的现金流量净额": StandardFields.operating_cash_flow,
