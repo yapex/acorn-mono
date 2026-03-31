@@ -1,16 +1,16 @@
 """
-应收账款周转率计算器（美股）
-应收账款周转率 = 营收 / 应收账款
+每股净资产计算器（美股）
+每股净资产 = 股东权益合计 / 总股本
 """
 
-REQUIRED_FIELDS = ["total_revenue", "accounts_receivable"]
-MARKET_CODES = ["HK", "US"]
+REQUIRED_FIELDS = ["total_equity", "total_shares"]
+MARKET_CODES = ["US"]
 
 def calculate(data):
     """
-    计算应收账款周转率
+    计算每股净资产
 
-    公式: 应收账款周转率 = 营收 / 应收账款
+    公式: 每股净资产 = 股东权益合计 / 总股本
 
     Args:
         data: dict[str, pd.Series] - 字段数据
@@ -26,5 +26,5 @@ def calculate(data):
         if data[field].isna().all():
             return pd.Series(dtype=float)
 
-    result = data["total_revenue"] / data["accounts_receivable"].replace(0, float('nan'))
+    result = data["total_equity"] / data["total_shares"].replace(0, float('nan'))
     return result

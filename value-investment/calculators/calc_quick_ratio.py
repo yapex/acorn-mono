@@ -1,16 +1,16 @@
 """
-应收账款周转率计算器（美股）
-应收账款周转率 = 营收 / 应收账款
+速动比率计算器（港股）
+速动比率 = (流动资产 - 存货) / 流动负债
 """
 
-REQUIRED_FIELDS = ["total_revenue", "accounts_receivable"]
-MARKET_CODES = ["HK", "US"]
+REQUIRED_FIELDS = ["current_assets", "inventory", "current_liabilities"]
+MARKET_CODES = ["HK"]
 
 def calculate(data):
     """
-    计算应收账款周转率
+    计算速动比率
 
-    公式: 应收账款周转率 = 营收 / 应收账款
+    公式: 速动比率 = (流动资产 - 存货) / 流动负债
 
     Args:
         data: dict[str, pd.Series] - 字段数据
@@ -26,5 +26,5 @@ def calculate(data):
         if data[field].isna().all():
             return pd.Series(dtype=float)
 
-    result = data["total_revenue"] / data["accounts_receivable"].replace(0, float('nan'))
+    result = (data["current_assets"] - data["inventory"]) / data["current_liabilities"].replace(0, float('nan'))
     return result

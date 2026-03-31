@@ -5,22 +5,24 @@ description: Create financial calculators (估值指标) for the Acorn Value Inv
 
 # Acorn VI Calculator Creation
 
-Create calculator scripts in `value-investment/calculators/calc_{name}.py`.
+Create calculator scripts in `~/.value_investment/calculators/calc_{name}.py`.
 
 ## Step 1: Check Available Fields
 
 **Before creating a calculator, you MUST check what standard fields are available.**
 
-Run this command to list all available fields:
+List all available fields:
 
 ```bash
-acorn vi list-fields
+acorn vi list --category fields
 ```
 
-Or via API:
-```python
-result = client.execute("vi_list_fields", {})
-# result["data"]["fields"] contains all available field names
+List fields for a specific market:
+
+```bash
+acorn vi list --category fields --market A
+acorn vi list --category fields --market HK
+acorn vi list --category fields --market US
 ```
 
 Use standard field names in `REQUIRED_FIELDS`. Do NOT invent field names that don't exist.
@@ -48,8 +50,12 @@ def calculate(data, config):
 
 ## Calculator File Location
 
-- **Builtin**: `value-investment/calculators/calc_{name}.py`
-- **User**: `~/.value_investment/calculators/calc_{name}.py`
+- **Builtin**: `site-packages/vi_calculators/calculators/calc_{name}.py` (packaged with wheel, do NOT modify)
+- **CWD**: `<cwd>/calculators/calc_{name}.py` (user-defined calculators, recommended)
+
+Loading order: builtin → cwd (cwd overrides builtin if same name).
+
+**NOTE**: `acorn-agent` runs from the user's config directory, so `<cwd>/calculators/` is the standard location for new calculators.
 
 ## Required Structure
 
@@ -126,15 +132,8 @@ def calculate(data, config):
 After creating, restart the CLI and check:
 
 ```bash
-acorn vi list --category calculator
-# Should show your new calculator
-```
-
-Or via API:
-
-```python
-result = client.execute("vi_list_calculators", {})
-# Find your calculator in the list
+acorn vi list --category calculators
+# Should show your new calculator with market codes
 ```
 
 ## Examples
@@ -179,6 +178,65 @@ def calculate(data, config):
         return pd.Series(dtype=float)
     return pd.Series({"avg_roe": roe.mean()})
 ```
+
+## Extending MARKET_CODES to New Markets
+
+When extending a calculator to additional markets, ALL three conditions must be met:
+
+### Condition 1: Target market has required raw fields
+
+The calculator's `REQUIRED_FIELDS` must all exist in the target market's field list.
+
+```bash
+# 查看计算器的必需字段
+acorn vi list --category calculators
+# 找到目标计算器，查看 "必需字段" 行
+
+# 查看目标市场的可用字段
+acorn vi list --category fields --market HK
+acorn vi list --category fields --market US
+
+# 逐一比对：REQUIRED_FIELDS 中的每个字段是否出现在目标市场的字段列表中
+```
+
+Missing fields → **Cannot extend.**
+
+### Condition 2: Target market does NOT already have the indicator as raw data
+
+Check whether the indicator name already exists in the target market's field list.
+If it does, the calculator would **overwrite** the more accurate API raw value.
+
+```bash
+# 计算器文件名去掉 calc_ 前缀即为指标名
+# 例如 calc_debt_to_equity.py → 指标名为 debt_to_equity
+
+# 在目标市场字段列表中搜索该指标名
+acorn vi list --category fields --market A | grep debt_to_equity
+acorn vi list --category fields --market HK | grep debt_to_equity
+acorn vi list --category fields --market US | grep debt_to_equity
+
+# 如果出现了 → 该市场已有原始指标数据，不能扩展
+```
+
+Already exists → **Cannot extend.** (would overwrite API raw value)
+
+### Condition 3: Output field name matches standard field name
+
+The calculator's file name without `calc_` prefix (the `calc_name`) must match the standard field name in `StandardFields`. The engine uses `calc_name` as the result key — downstream consumers depend on this name.
+
+Example: `calc_debt_to_equity.py` → engine stores result as `results["debt_to_equity"]`
+
+### Summary
+
+**Has fields, no existing indicator, name matches → can extend.**
+
+| Condition | Check | Not met → |
+|-----------|-------|----------|
+| Raw fields available | `REQUIRED_FIELDS` ⊆ market fields | Cannot extend |
+| No raw indicator | Indicator not in `acorn vi list --category fields --market X` | Cannot extend (would overwrite) |
+| Name matches standard | `calc_name` == `StandardFields.xxx` | Fix naming first |
+
+Only add markets that pass ALL conditions to `MARKET_CODES`.
 
 ## Troubleshooting
 

@@ -1,16 +1,16 @@
 """
-应收账款周转率计算器（美股）
-应收账款周转率 = 营收 / 应收账款
+毛利计算器（A股）
+毛利 = 营收 - 营业成本
 """
 
-REQUIRED_FIELDS = ["total_revenue", "accounts_receivable"]
-MARKET_CODES = ["HK", "US"]
+REQUIRED_FIELDS = ["total_revenue", "operating_cost"]
+MARKET_CODES = ["A"]
 
 def calculate(data):
     """
-    计算应收账款周转率
+    计算毛利
 
-    公式: 应收账款周转率 = 营收 / 应收账款
+    公式: 毛利 = 营收 - 营业成本
 
     Args:
         data: dict[str, pd.Series] - 字段数据
@@ -26,5 +26,5 @@ def calculate(data):
         if data[field].isna().all():
             return pd.Series(dtype=float)
 
-    result = data["total_revenue"] / data["accounts_receivable"].replace(0, float('nan'))
+    result = data["total_revenue"] - data["operating_cost"]
     return result

@@ -396,26 +396,32 @@ class ViCorePlugin:
 
     def _list_fields(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available fields from all plugins"""
+        market = args.get("market")
+        source = args.get("source")
+        prefix = args.get("prefix")
+
         all_fields: dict[str, dict] = {}
 
         # Collect fields from all plugins via vi_fields hook
         if self._get_plugin_manager():
             for result in self._get_plugin_manager().hook.vi_fields():
                 if result:
-                    source = result.get("source", "unknown")
+                    source_val = result.get("source", "unknown")
                     fields = result.get("fields", {})
                     # fields 现在是 dict: {field_name: {description: ...}}
                     for field_name, field_info in fields.items():
                         if field_name not in all_fields:
                             all_fields[field_name] = {
-                                "source": source,
+                                "source": source_val,
                                 "description": field_info.get("description", ""),
                             }
 
-        source = args.get("source")
-        prefix = args.get("prefix")
-
         fields = list(all_fields.keys())
+
+        # 按市场过滤：只保留该市场 Provider 实际支持的字段
+        if market:
+            provider_fields = self._get_provider_fields_for_market(market)
+            fields = [f for f in fields if f in provider_fields]
 
         if source:
             fields = [f for f in fields if all_fields[f]["source"] == source]

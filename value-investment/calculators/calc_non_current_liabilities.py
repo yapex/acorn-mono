@@ -1,16 +1,16 @@
 """
-应收账款周转率计算器（美股）
-应收账款周转率 = 营收 / 应收账款
+非流动负债计算器（A股）
+非流动负债 = 总负债 - 流动负债
 """
 
-REQUIRED_FIELDS = ["total_revenue", "accounts_receivable"]
-MARKET_CODES = ["HK", "US"]
+REQUIRED_FIELDS = ["total_liabilities", "current_liabilities"]
+MARKET_CODES = ["A"]
 
 def calculate(data):
     """
-    计算应收账款周转率
+    计算非流动负债
 
-    公式: 应收账款周转率 = 营收 / 应收账款
+    公式: 非流动负债 = 总负债 - 流动负债
 
     Args:
         data: dict[str, pd.Series] - 字段数据
@@ -26,5 +26,5 @@ def calculate(data):
         if data[field].isna().all():
             return pd.Series(dtype=float)
 
-    result = data["total_revenue"] / data["accounts_receivable"].replace(0, float('nan'))
+    result = data["total_liabilities"] - data["current_liabilities"]
     return result

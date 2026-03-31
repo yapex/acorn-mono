@@ -169,14 +169,19 @@ def query(
 @app.command("list")
 def list_items(
     category: str = typer.Option("all", "-c", "--category", help="类别：all, fields, calculators"),
+    market: str = typer.Option(None, "-m", "--market", help="按市场过滤 (A, HK, US)"),
 ) -> None:
     """列出可用的字段和计算器"""
     try:
         if category in ("all", "fields"):
-            result = _execute("vi_list_fields", {})
+            args = {}
+            if market:
+                args["market"] = market
+            result = _execute("vi_list_fields", args)
             if result.get("success", False):
                 fields = result.get("data", {}).get("fields", [])
-                print(f"\n可用字段 ({len(fields)}):\n")
+                market_label = f" ({market} 市场)" if market else ""
+                print(f"\n可用字段{market_label} ({len(fields)}):\n")
                 for f in sorted(fields):
                     print(f"  - {f}")
                 print()
@@ -187,7 +192,10 @@ def list_items(
                 calcs = result.get("data", {}).get("calculators", [])
                 print(f"\n可用计算器 ({len(calcs)}):\n")
                 for calc in calcs:
-                    print(f"  {calc.get('name', 'unknown')}")
+                    name = calc.get('name', 'unknown')
+                    market_codes = calc.get('market_codes', [])
+                    print(f"  {name}")
+                    print(f"    市场：{', '.join(market_codes)}")
                     print(f"    描述：{calc.get('description', 'N/A')}")
                     print(f"    必需字段：{', '.join(calc.get('required_fields', []))}")
                     print()

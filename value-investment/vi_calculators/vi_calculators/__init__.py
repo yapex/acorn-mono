@@ -45,7 +45,6 @@ _wheel_calc_path = Path(__file__).parent.parent / "calculators"
 
 DEFAULT_CALC_PATHS = {
     "builtin": _editable_calc_path if _editable_calc_path.exists() else _wheel_calc_path,
-    "user": Path.home() / ".value_investment" / "calculators",
 }
 
 
@@ -122,9 +121,11 @@ def get_all_calculators() -> list[dict]:
 
     for namespace, path in calc_paths.items():
         for calc in load_calculators_from_path(path, namespace):
-            if calc["name"] not in seen:
-                calculators.append(calc)
-                seen.add(calc["name"])
+            if calc["name"] in seen:
+                # 同名覆盖：移除旧版本，用新版本替代
+                calculators = [c for c in calculators if c["name"] != calc["name"]]
+            calculators.append(calc)
+            seen.add(calc["name"])
 
     return calculators
 
