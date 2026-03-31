@@ -114,6 +114,24 @@ class HKProvider(BaseDataProvider):
             "营业总收入滚动环比增长(%)": StandardFields.hk_total_revenue_growth_qoq,
             "净利润滚动环比增长(%)": StandardFields.hk_net_profit_growth_qoq,
         },
+        # 港股历史财务指标 (来自 stock_financial_hk_analysis_indicator_em)
+        "hk_indicators": {
+            "BASIC_EPS": StandardFields.basic_eps,
+            "DILUTED_EPS": StandardFields.diluted_eps,
+            "BPS": StandardFields.book_value_per_share,
+            "OPERATE_INCOME": StandardFields.total_revenue,
+            "GROSS_PROFIT": StandardFields.gross_profit,
+            "HOLDER_PROFIT": StandardFields.parent_net_profit,
+            "ROE_AVG": StandardFields.roe,
+            "ROE_YEARLY": StandardFields.roe,
+            "ROA": StandardFields.roa,
+            "GROSS_PROFIT_RATIO": StandardFields.gross_margin,
+            "NET_PROFIT_RATIO": StandardFields.net_profit_margin,
+            "DEBT_ASSET_RATIO": StandardFields.debt_ratio,
+            "CURRENT_RATIO": StandardFields.current_ratio,
+            "CURRENTDEBT_DEBT": StandardFields.currentdebt_to_debt,
+            "ROIC_YEARLY": StandardFields.roic,
+        },
         "market": {
             # 市值
             "总市值(港元)": StandardFields.market_cap,
@@ -202,17 +220,29 @@ class HKProvider(BaseDataProvider):
         start_year: int,
         end_year: int,
     ) -> pd.DataFrame | None:
-        """获取财务指标数据"""
+        """获取财务指标数据（使用历史数据接口）"""
         try:
-            df = ak.stock_hk_financial_indicator_em(symbol=symbol)
+            # 使用返回历史数据的接口
+            df = ak.stock_financial_hk_analysis_indicator_em(symbol=symbol)
             if df is None or df.empty:
                 return None
             
-            # 添加 year 列 - AKShare 返回的数据没有日期列，
-            # 假设每行代表一个财年，按数据顺序分配年份
-            n_rows = len(df)
             df = df.copy()
-            df[StandardFields.fiscal_year] = list(range(end_year, end_year - n_rows, -1))
+            
+            # 从 REPORT_DATE 提取年份
+            df[StandardFields.fiscal_year] = pd.to_datetime(df["REPORT_DATE"]).dt.year
+            
+            # 按年份过滤
+            df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
+            
+            # 按年份排序（降序）
+            df = df.sort_values(StandardFields.fiscal_year, ascending=False)
+            
+            # 删除不需要的列
+            cols_to_drop = ["SECUCODE", "SECURITY_CODE", "SECURITY_NAME_ABBR", "ORG_CODE", 
+                           "REPORT_DATE", "DATE_TYPE_CODE", "START_DATE", "FISCAL_YEAR", 
+                           "CURRENCY", "IS_CNY_CODE"]
+            df = df.drop(columns=[c for c in cols_to_drop if c in df.columns])
             
             return df
         except Exception:

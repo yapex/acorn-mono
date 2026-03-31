@@ -130,7 +130,7 @@ class ProviderHKPlugin:
             category_fields = set(mapping.values())
             if category in ["balance_sheet", "income_statement", "cash_flow"]:
                 financial_fields.update(category_fields)
-            elif category == "indicators":
+            elif category in ["indicators", "hk_indicators"]:
                 indicator_fields.update(category_fields)
             elif category == "market":
                 market_fields.update(category_fields)
