@@ -73,6 +73,7 @@ class HKProvider(BaseDataProvider):
             "每股基本盈利": StandardFields.basic_eps,
             # 费用
             "营业成本": StandardFields.operating_cost,
+            "销售成本": StandardFields.operating_cost,
             "行政开支": StandardFields.administrative_expenses,
             "销售及分销费用": StandardFields.selling_distribution_expenses,
             "融资成本": StandardFields.finance_cost,
@@ -212,6 +213,13 @@ class HKProvider(BaseDataProvider):
             result = result.merge(df, on=StandardFields.fiscal_year, how="outer", suffixes=("", "_dup"))
             dup_cols = [c for c in result.columns if c.endswith("_dup")]
             result = result.drop(columns=dup_cols)
+
+        # 港股部分公司（如腾讯、阿里）利润表中没有「营业成本」或「销售成本」，
+        # 但有「营业额」和「毛利」，此时 operating_cost = 营业额 - 毛利
+        if "营业成本" not in result.columns and "销售成本" not in result.columns:
+            if "营业额" in result.columns and "毛利" in result.columns:
+                result = result.copy()
+                result["营业成本"] = result["营业额"] - result["毛利"]
 
         return result
 
