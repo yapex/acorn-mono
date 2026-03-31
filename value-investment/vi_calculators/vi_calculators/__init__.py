@@ -323,7 +323,7 @@ class CalculatorEngine:
 
             class DynamicCalculator:
                 REQUIRED_FIELDS = required_fields
-                SUPPORTED_MARKETS = market_codes or ["A", "HK", "US"]
+                SUPPORTED_MARKETS = supported_markets or ["A", "HK", "US"]
                 __doc__ = description
 
                 def calculate(self, data):
@@ -342,7 +342,7 @@ class CalculatorEngine:
                 "name": name,
                 "module": dynamic_module,
                 "required_fields": required_fields,
-                "supported_markets": market_codes or ["A", "HK", "US"],
+                "supported_markets": supported_markets or ["A", "HK", "US"],
                 "description": description,
                 "namespace": namespace,
                 "module_id": unique_id,
