@@ -52,7 +52,7 @@ class ProviderHKPlugin:
         symbol: str,
         fields: set[str],
         end_year: int,
-        years: int = 10,
+        years: int,
     ) -> pd.DataFrame | None:
         """Fetch financial statement data"""
         provider = _get_provider()
@@ -64,7 +64,7 @@ class ProviderHKPlugin:
         symbol: str,
         fields: set[str],
         end_year: int,
-        years: int = 10,
+        years: int,
     ) -> pd.DataFrame | None:
         """Fetch financial indicators"""
         provider = _get_provider()
@@ -99,7 +99,7 @@ class ProviderHKPlugin:
         symbol: str,
         market: str,
         end_year: int,
-        years: int = 10,
+        years: int,
     ) -> pd.DataFrame | None:
         """HK Provider 实现 vi_provide_items
         

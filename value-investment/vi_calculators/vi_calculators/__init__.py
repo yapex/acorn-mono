@@ -178,7 +178,7 @@ class CalculatorEngine:
         self,
         capability_type: str,
         name: str,
-        context: dict | None = None,
+        context: dict | None,
     ) -> str | None:
         """
         询问是否支持某计算器，如果不支持，返回进化规范
@@ -256,7 +256,8 @@ class CalculatorEngine:
         self,
         name: str,
         data: dict[str, pd.Series],
-        market_code: str | None = None,
+        config: dict[str, Any],
+        market_code: str | None,
     ) -> pd.Series | None:
         """执行指定名称的计算器
         
@@ -287,7 +288,7 @@ class CalculatorEngine:
         code: str,
         required_fields: list[str],
         namespace: str,
-        description: str = "",
+        description: str,
         market_codes: list[str] | None = None,
     ) -> dict[str, Any]:
         """运行时注册新计算器（通过代码字符串）
@@ -414,9 +415,9 @@ class CalculatorEngine:
     def vi_reload_calculator(
         self,
         name: str,
-        code: str | None = None,
-        required_fields: list[str] | None = None,
-        description: str | None = None,
+        code: str | None,
+        required_fields: list[str] | None,
+        description: str | None,
     ) -> dict[str, Any]:
         """重新加载计算器
 

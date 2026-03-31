@@ -148,7 +148,7 @@ class TestCwdCalculatorLoading:
                     "total_revenue": pd.Series([500, 1000], index=[2023, 2024]),
                 }
                 result = pm.hook.vi_run_calculator(
-                    name="cwd_test", data=data, market_code="HK"
+                    name="cwd_test", data=data, config={}, market_code="HK"
                 )
                 # pluggy returns [result]
                 series = result[0] if isinstance(result, list) else result

@@ -1,6 +1,12 @@
 """Pluggy Hook specifications for Value Investment
 
 Defines the contract between vi_core and Provider/Calculator plugins.
+
+⚠️  IMPORTANT - pluggy hookspec 编写规则:
+    所有 @vi_hookspec 方法的参数（self 除外）不应有默认值。
+    pluggy 1.6.0+ 将有默认值的参数归类为 kwargnames，
+    在 hook dispatch 时静默丢弃（impl 收到的是默认值而非调用方传入的值）。
+    运行检查: python3 scripts/check_hookspec_defaults.py
 """
 from __future__ import annotations
 
@@ -70,7 +76,7 @@ class FieldProviderSpec:
         symbol: str,
         fields: set[str],
         end_year: int,
-        years: int = 10,
+        years: int,
     ) -> pd.DataFrame | None:
         """Fetch financial statement data (balance sheet, income, cash flow)
 
@@ -91,7 +97,7 @@ class FieldProviderSpec:
         symbol: str,
         fields: set[str],
         end_year: int,
-        years: int = 10,
+        years: int,
     ) -> pd.DataFrame | None:
         """Fetch financial indicators (ROE, ROA, gross margin, etc.)
 
@@ -127,9 +133,9 @@ class FieldProviderSpec:
     def vi_fetch_historical(
         self,
         symbol: str,
-        start_date: str | None = None,
-        end_date: str | None = None,
-        adjust: str = "hfq",
+        start_date: str | None,
+        end_date: str | None,
+        adjust: str,
     ) -> pd.DataFrame | None:
         """Fetch historical trading data (OHLCV)
 
@@ -155,7 +161,7 @@ class FieldProviderSpec:
         symbol: str,
         market: str,
         end_year: int,
-        years: int = 10,
+        years: int,
     ) -> pd.DataFrame | None:
         """Provider 返回它能提供的 items 数据
         
@@ -203,6 +209,7 @@ class CalculatorSpec:
         name: str,
         data: pd.DataFrame,
         config: dict[str, Any],
+        market_code: str | None,
     ) -> pd.Series | None:
         """Execute a calculator by name
 
@@ -225,7 +232,7 @@ class CalculatorSpec:
         code: str,
         required_fields: list[str],
         namespace: str,
-        description: str = "",
+        description: str,
     ) -> dict[str, Any] | None:
         """Register a calculator dynamically via code string
 
@@ -260,9 +267,9 @@ class CalculatorSpec:
     def vi_reload_calculator(
         self,
         name: str,
-        code: str | None = None,
-        required_fields: list[str] | None = None,
-        description: str | None = None,
+        code: str | None,
+        required_fields: list[str] | None,
+        description: str | None,
     ) -> dict[str, Any] | None:
         """Reload a calculator (optionally with new code)
 
@@ -375,7 +382,7 @@ class EvolutionSpec(EvolutionSpecInterface):
         self,
         capability_type: str,
         name: str,
-        context: dict | None = None,
+        context: dict | None,
     ) -> str | None:
         """
         询问插件是否支持某能力，不支持则返回进化规范

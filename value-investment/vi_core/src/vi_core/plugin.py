@@ -528,6 +528,14 @@ class ViCorePlugin:
         requested_calculators = requested_items & calculator_names
         requested_fields = requested_items - calculator_names
 
+        # 自动收集 calculator 依赖的字段
+        if requested_calculators and calc_list:
+            calc_registry = {c["name"]: c for c in calc_list}
+            for calc_name in requested_calculators:
+                calc_spec = calc_registry.get(calc_name, {})
+                for field in calc_spec.get("required_fields", []):
+                    requested_fields.add(field)
+
         # 检查未知的 calculators（不在 calculator_names 中，也不在标准字段中）
         # 这些可能是用户想要创建的新计算器，触发 evolution
         potential_calculators = requested_fields - standard_fields
@@ -635,7 +643,7 @@ class ViCorePlugin:
 
         # Run calculators - 直接传入 DataFrame
         if requested_calculators:
-            calc_results = self._run_calculators(merged_df, requested_calculators, calculator_config)
+            calc_results = self._run_calculators(merged_df, requested_calculators, calculator_config, market=market)
             for calc_name, series in calc_results.items():
                 if series is not None and not series.empty:
                     # 尝试将 index 转换为整数年份
@@ -664,6 +672,7 @@ class ViCorePlugin:
         df: pd.DataFrame | None,
         calculator_names: set[str],
         calculator_config: dict[str, Any],
+        market: str | None = None,
     ) -> dict[str, pd.Series]:
         """Run calculators via hook and return results
         
@@ -746,6 +755,7 @@ class ViCorePlugin:
                 name=calc_name,
                 data=calc_data,
                 config=config,
+                market_code=market,
             )
 
             if calc_result is None:

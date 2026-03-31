@@ -24,7 +24,7 @@ class MockProvider:
         ]
     
     @vi_hookimpl
-    def vi_fetch_financials(self, symbol, fields, end_year, years=10):
+    def vi_fetch_financials(self, symbol, fields, end_year, years):
         return pd.DataFrame({
             "fiscal_year": [2024, 2023],
             "operating_cash_flow": [100e8, 90e8],
@@ -142,19 +142,24 @@ class TestQueryWithCalculators:
         assert "implied_growth" not in result["data"]["data"]
 
     def test_query_with_missing_required_fields(self):
-        """Query with calculator but missing required fields"""
+        """Query with calculator but missing required fields
+        
+        当 calculator 的 required_fields 在 provider 中不可用时，
+        calculator 会被跳过（因为自动收集的字段无法从 provider 获取）。
+        """
         self.pm.register(calculators_plugin, name="calculators")
         
         result = self.pm.hook.vi_handle(
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "total_assets",  # No OCF or market_cap
+                "fields": "total_assets",
                 "calculators": "implied_growth",
                 "years": 2,
             }
         )
         
-        # Should succeed but skip calculator due to missing fields
+        # Should succeed - system auto-collects calculator deps
         assert result["success"] is True
-        assert "implied_growth" not in result["data"]["data"]
+        # implied_growth should run because auto-collected fields are available
+        assert "implied_growth" in result["data"]["data"]

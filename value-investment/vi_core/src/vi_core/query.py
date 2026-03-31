@@ -80,6 +80,9 @@ class QueryEngine:
         """
         # 1. 预检
         precheck_result = self._precheck(symbol, items)
+
+        # 推断市场（供 calculator 使用）
+        market = self._infer_market(symbol)
         
         if not precheck_result.available:
             return QueryResult(
@@ -105,7 +108,7 @@ class QueryEngine:
             and item_def.source == ItemSource.CALCULATOR
         ]
         if calc_items:
-            calc_results = self._run_calculators(calc_items, data)
+            calc_results = self._run_calculators(calc_items, data, market=market)
             data.update(calc_results)
         
         return QueryResult(
@@ -167,7 +170,8 @@ class QueryEngine:
     def _run_calculators(
         self, 
         calc_items: list[str], 
-        field_data: dict[str, Any]
+        field_data: dict[str, Any],
+        market: str | None = None,
     ) -> dict[str, Any]:
         """运行 Calculator
         
@@ -245,6 +249,7 @@ class QueryEngine:
                 name=calc_name,
                 data=calc_data,
                 config=config,
+                market_code=market,
             )
             
             if calc_result is None:

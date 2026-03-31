@@ -147,6 +147,7 @@ class TestCalculatorNameCollision:
             code=SIMPLE_CALC_CODE,
             required_fields=["field1"],
             namespace="dynamic",
+            description="To be removed",
         )
         assert result["success"] is True
         
@@ -167,6 +168,7 @@ class TestCalculatorNameCollision:
             name="to_remove",
             data={},
             config={},
+            market_code=None,
         )
         assert run_result is None
 
