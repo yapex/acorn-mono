@@ -4,7 +4,7 @@
 """
 
 REQUIRED_FIELDS = ["total_liabilities", "current_liabilities"]
-MARKET_CODES = ["A"]
+SUPPORTED_MARKETS = ["A"]
 
 def calculate(data):
     """

@@ -4,7 +4,7 @@ FCF 稳定性分析计算器
 """
 
 REQUIRED_FIELDS = ["free_cash_flow"]
-MARKET_CODES = ["A", "HK", "US"]
+SUPPORTED_MARKETS = ["A", "HK", "US"]
 
 def calculate(data):
     """

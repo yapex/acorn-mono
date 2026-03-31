@@ -4,7 +4,7 @@
 """
 
 REQUIRED_FIELDS = ["operating_profit", "total_revenue"]
-MARKET_CODES = ["HK", "US"]
+SUPPORTED_MARKETS = ["HK", "US"]
 
 def calculate(data):
     """

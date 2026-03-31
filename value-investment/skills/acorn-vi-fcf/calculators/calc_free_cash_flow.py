@@ -4,7 +4,7 @@ FCF = 经营活动现金流量净额 - 资本支出
 """
 
 REQUIRED_FIELDS = ["operating_cash_flow", "capital_expenditure"]
-MARKET_CODES = ["HK", "US"]
+SUPPORTED_MARKETS = ["HK", "US"]
 
 def calculate(data):
     """

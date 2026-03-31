@@ -5,7 +5,7 @@ ROIC = 税后营业利润 / 投入资本
 """
 
 REQUIRED_FIELDS = ["operating_profit", "income_tax", "total_equity", "short_term_debt", "long_term_debt"]
-MARKET_CODES = ["US"]
+SUPPORTED_MARKETS = ["US"]
 
 def calculate(data):
     """

@@ -4,7 +4,7 @@
 """
 
 REQUIRED_FIELDS = ["total_equity", "total_shares"]
-MARKET_CODES = ["US"]
+SUPPORTED_MARKETS = ["US"]
 
 def calculate(data):
     """

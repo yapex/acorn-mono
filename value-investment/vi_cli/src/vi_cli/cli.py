@@ -193,9 +193,9 @@ def list_items(
                 print(f"\n可用计算器 ({len(calcs)}):\n")
                 for calc in calcs:
                     name = calc.get('name', 'unknown')
-                    market_codes = calc.get('market_codes', [])
+                    supported_markets = calc.get('supported_markets', [])
                     print(f"  {name}")
-                    print(f"    市场：{', '.join(market_codes)}")
+                    print(f"    市场：{', '.join(supported_markets)}")
                     print(f"    描述：{calc.get('description', 'N/A')}")
                     print(f"    必需字段：{', '.join(calc.get('required_fields', []))}")
                     print()

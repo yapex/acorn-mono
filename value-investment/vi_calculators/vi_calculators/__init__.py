@@ -81,7 +81,7 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
 
                 required_fields = getattr(module, "REQUIRED_FIELDS", [])
                 field_aliases = getattr(module, "FIELD_ALIASES", {})
-                market_codes = getattr(module, "MARKET_CODES", ["A", "HK", "US"])
+                supported_markets = getattr(module, "SUPPORTED_MARKETS", ["A", "HK", "US"])
                 description = getattr(module, "__doc__", "") or ""
                 name = file.stem.replace("calc_", "")
 
@@ -90,7 +90,7 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
                     "module": module,
                     "required_fields": required_fields,
                     "field_aliases": field_aliases,
-                    "market_codes": market_codes,
+                    "supported_markets": supported_markets,
                     "description": description.strip().split("\n")[0],
                     "namespace": namespace,
                 })
@@ -166,7 +166,7 @@ class CalculatorEngine:
                 "name": c["name"],
                 "required_fields": c["required_fields"],
                 "field_aliases": c.get("field_aliases", {}),
-                "market_codes": c.get("market_codes", ["A", "HK", "US"]),
+                "supported_markets": c.get("supported_markets", ["A", "HK", "US"]),
                 "description": c["description"],
                 "namespace": c.get("namespace", "unknown"),
             }
@@ -272,7 +272,7 @@ class CalculatorEngine:
         for calc in self._calculators:
             if calc["name"] == name:
                 # 检查市场兼容性
-                supported_markets = calc.get("market_codes", ["A", "HK", "US"])
+                supported_markets = calc.get("supported_markets", ["A", "HK", "US"])
                 if market_code and market_code not in supported_markets:
                     # 市场不兼容，返回空 Series
                     return pd.Series(dtype=float)
@@ -289,7 +289,7 @@ class CalculatorEngine:
         required_fields: list[str],
         namespace: str,
         description: str,
-        market_codes: list[str] | None = None,
+        supported_markets: list[str] | None = None,
     ) -> dict[str, Any]:
         """运行时注册新计算器（通过代码字符串）
 
@@ -302,7 +302,7 @@ class CalculatorEngine:
             description: 描述
             namespace: 命名空间标签，默认 dynamic（第三方）
                          可选: builtin, user, dynamic
-            market_codes: 支持的市场代码列表，默认 None 表示支持所有市场
+            supported_markets: 支持的市场代码列表，默认 None 表示支持所有市场
         """
         try:
             # 2. 为动态计算器创建隔离的模块命名空间
@@ -323,7 +323,7 @@ class CalculatorEngine:
 
             class DynamicCalculator:
                 REQUIRED_FIELDS = required_fields
-                MARKET_CODES = market_codes or ["A", "HK", "US"]
+                SUPPORTED_MARKETS = market_codes or ["A", "HK", "US"]
                 __doc__ = description
 
                 def calculate(self, data):
@@ -342,7 +342,7 @@ class CalculatorEngine:
                 "name": name,
                 "module": dynamic_module,
                 "required_fields": required_fields,
-                "market_codes": market_codes or ["A", "HK", "US"],
+                "supported_markets": market_codes or ["A", "HK", "US"],
                 "description": description,
                 "namespace": namespace,
                 "module_id": unique_id,

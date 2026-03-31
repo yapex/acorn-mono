@@ -17,7 +17,7 @@ import pytest
 TEST_CALC_CODE = '''\
 """Test calculator from cwd"""
 REQUIRED_FIELDS = ["total_assets", "total_revenue"]
-MARKET_CODES = ["HK"]
+SUPPORTED_MARKETS = ["HK"]
 
 def calculate(data):
     import pandas as pd
@@ -43,7 +43,7 @@ class TestCwdCalculatorLoading:
             assert len(calcs) == 1
             assert calcs[0]["name"] == "cwd_test"
             assert calcs[0]["namespace"] == "cwd"
-            assert calcs[0]["market_codes"] == ["HK"]
+            assert calcs[0]["supported_markets"] == ["HK"]
             assert "total_assets" in calcs[0]["required_fields"]
 
     def test_get_all_calculators_includes_cwd(self):
@@ -83,7 +83,7 @@ class TestCwdCalculatorLoading:
                 matches = [c for c in all_calcs if c["name"] == "npcf_ratio"]
                 assert len(matches) == 1
                 assert matches[0]["namespace"] == "cwd"
-                assert matches[0]["market_codes"] == ["HK"]
+                assert matches[0]["supported_markets"] == ["HK"]
             finally:
                 os.chdir(original_cwd)
 

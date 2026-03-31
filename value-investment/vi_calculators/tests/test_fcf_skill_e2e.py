@@ -73,8 +73,8 @@ class TestFcfSkillE2E:
         finally:
             os.chdir(original_cwd)
 
-    def test_market_codes_are_correct(self):
-        """Verify market codes match expectations."""
+    def test_supported_markets_are_correct(self):
+        """Verify supported markets match expectations."""
         original_cwd = os.getcwd()
         skill_root = SKILL_CALC_DIR.parent
 
@@ -84,7 +84,7 @@ class TestFcfSkillE2E:
 
             all_calcs = get_all_calculators()
             fcf = next(c for c in all_calcs if c["name"] == "free_cash_flow")
-            assert fcf["market_codes"] == ["HK", "US"]
+            assert fcf["supported_markets"] == ["HK", "US"]
 
         finally:
             os.chdir(original_cwd)
