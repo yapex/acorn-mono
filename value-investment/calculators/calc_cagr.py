@@ -18,23 +18,28 @@ def calculate(data):
         data: dict[str, pd.Series] - 字段数据，Series index 为年份
 
     Returns:
-        float - CAGR 值（如 0.15 表示 15%）
+        pd.Series - 仅最新年份有值的 Series
     """
     import pandas as pd
     import numpy as np
 
+    if "total_revenue" not in data:
+        return pd.Series(dtype=float)
+
     series = data["total_revenue"].dropna()
 
     if len(series) < 2:
-        return float('nan')
+        return pd.Series(dtype=float)
 
-    # 取第一个和最后一个有效值
     start_value = series.iloc[0]
     end_value = series.iloc[-1]
 
     if start_value <= 0 or end_value <= 0 or pd.isna(start_value) or pd.isna(end_value):
-        return float('nan')
+        return pd.Series(dtype=float)
 
-    n = len(series) - 1  # 年数 = 数据点数 - 1
+    n = len(series) - 1
     cagr = (end_value / start_value) ** (1 / n) - 1
-    return float(cagr)
+
+    result = pd.Series(dtype=float)
+    result[series.index[-1]] = float(cagr)
+    return result

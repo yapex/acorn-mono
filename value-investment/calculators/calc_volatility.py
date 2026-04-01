@@ -18,19 +18,25 @@ def calculate(data):
         data: dict[str, pd.Series] - 字段数据，Series index 为年份
 
     Returns:
-        float - 波动率值（如 0.15 表示 15%）
+        pd.Series - 仅最新年份有值的 Series
     """
     import pandas as pd
     import numpy as np
 
+    if "roe" not in data:
+        return pd.Series(dtype=float)
+
     series = data["roe"].dropna()
 
     if len(series) < 2:
-        return float('nan')
+        return pd.Series(dtype=float)
 
     mean_val = series.mean()
     if mean_val == 0 or pd.isna(mean_val):
-        return float('nan')
+        return pd.Series(dtype=float)
 
     volatility = series.std() / abs(mean_val)
-    return float(volatility)
+
+    result = pd.Series(dtype=float)
+    result[series.index[-1]] = float(volatility)
+    return result

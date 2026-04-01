@@ -205,5 +205,34 @@ def list_items(
         raise typer.Exit(1)
 
 
+@app.command("reload")
+def reload(
+    name: str = typer.Argument(None, help="计算器名称（省略则全部重载）"),
+) -> None:
+    """重新加载计算器（热加载，无需重启 agent）"""
+    try:
+        args = {}
+        if name:
+            args["name"] = name
+        result = _execute("vi_reload_calculator", args)
+        if result.get("success", False):
+            data = result.get("data", {})
+            total = data.get("total", "?")
+            file_based = data.get("file_based", "?")
+            dynamic = data.get("dynamic", "?")
+            if name:
+                print(f"✅ 计算器 '{name}' 已重载")
+            else:
+                print(f"✅ 已重载全部计算器 (共 {total} 个：文件 {file_based} + 动态 {dynamic})")
+        else:
+            print(f"❌ 重载失败", file=sys.stderr)
+            raise typer.Exit(1)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        print(f"错误：{e}", file=sys.stderr)
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

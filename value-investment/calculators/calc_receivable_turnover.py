@@ -4,7 +4,7 @@
 """
 
 REQUIRED_FIELDS = ["total_revenue", "accounts_receivable"]
-SUPPORTED_MARKETS = ["HK", "US"]
+SUPPORTED_MARKETS = ["A", "HK", "US"]
 
 def calculate(data):
     """

@@ -29,4 +29,6 @@ def calculate(data):
             return pd.Series(dtype=float)
 
     result = data["interest_bearing_debt"] / data["ebitda"].replace(0, float('nan'))
+    # EBITDA 为负时比率无意义，置为 NaN
+    result = result.where(data["ebitda"] > 0, float('nan'))
     return result
