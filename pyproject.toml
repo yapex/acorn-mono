@@ -27,6 +27,25 @@ provider-market-a = { workspace = true }
 provider-market-hk = { workspace = true }
 provider-market-us = { workspace = true }
 
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",
+    "E722",
+    "E402",
+    "W293",
+    "W292",
+    "F841",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
+"tests/*" = ["E501", "F401", "E402"]
+
 [dependency-groups]
 dev = [
     "poethepoet>=0.42.1",

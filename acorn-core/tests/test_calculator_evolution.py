@@ -10,7 +10,7 @@ TDD: Calculator 扩展请求事件测试
 
 import pytest
 import pandas as pd
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 class TestCalculatorExtensionEvent:

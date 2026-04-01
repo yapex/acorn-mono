@@ -97,11 +97,11 @@ def _execute_via_rpc(command: str, args: dict) -> dict:
 
     try:
         client = _get_client()
-        
+
         # 对于特定命令，直接调用对应的端点
         if command == "status":
             return client.status()
-        
+
         return client.execute(command, args)
     except Exception as e:
         return {"success": False, "error": {"message": str(e)}}

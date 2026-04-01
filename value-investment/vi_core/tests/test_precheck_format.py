@@ -1,7 +1,5 @@
 """Test Precheck Result Formatting"""
-import pytest
-from vi_core.precheck import Prechecker, PrecheckResult, Issue, IssueSeverity
-from vi_core.items import ItemRegistry, ItemSource
+from vi_core.precheck import PrecheckResult, Issue, IssueSeverity
 
 
 def test_format_success():
@@ -11,9 +9,9 @@ def test_format_success():
         issues=[],
         symbol="600519"
     )
-    
+
     lines = result.format()
-    
+
     assert len(lines) > 0
     text = "\n".join(lines)
     assert "600519" in text
@@ -36,10 +34,10 @@ def test_format_with_issues():
         ],
         symbol="00700"
     )
-    
+
     lines = result.format()
     text = "\n".join(lines)
-    
+
     assert "implied_growth" in text
     assert "operating_cash_flow" in text
     assert "00700" in text
@@ -54,9 +52,9 @@ def test_format_table():
         ],
         symbol="600519"
     )
-    
+
     table = result.format_table()
-    
+
     assert "revenue" in table
     assert "unknown" in table
 
@@ -70,7 +68,7 @@ def test_precheck_result_str():
         ],
         symbol="600519"
     )
-    
+
     text = str(result)
     assert "revenue" in text
     assert "implied_growth" in text
@@ -87,7 +85,7 @@ def test_precheck_with_multiple_issues():
         ],
         symbol="600519"
     )
-    
+
     lines = result.format()
     assert len(lines) > 5  # 多个问题应该有多行
 
@@ -104,6 +102,6 @@ def test_precheck_result_equality():
         issues=[],
         symbol="600519"
     )
-    
+
     assert result1.available == result2.available
     assert result1.symbol == result2.symbol

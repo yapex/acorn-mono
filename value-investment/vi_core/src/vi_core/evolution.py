@@ -29,7 +29,7 @@ class CapabilityReason(Enum):
     # Calculator reasons
     CALC_NOT_FOUND = "calc_not_found"           # 计算器不存在
     CALC_REQUIRES_MISSING = "calc_requires_missing"  # 计算器依赖不满足
-    
+
     # Field reasons
     FIELD_UNSUPPORTED = "field_unsupported"     # 系统不支持此字段
     FIELD_UNFILLED = "field_unfilled"          # 系统支持但 Provider 不提供
@@ -52,22 +52,22 @@ class CapabilityMissingEvent(EvolutionEvent):
     - reason: 具体原因
     """
     event_type: str = "capability_missing"
-    
+
     # 能力类型：calculator 或 field
     capability_type: CapabilityType = CapabilityType.FIELD
-    
+
     # 具体的原因
     reason: CapabilityReason = CapabilityReason.FIELD_UNSUPPORTED
-    
+
     # 缺失的数据项名称（单个）
     item: str = ""
-    
+
     # 缺失的依赖字段列表（用于计算器场景）
     missing_fields: list[str] = field(default_factory=list)
-    
+
     # 额外的上下文信息
     context: dict[str, Any] = field(default_factory=dict)
-    
+
     def to_prompt(self) -> str:
         """生成给 LLM Agent 的提示
         
@@ -83,10 +83,10 @@ class CapabilityMissingEvent(EvolutionEvent):
             f"**缺失项**: {self.item}",
             f"**原因**: {self.reason.value}",
         ]
-        
+
         if self.missing_fields:
             prompt_parts.append(f"**缺失依赖**: {', '.join(self.missing_fields)}")
-        
+
         if self.context:
             prompt_parts.append("")
             prompt_parts.append("**上下文**:")
@@ -101,7 +101,7 @@ class CapabilityMissingEvent(EvolutionEvent):
                     prompt_parts.append(f"- 股票代码: {value}")
                 else:
                     prompt_parts.append(f"- {key}: {value}")
-        
+
         # 根据 capability_type 提供不同的行动建议
         if self.capability_type == CapabilityType.CALCULATOR:
             prompt_parts.extend([
@@ -122,12 +122,12 @@ class CapabilityMissingEvent(EvolutionEvent):
                 "3. **告知用户**: 提供替代方案",
                 "4. **忽略**: 如果问题无法自动解决",
             ])
-        
+
         prompt_parts.append("")
         prompt_parts.append("请决定如何处理此问题。")
-        
+
         return "\n".join(prompt_parts)
-    
+
     def to_event_dict(self) -> dict[str, Any]:
         """转换为事件总线所需的 dict 格式"""
         return {
@@ -166,10 +166,10 @@ def publish_capability_missing(
         missing_fields=missing_fields or [],
         context=context or {},
     )
-    
+
     # TODO: 发布到事件总线
     # event_bus.publish(AcornEvents.EVO_CAPABILITY_MISSING, **event.to_event_dict())
-    
+
     # 目前只打印日志
     try:
         from loguru import logger
@@ -184,5 +184,5 @@ def publish_capability_missing(
             f"Capability missing: type={capability_type.value}, item={item}, "
             f"reason={reason.value}, missing={missing_fields}"
         )
-    
+
     return event

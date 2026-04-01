@@ -112,9 +112,9 @@ def on_startup():
     print("=" * 60, file=sys.stderr)
     print("🌰 Acorn 服务已启动", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
-    print(f"  HTTP API:    http://127.0.0.1:18732", file=sys.stderr)
-    print(f"  Swagger UI:  http://127.0.0.1:18732/docs", file=sys.stderr)
-    print(f"  健康检查:    http://127.0.0.1:18732/health", file=sys.stderr)
+    print("  HTTP API:    http://127.0.0.1:18732", file=sys.stderr)
+    print("  Swagger UI:  http://127.0.0.1:18732/docs", file=sys.stderr)
+    print("  健康检查:    http://127.0.0.1:18732/health", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     print("", file=sys.stderr)
 

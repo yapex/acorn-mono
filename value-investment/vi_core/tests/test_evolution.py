@@ -1,7 +1,5 @@
 """Test Evolution Event Interface"""
-import pytest
 from vi_core.evolution import (
-    EvolutionEvent,
     CapabilityMissingEvent,
     CapabilityType,
     CapabilityReason,
@@ -18,7 +16,7 @@ def test_capability_missing_event_structure():
         missing_fields=["operating_cash_flow"],
         context={"symbol": "00700", "market": "HK"}
     )
-    
+
     assert event.item == "implied_growth"
     assert event.capability_type == CapabilityType.CALCULATOR
     assert "operating_cash_flow" in event.missing_fields
@@ -35,9 +33,9 @@ def test_evolution_event_to_prompt():
         missing_fields=["operating_cash_flow"],
         context={"symbol": "00700", "market": "HK"}
     )
-    
+
     prompt = event.to_prompt()
-    
+
     assert "implied_growth" in prompt
     assert "operating_cash_flow" in prompt
     assert "00700" in prompt
@@ -53,9 +51,9 @@ def test_evolution_event_to_dict():
         missing_fields=["operating_cash_flow"],
         context={"symbol": "00700"}
     )
-    
+
     event_dict = event.to_event_dict()
-    
+
     assert event_dict["event_type"] == "capability_missing"
     assert event_dict["capability_type"] == "calculator"
     assert event_dict["item"] == "implied_growth"
@@ -72,7 +70,7 @@ def test_publish_capability_missing():
         missing_fields=["field1", "field2"],
         context={"symbol": "600519"}
     )
-    
+
     assert event is not None
     assert event.item == "test_item"
     assert event.capability_type == CapabilityType.FIELD
@@ -87,7 +85,7 @@ def test_evolution_event_default_type():
         missing_fields=[],
         context={}
     )
-    
+
     assert event.event_type == "capability_missing"
 
 
@@ -100,7 +98,7 @@ def test_prompt_differs_by_capability_type():
         missing_fields=["operating_cash_flow"],
         context={}
     )
-    
+
     field_event = CapabilityMissingEvent(
         item="revenue",
         capability_type=CapabilityType.FIELD,
@@ -108,10 +106,10 @@ def test_prompt_differs_by_capability_type():
         missing_fields=["revenue"],
         context={}
     )
-    
+
     calc_prompt = calc_event.to_prompt()
     field_prompt = field_event.to_prompt()
-    
+
     # Calculator prompt 应该提到"创建 Calculator"
     assert "创建 Calculator" in calc_prompt
     # Field prompt 应该提到"扩展 Provider"

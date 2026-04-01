@@ -195,12 +195,12 @@ class CalculatorEngine:
         # 不关心非 calculator 类型
         if capability_type != "calculator":
             return None
-        
+
         # 检查是否已支持
         for calc in self._calculators:
             if calc["name"] == name:
                 return None
-        
+
         # 不支持，返回进化规范
         # 提示 Agent 读取 skill 文件，不要硬编码路径
         skill_name = "acorn-vi-calculator-creation"
@@ -276,7 +276,7 @@ class CalculatorEngine:
                 if market_code and market_code not in supported_markets:
                     # 市场不兼容，返回空 Series
                     return pd.Series(dtype=float)
-                
+
                 result = self._run_in_sandbox(calc, data)
                 return result
 

@@ -21,7 +21,6 @@ def calculate(data):
         pd.Series - 仅最新年份有值的 Series
     """
     import pandas as pd
-    import numpy as np
 
     if "total_revenue" not in data:
         return pd.Series(dtype=float)

@@ -21,7 +21,7 @@ def calculate(data):
     """
     ocf = data["operating_cash_flow"]
     np_ = data["net_profit"]
-    
+
     # 避免除零
     result = ocf / np_.replace(0, float('nan'))
     return result

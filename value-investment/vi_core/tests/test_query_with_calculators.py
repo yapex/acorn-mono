@@ -1,5 +1,4 @@
 """Tests for query command with calculators integration"""
-import pytest
 import pluggy
 import pandas as pd
 
@@ -11,18 +10,18 @@ from vi_calculators import plugin as calculators_plugin
 
 class MockProvider:
     """Mock provider for testing"""
-    
+
     @vi_hookimpl
     def vi_markets(self):
         return ["A"]
-    
+
     @vi_hookimpl
     def vi_supported_fields(self):
         return [
             "operating_cash_flow", "capital_expenditure", "market_cap",
             "total_assets", "total_revenue", "roe",
         ]
-    
+
     @vi_hookimpl
     def vi_fetch_financials(self, symbol, fields, end_year, years):
         return pd.DataFrame({
@@ -30,7 +29,7 @@ class MockProvider:
             "operating_cash_flow": [100e8, 90e8],
             "capital_expenditure": [20e8, 18e8],
         })
-    
+
     @vi_hookimpl
     def vi_fetch_market(self, symbol, fields):
         return pd.DataFrame({"fiscal_year": [2024], "market_cap": [5000e8]})
@@ -57,14 +56,14 @@ class TestQueryWithCalculators:
                 "years": 2,
             }
         )
-        
+
         assert result["success"] is True
         assert "implied_growth" not in result["data"]["data"]
 
     def test_query_with_calculator_implied_growth(self):
         """Query with implied_growth calculator"""
         self.pm.register(calculators_plugin, name="calculators")
-        
+
         result = self.pm.hook.vi_handle(
             command="query",
             args={
@@ -74,7 +73,7 @@ class TestQueryWithCalculators:
                 "years": 2,
             }
         )
-        
+
         assert result["success"] is True
         data = result["data"]["data"]
         assert "implied_growth" in data
@@ -85,7 +84,7 @@ class TestQueryWithCalculators:
     def test_query_with_calculator_config(self):
         """Query with calculator custom config"""
         self.pm.register(calculators_plugin, name="calculators")
-        
+
         result = self.pm.hook.vi_handle(
             command="query",
             args={
@@ -101,14 +100,14 @@ class TestQueryWithCalculators:
                 "years": 2,
             }
         )
-        
+
         assert result["success"] is True
         assert "implied_growth" in result["data"]["data"]
 
     def test_query_with_multiple_calculators(self):
         """Query with multiple calculators (only one registered)"""
         self.pm.register(calculators_plugin, name="calculators")
-        
+
         result = self.pm.hook.vi_handle(
             command="query",
             args={
@@ -118,7 +117,7 @@ class TestQueryWithCalculators:
                 "years": 2,
             }
         )
-        
+
         # Should succeed, only run known calculators
         assert result["success"] is True
         assert "implied_growth" in result["data"]["data"]
@@ -126,7 +125,7 @@ class TestQueryWithCalculators:
     def test_query_with_unknown_calculator(self):
         """Query with unknown calculator ignores it"""
         self.pm.register(calculators_plugin, name="calculators")
-        
+
         result = self.pm.hook.vi_handle(
             command="query",
             args={
@@ -136,7 +135,7 @@ class TestQueryWithCalculators:
                 "years": 2,
             }
         )
-        
+
         # Should still succeed, just skip unknown calculator
         assert result["success"] is True
         assert "implied_growth" not in result["data"]["data"]
@@ -148,7 +147,7 @@ class TestQueryWithCalculators:
         calculator 会被跳过（因为自动收集的字段无法从 provider 获取）。
         """
         self.pm.register(calculators_plugin, name="calculators")
-        
+
         result = self.pm.hook.vi_handle(
             command="query",
             args={
@@ -158,7 +157,7 @@ class TestQueryWithCalculators:
                 "years": 2,
             }
         )
-        
+
         # Should succeed - system auto-collects calculator deps
         assert result["success"] is True
         # implied_growth should run because auto-collected fields are available

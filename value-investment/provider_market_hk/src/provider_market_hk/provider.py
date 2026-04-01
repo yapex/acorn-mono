@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
 
 import akshare as ak
 import pandas as pd
@@ -235,24 +234,24 @@ class HKProvider(BaseDataProvider):
             df = ak.stock_financial_hk_analysis_indicator_em(symbol=symbol)
             if df is None or df.empty:
                 return None
-            
+
             df = df.copy()
-            
+
             # 从 REPORT_DATE 提取年份
             df[StandardFields.fiscal_year] = pd.to_datetime(df["REPORT_DATE"]).dt.year
-            
+
             # 按年份过滤
             df = df[(df[StandardFields.fiscal_year] >= start_year) & (df[StandardFields.fiscal_year] <= end_year)]
-            
+
             # 按年份排序（降序）
             df = df.sort_values(StandardFields.fiscal_year, ascending=False)
-            
+
             # 删除不需要的列
-            cols_to_drop = ["SECUCODE", "SECURITY_CODE", "SECURITY_NAME_ABBR", "ORG_CODE", 
-                           "REPORT_DATE", "DATE_TYPE_CODE", "START_DATE", "FISCAL_YEAR", 
+            cols_to_drop = ["SECUCODE", "SECURITY_CODE", "SECURITY_NAME_ABBR", "ORG_CODE",
+                           "REPORT_DATE", "DATE_TYPE_CODE", "START_DATE", "FISCAL_YEAR",
                            "CURRENCY", "IS_CNY_CODE"]
             df = df.drop(columns=[c for c in cols_to_drop if c in df.columns])
-            
+
             return df
         except Exception:
             return None
@@ -274,27 +273,27 @@ class HKProvider(BaseDataProvider):
             df = ak.stock_hk_daily(symbol=symbol, adjust="qfq")
             if df is None or df.empty:
                 return None
-            
+
             # 确认列名
             date_col = "date" if "date" in df.columns else "日期"
             close_col = "close" if "close" in df.columns else "收盘"
-            
+
             if date_col not in df.columns or close_col not in df.columns:
                 return None
-            
+
             # 转换日期列
             df[date_col] = pd.to_datetime(df[date_col])
             df = df.sort_values(date_col)
-            
+
             # 提取年份
             df["_year"] = df[date_col].dt.year
-            
+
             # 确定年份范围
             available_years = sorted(df["_year"].unique(), reverse=True)
-            
+
             # 计算起始年份
             start_year = (end_year - years + 1) if end_year else None
-            
+
             if start_year and end_year:
                 target_years = [y for y in available_years if start_year <= y <= end_year]
             elif end_year:
@@ -302,7 +301,7 @@ class HKProvider(BaseDataProvider):
             else:
                 # 默认取最近years年
                 target_years = available_years[:years]
-            
+
             # 取每年最后一个交易日的收盘价
             result_rows = []
             for year in target_years:
@@ -313,10 +312,10 @@ class HKProvider(BaseDataProvider):
                         StandardFields.fiscal_year: year,
                         StandardFields.close: last_day[close_col],
                     })
-            
+
             if not result_rows:
                 return None
-            
+
             return pd.DataFrame(result_rows)
         except Exception:
             return None
@@ -348,7 +347,7 @@ class HKProvider(BaseDataProvider):
             df = ak.stock_hk_daily(symbol=symbol, adjust=adjust)
             if df is None or df.empty:
                 return None
-            
+
             # AKShare 返回列名: date, open, high, low, close, volume, amount
             # 确认列名存在
             expected_cols = ["date", "open", "high", "low", "close", "volume"]
@@ -364,10 +363,10 @@ class HKProvider(BaseDataProvider):
                     "成交额": "amount",
                 }
                 df = df.rename(columns=col_mapping)
-            
+
             # 按日期排序（升序）
             df = df.sort_values("date", ascending=True)
-            
+
             return df
         except Exception:
             return None

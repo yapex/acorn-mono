@@ -12,7 +12,6 @@ import os
 from pathlib import Path
 
 import pluggy
-import pytest
 
 # Skill source directory (value-investment/skills/acorn-vi-fcf/calculators)
 SKILL_CALC_DIR = Path(__file__).resolve().parent.parent.parent / "skills" / "acorn-vi-fcf" / "calculators"

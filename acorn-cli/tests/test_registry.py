@@ -1,7 +1,6 @@
 """
 Tests for PluginRegistry
 """
-import pytest
 import tempfile
 from pathlib import Path
 from acorn_cli.registry import PluginRegistry, PluginEntry

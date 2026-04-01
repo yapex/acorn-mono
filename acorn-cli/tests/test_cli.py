@@ -1,7 +1,6 @@
 """
 Test for acorn-cli CLI commands
 """
-import pytest
 from typer.testing import CliRunner
 from acorn_cli import app
 

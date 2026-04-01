@@ -1,6 +1,6 @@
 """Integration tests for CLI core logic"""
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from vi_core.query import QueryEngine
 from vi_core.precheck import Prechecker, PrecheckResult, Issue, IssueSeverity
 from vi_core.items import ItemRegistry, ItemSource, register_field, register_calculator
@@ -21,17 +21,17 @@ def test_query_engine_with_real_prechecker():
     registry = ItemRegistry()
     registry.register_field(name="revenue", description="营业收入")
     registry.register_field(name="net_profit", description="净利润")
-    
+
     prechecker = Prechecker(
         provider_fields={"revenue", "net_profit"},
         registry=registry
     )
-    
+
     engine = QueryEngine(prechecker=prechecker, registry=registry)
-    
+
     with patch.object(engine, '_fetch_data', return_value={"revenue": {2023: 1000}}):
         result = engine.query("600519", ["revenue", "net_profit"])
-    
+
     assert result.success is True
     assert set(result.available) == {"revenue", "net_profit"}
     assert result.precheck is not None
@@ -51,28 +51,28 @@ def test_query_engine_precheck_failure_shows_diagnostics():
         requires=["operating_cash_flow", "market_cap"],
         description="隐含增长率"
     )
-    
+
     prechecker = Prechecker(
         provider_fields={"revenue"},  # implied_growth 的依赖不满足
         registry=registry
     )
-    
+
     engine = QueryEngine(prechecker=prechecker, registry=registry)
-    
+
     with patch.object(engine, '_fetch_data', return_value={"revenue": {2023: 1000}}):
         result = engine.query("600519", ["revenue", "implied_growth"])
-    
+
     # 有部分成功，所以 success=True
     assert result.success is True
     assert "revenue" in result.available
     assert "implied_growth" in result.unavailable
     assert len(result.issues) > 0
-    
+
     # 验证诊断信息包含缺失的依赖
     implied_growth_issue = next(i for i in result.issues if i["item"] == "implied_growth")
     assert "operating_cash_flow" in implied_growth_issue["reason"]
     assert "market_cap" in implied_growth_issue["reason"]
-    
+
     # 验证预检结果中 has_errors 为 True
     assert result.precheck.has_errors is True
 
@@ -92,9 +92,9 @@ def test_precheck_result_format_shows_issues():
         ],
         symbol="600519"
     )
-    
+
     formatted = str(result)
-    
+
     assert "600519" in formatted
     assert "revenue" in formatted
     assert "implied_growth" in formatted
@@ -111,7 +111,7 @@ def test_calculator_priority_over_field():
         requires=["net_profit", "equity"],
         description="ROE calculated"
     )
-    
+
     registry = ItemRegistry()
     registry.register_field(name="roe", description="ROE from field")
     registry.register_calculator(
@@ -119,7 +119,7 @@ def test_calculator_priority_over_field():
         requires=["net_profit", "equity"],
         description="ROE calculated"
     )
-    
+
     item = registry.get("roe")
     assert item.source == ItemSource.CALCULATOR
 
@@ -127,7 +127,7 @@ def test_calculator_priority_over_field():
 def test_item_registry_integration_with_precheck():
     """ItemRegistry 和 Prechecker 应该正确集成"""
     registry = ItemRegistry()
-    
+
     # 注册 items
     registry.register_field(name="revenue", description="营业收入", category="financial")
     registry.register_field(name="net_profit", description="净利润", category="financial")
@@ -139,21 +139,21 @@ def test_item_registry_integration_with_precheck():
         description="隐含增长率",
         category="analysis"
     )
-    
+
     prechecker = Prechecker(
         provider_fields={"revenue", "net_profit", "operating_cash_flow", "market_cap"},
         registry=registry
     )
-    
+
     result = prechecker.check("600519", ["revenue", "implied_growth"])
-    
+
     assert result.success is True
     assert set(result.available) == {"revenue", "implied_growth"}
-    
+
     # 按分类查询
     financial_items = registry.list_by_category("financial")
     analysis_items = registry.list_by_category("analysis")
-    
+
     assert "revenue" in financial_items
     assert "net_profit" in financial_items
     assert "implied_growth" in analysis_items

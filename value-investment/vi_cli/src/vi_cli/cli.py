@@ -224,7 +224,7 @@ def reload(
             else:
                 print(f"✅ 已重载全部计算器 (共 {total} 个：文件 {file_based} + 动态 {dynamic})")
         else:
-            print(f"❌ 重载失败", file=sys.stderr)
+            print("❌ 重载失败", file=sys.stderr)
             raise typer.Exit(1)
     except typer.Exit:
         raise

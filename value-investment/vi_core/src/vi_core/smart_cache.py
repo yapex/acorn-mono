@@ -57,7 +57,7 @@ class SmartCache:
     - LRU eviction
     - Smart date range handling
     """
-    
+
     def __init__(
         self,
         cache_dir: str = "./.cache",
@@ -72,19 +72,19 @@ class SmartCache:
         self.cache_dir = Path(cache_dir) if cache_dir else Path("./.cache")
         self.default_ttl = default_ttl
         self._cache = diskcache.Cache(str(self.cache_dir))
-    
+
     def get(self, key: str) -> Any | None:
         """Get value from cache"""
         try:
             return self._cache.get(key)
         except KeyError:
             return None
-    
+
     def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache with optional TTL"""
         ttl = ttl if ttl is not None else self.default_ttl
         self._cache.set(key, value, expire=ttl)
-    
+
     def get_or_fetch(
         self,
         key: str,
@@ -106,15 +106,15 @@ class SmartCache:
         """
         if force_refresh:
             self.invalidate(key)
-        
+
         cached = self.get(key)
         if cached is not None:
             return cached
-        
+
         data = fetch_func()
         self.set(key, data, ttl=ttl)
         return data
-    
+
     def _filter_by_date_range(
         self,
         df: pd.DataFrame,
@@ -136,26 +136,26 @@ class SmartCache:
         """
         if df.empty or date_column not in df.columns:
             return df
-        
+
         # Convert date column to datetime for comparison
         df_copy = df.copy()
         df_copy["_date_temp"] = pd.to_datetime(df_copy[date_column])
-        
+
         # Apply start_date filter
         if start_date:
             start_dt = pd.to_datetime(start_date)
             df_copy = df_copy[df_copy["_date_temp"] >= start_dt]
-        
+
         # Apply end_date filter
         if end_date:
             end_dt = pd.to_datetime(end_date)
             df_copy = df_copy[df_copy["_date_temp"] <= end_dt]
-        
+
         # Remove temporary column
         df_copy = df_copy.drop(columns=["_date_temp"])
-        
+
         return pd.DataFrame(df_copy)
-    
+
     def get_or_fetch_with_range(
         self,
         key: str,
@@ -189,25 +189,25 @@ class SmartCache:
         """
         if force_refresh:
             self.invalidate(key)
-        
+
         # No date filtering needed - use simple path
         if date_column is None:
             return self.get_or_fetch(key, fetch_func, ttl, force_refresh=False)
-        
+
         # With date filtering
         cached_entry = self.get(key)
-        
+
         if cached_entry is not None:
             # Check if cached data is a structured entry with metadata
             if isinstance(cached_entry, dict) and "_cached_end_date" in cached_entry:
                 cached_end_date = cached_entry["_cached_end_date"]
                 cached_data = cached_entry["data"]
-                
+
                 # Compare dates
                 if end_date and cached_end_date:
                     query_end_dt = pd.to_datetime(end_date)
                     cached_end_dt = pd.to_datetime(cached_end_date)
-                    
+
                     if query_end_dt > cached_end_dt:
                         # Query range is larger - need to re-fetch
                         data = fetch_func()
@@ -216,7 +216,7 @@ class SmartCache:
                         return self._filter_by_date_range(
                             data, date_column, start_date, end_date
                         )
-                
+
                 # Query end_date <= cached end_date - use cache and filter
                 return self._filter_by_date_range(
                     cached_data, date_column, start_date, end_date
@@ -229,18 +229,18 @@ class SmartCache:
             else:
                 # Non-DataFrame data: return as-is
                 return cached_entry
-        
+
         # Cache miss: fetch full data
         data = fetch_func()
-        
+
         # Store with end_date metadata
         self._set_with_metadata(key, data, end_date, ttl)
-        
+
         # Return filtered data
         return self._filter_by_date_range(
             data, date_column, start_date, end_date
         )
-    
+
     def _set_with_metadata(
         self,
         key: str,
@@ -267,18 +267,18 @@ class SmartCache:
         else:
             # Non-DataFrame or no end_date: store as-is
             self.set(key, data, ttl=ttl)
-    
+
     def invalidate(self, key: str) -> None:
         """Invalidate a cache entry"""
         try:
             del self._cache[key]
         except KeyError:
             pass
-    
+
     def list_keys(self) -> list[str]:
         """List all cached keys"""
         return [str(k) for k in self._cache.iterkeys()]
-    
+
     def close(self) -> None:
         """Close the cache"""
         self._cache.close()

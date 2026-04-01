@@ -14,7 +14,7 @@ class TestCalculatorMemoryDirect:
     直接 import evolution 模块测试
     这样可以在同一进程中共享内存
     """
-    
+
     def test_add_calculator_via_string(self):
         """
         RED: Calculator 应该能通过字符串 code 添加到内存
@@ -29,14 +29,14 @@ class TestCalculatorMemoryDirect:
             apply_calculator,
             AVAILABLE_CALCULATORS,
         )
-        
+
         # 记录初始状态
         initial_count = len(AVAILABLE_CALCULATORS)
         field_name = "test_string_calc"
-        
+
         # 验证初始不存在
         assert check_calculator(field_name) is None
-        
+
         # 应用计算器
         code = '''REQUIRED_FIELDS = ["field_a", "field_b"]
 
@@ -44,11 +44,11 @@ def calculate(data, config):
     return data["field_a"] / data["field_b"]
 '''
         apply_calculator(field_name, code)
-        
+
         # 验证已注册
         assert field_name in AVAILABLE_CALCULATORS
         assert len(AVAILABLE_CALCULATORS) == initial_count + 1
-        
+
         # 验证可以查到
         result = check_calculator(field_name)
         assert result is not None
@@ -60,7 +60,7 @@ class TestCalculatorCLIStringInput:
     测试 CLI 字符串参数输入
     通过 subprocess 调用（进程隔离）
     """
-    
+
     def test_create_returns_registered_confirmation(self):
         """
         CLI create 操作应该返回 registered 确认信息
@@ -68,7 +68,7 @@ class TestCalculatorCLIStringInput:
         这验证了字符串参数能被正确解析和注册
         """
         import subprocess
-        
+
         result = subprocess.run(
             [
                 "python", "-m", "acorn_cli.evolution",
@@ -85,7 +85,7 @@ class TestCalculatorCLIStringInput:
             text=True,
             cwd=".",
         )
-        
+
         output = result.stdout
         # 验证返回 registered 确认
         assert "registered: cli_string_test" in output

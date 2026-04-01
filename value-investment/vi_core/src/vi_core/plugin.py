@@ -54,19 +54,19 @@ def _df_to_result_dict(df: pd.DataFrame | None) -> dict:
     """
     if df is None or df.empty:
         return {}
-    
+
     fiscal_year = StandardFields.fiscal_year
-    
+
     # 确保 fiscal_year 是 index
     if fiscal_year in df.columns:
         df = df.set_index(fiscal_year)
     elif df.index.name != fiscal_year:
         logger.warning("_df_to_result_dict: missing fiscal_year, columns={}", list(df.columns))
         return {}
-    
+
     # 删除 NaN 行
     df = df.dropna(how='all')
-    
+
     return df.to_dict()
 
 
@@ -83,33 +83,33 @@ def _merge_dfs(dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
     """
     if not dfs:
         return None
-    
+
     fiscal_year = StandardFields.fiscal_year
-    
+
     # Start with first DataFrame
     result = dfs[0].copy()
-    
+
     # 确保 fiscal_year 是 index
     if fiscal_year in result.columns:
         result = result.set_index(fiscal_year)
-    
+
     # Merge remaining DataFrames
     for df in dfs[1:]:
         if df is None or df.empty:
             continue
-        
+
         df_to_merge = df.copy()
-        
+
         # 确保 fiscal_year 是 index
         if fiscal_year in df_to_merge.columns:
             df_to_merge = df_to_merge.set_index(fiscal_year)
-        
+
         # 找出需要添加的新列
         cols_to_add = [c for c in df_to_merge.columns if c not in result.columns]
-        
+
         if not cols_to_add:
             continue
-        
+
         # 特殊情况：单行数据（如 market_cap），广播到所有行
         if len(df_to_merge) == 1:
             for col in cols_to_add:
@@ -122,7 +122,7 @@ def _merge_dfs(dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
                 right_index=True,
                 how="left"
             )
-    
+
     return result
 
 
@@ -163,7 +163,7 @@ class ViCorePlugin:
         """Create pluggy plugin manager and discover sub-plugins"""
         pm = pluggy.PluginManager("value_investment")
         pm.add_hookspecs(ValueInvestmentSpecs)
-        
+
         # 添加 Evolution Hook（框架级）
         pm.add_hookspecs(EvolutionSpec)
 
@@ -187,18 +187,18 @@ class ViCorePlugin:
         
         Calculator 优先于 Field（同名时）
         """
-        from .items import get_registry, ItemSource
-        
+        from .items import get_registry
+
         registry = get_registry()
         pm = cls._get_plugin_manager()
-        
+
         # 1. 同步 Calculator items
         calc_list = pm.hook.vi_list_calculators()
         if calc_list:
             # Flatten if nested (pluggy returns [[...]])
             if calc_list and isinstance(calc_list[0], list):
                 calc_list = calc_list[0]
-            
+
             for calc in calc_list:
                 registry.register_calculator(
                     name=calc.get("name", ""),
@@ -206,13 +206,13 @@ class ViCorePlugin:
                     description=calc.get("description", ""),
                     category="analysis",
                 )
-        
+
         # 2. 同步 Field items (Calculator 已在上面注册，Field 不会覆盖)
         for fields_result in pm.hook.vi_fields():
             if fields_result:
                 source = fields_result.get("source", "unknown")
                 fields_dict = fields_result.get("fields", {})
-                
+
                 for field_name, field_info in fields_dict.items():
                     # 只有当 Item 不存在时才注册（Calculator 优先）
                     existing = registry.get(field_name)
@@ -269,11 +269,11 @@ class ViCorePlugin:
             },
             "config": {},
         }
-        
+
         pm = self._get_plugin_manager()
         if not pm:
             return status
-        
+
         # 收集计算器
         calc_list = pm.hook.vi_list_calculators()
         if calc_list:
@@ -287,7 +287,7 @@ class ViCorePlugin:
                 }
                 for calc in calc_list
             ]
-        
+
         # 收集字段
         seen_fields = set()
         for fields_result in pm.hook.vi_fields():
@@ -298,7 +298,7 @@ class ViCorePlugin:
                     if field_name not in seen_fields:
                         seen_fields.add(field_name)
                         status["capabilities"]["fields"].append(field_name)
-        
+
         # 收集数据源
         for market_result in pm.hook.vi_markets():
             if market_result:
@@ -306,7 +306,7 @@ class ViCorePlugin:
                     status["capabilities"]["providers"].extend(market_result)
                 else:
                     status["capabilities"]["providers"].append(market_result)
-        
+
         return status
 
     @vi_hookimpl
@@ -367,12 +367,12 @@ class ViCorePlugin:
         pm = self._get_plugin_manager()
         if not pm:
             return set()
-        
+
         provider_fields: set[str] = set()
-        
+
         # 获取所有插件
         plugins = pm.get_plugins()
-        
+
         for plugin in plugins:
             # 检查该 Provider 是否支持目标市场
             supported_markets = []
@@ -383,7 +383,7 @@ class ViCorePlugin:
                         supported_markets = result
                 except Exception:
                     pass
-            
+
             # 如果 Provider 支持目标市场，收集其字段
             if market in supported_markets:
                 if hasattr(plugin, 'vi_supported_fields'):
@@ -393,7 +393,7 @@ class ViCorePlugin:
                             provider_fields.update(fields)
                     except Exception:
                         pass
-        
+
         return provider_fields
 
     def _list_fields(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -719,7 +719,7 @@ class ViCorePlugin:
             # 支持字段别名
             available_fields = set(df.columns)
             resolved_fields = {}  # {required: actual}
-            
+
             for req_field in required_fields:
                 if req_field in available_fields:
                     resolved_fields[req_field] = req_field
@@ -730,7 +730,7 @@ class ViCorePlugin:
                         if alias in available_fields:
                             resolved_fields[req_field] = alias
                             break
-            
+
             missing = set(required_fields) - set(resolved_fields.keys())
             if missing:
                 continue  # Skip this calculator
@@ -739,7 +739,7 @@ class ViCorePlugin:
             # Build dict format: {field: pd.Series}
             # 使用解析后的实际字段名
             calc_data: dict[str, pd.Series] = {
-                req_field: df[actual_field] 
+                req_field: df[actual_field]
                 for req_field, actual_field in resolved_fields.items()
             }
 
@@ -789,7 +789,7 @@ class ViCorePlugin:
         pm = self._get_plugin_manager()
         if not pm:
             return None
-        
+
         # 遍历所有插件，查找实现 get_evolution_spec 的
         for plugin in pm.get_plugins():
             if hasattr(plugin, "get_evolution_spec"):
@@ -799,7 +799,7 @@ class ViCorePlugin:
                         return spec
                 except Exception:
                     pass
-        
+
         return None
 
     def _list_calculators(self, args: dict[str, Any]) -> dict[str, Any]:

@@ -16,7 +16,7 @@ from .precheck import Prechecker, PrecheckResult
 from .items import ItemRegistry, ItemSource
 
 if TYPE_CHECKING:
-    import pluggy  # type: ignore[import]
+    pass  # type: ignore[import]
 
 
 @dataclass
@@ -40,7 +40,7 @@ class QueryEngine:
     3. 调用 _run_calculators 运行 Calculator
     4. 返回包含诊断信息的 QueryResult
     """
-    
+
     def __init__(
         self,
         prechecker: Prechecker | None = None,
@@ -62,12 +62,12 @@ class QueryEngine:
         self._pm = plugin_manager
         self.years = years
         self.end_year = end_year
-    
+
     @property
     def provider_fields(self) -> set[str]:
         """返回当前配置的 provider fields"""
         return self._prechecker._provider_fields
-    
+
     def query(self, symbol: str, items: list[str]) -> QueryResult:
         """执行查询
         
@@ -83,7 +83,7 @@ class QueryEngine:
 
         # 推断市场（供 calculator 使用）
         market = self._infer_market(symbol)
-        
+
         if not precheck_result.available:
             return QueryResult(
                 success=False,
@@ -97,20 +97,20 @@ class QueryEngine:
                 } for i in precheck_result.issues],
                 precheck=precheck_result,
             )
-        
+
         # 2. 获取数据
         data = self._fetch_data(symbol, precheck_result.available)
-        
+
         # 3. 运行 Calculator（如果有待计算的 items）
         calc_items = [
-            item for item in precheck_result.available 
-            if (item_def := self._registry.get(item)) is not None 
+            item for item in precheck_result.available
+            if (item_def := self._registry.get(item)) is not None
             and item_def.source == ItemSource.CALCULATOR
         ]
         if calc_items:
             calc_results = self._run_calculators(calc_items, data, market=market)
             data.update(calc_results)
-        
+
         return QueryResult(
             success=True,
             symbol=symbol,
@@ -124,11 +124,11 @@ class QueryEngine:
             } for i in precheck_result.issues],
             precheck=precheck_result,
         )
-    
+
     def _precheck(self, symbol: str, items: list[str]) -> PrecheckResult:
         """执行预检"""
         return self._prechecker.check(symbol, items)
-    
+
     def _fetch_data(self, symbol: str, items: list[str]) -> dict[str, Any]:
         """获取数据 - 使用 vi_provide_items
         
@@ -144,13 +144,13 @@ class QueryEngine:
         """
         if not self._pm or not items:
             return {}
-        
+
         # 推断市场
         market = self._infer_market(symbol)
-        
+
         # 计算 end_year
         end_year = self._get_end_year()
-        
+
         # 广播给所有 Provider
         results = self._pm.hook.vi_provide_items(
             items=items,
@@ -159,17 +159,17 @@ class QueryEngine:
             end_year=end_year,
             years=self.years,
         )
-        
+
         # 合并所有 Provider 返回的 DataFrames
         dfs = [r for r in results if r is not None and not r.empty]
         merged_df = self._merge_dfs(dfs)
-        
+
         # 转换为 {field: {year: value}} 格式
         return self._df_to_result_dict(merged_df)
-    
+
     def _run_calculators(
-        self, 
-        calc_items: list[str], 
+        self,
+        calc_items: list[str],
         field_data: dict[str, Any],
         market: str | None = None,
     ) -> dict[str, Any]:
@@ -188,26 +188,26 @@ class QueryEngine:
         """
         if not self._pm or not calc_items or not field_data:
             return {}
-        
+
         # 获取 Calculator 列表
         calc_list = self._pm.hook.vi_list_calculators()
         if not calc_list:
             return {}
-        
+
         # Flatten if nested (pluggy returns [[...]])
         if calc_list and isinstance(calc_list[0], list):
             calc_list = calc_list[0]
-        
+
         # 构建 Calculator 注册表
         calc_registry: dict[str, dict] = {}
         for calc in calc_list:
             calc_registry[calc["name"]] = calc
-        
+
         # 转换 field_data (dict) 为 DataFrame 用于计算器
         # {field: {year: value}} -> DataFrame(index=year, columns=field)
         if not field_data:
             return {}
-        
+
         # 构建 DataFrame: {field: {year: value}}
         # pd.DataFrame(field_data) creates: rows=years, columns=fields
         # After .T: rows=fields, columns=years
@@ -218,31 +218,31 @@ class QueryEngine:
             # index 现在是 field names
         except Exception:
             return {}
-        
+
         # 拓扑排序：对 calc_items 按依赖关系排序
         sorted_calcs = self._topological_sort(calc_items, calc_registry, df)
-        
+
         results: dict[str, Any] = {}
-        
+
         # 按拓扑顺序运行每个 Calculator
         for calc_name in sorted_calcs:
             if calc_name not in calc_registry:
                 continue
-            
+
             calc_spec = calc_registry[calc_name]
             required_fields = list(calc_spec.get("required_fields", []))
-            
+
             # 检查所需字段是否都可用 (df.index 是 field names)
             available_fields = set(df.index)
             missing = set(required_fields) - available_fields
             if missing:
                 continue
-            
+
             # 提取所需字段 (每列是一个 field，返回 pd.Series)
             calc_data: dict[str, pd.Series] = {
                 field: df.loc[field] for field in required_fields if field in df.index
             }
-            
+
             # 调用 hook 运行 Calculator
             config = {}  # 可扩展：支持 calculator_config
             calc_result = self._pm.hook.vi_run_calculator(
@@ -251,14 +251,14 @@ class QueryEngine:
                 config=config,
                 market_code=market,
             )
-            
+
             if calc_result is None:
                 continue
-            
+
             # 检查 Calculator 错误
             if isinstance(calc_result, dict) and calc_result.get("__error__"):
                 continue
-            
+
             # 接受 pd.Series 或 dict
             if isinstance(calc_result, pd.Series):
                 # 安全转换年份键为整数
@@ -280,21 +280,21 @@ class QueryEngine:
                 result_dict = {_safe_int_key(year): val for year, val in calc_result.items()}
             else:
                 continue
-            
+
             results[calc_name] = result_dict
-            
+
             # 将计算结果加入 DataFrame，供后续 Calculator 使用
             for year, value in result_dict.items():
                 if year not in df.columns:
                     # 添加新的年份列
                     df[year] = float('nan')
                 df.loc[calc_name, year] = value
-        
+
         return results
-    
+
     def _topological_sort(
-        self, 
-        calc_items: list[str], 
+        self,
+        calc_items: list[str],
         calc_registry: dict[str, dict],
         df: pd.DataFrame,
     ) -> list[str]:
@@ -317,52 +317,52 @@ class QueryEngine:
         graph: dict[str, set[str]] = {}
         dependents: dict[str, set[str]] = {}  # 反向索引：谁依赖这个 Calculator
         all_calc_names = set(calc_items)
-        
+
         for calc_name in calc_items:
             if calc_name not in calc_registry:
                 continue
-            
+
             calc_spec = calc_registry[calc_name]
             required_fields = set(calc_spec.get("required_fields", []))
-            
+
             # 找出 required_fields 中哪些是其他 Calculator
             deps = required_fields & all_calc_names
             graph[calc_name] = deps
-            
+
             # 构建反向索引
             for dep in deps:
                 if dep not in dependents:
                     dependents[dep] = set()
                 dependents[dep].add(calc_name)
-        
+
         # Kahn's algorithm
         # in_degree[calc] = 该 Calculator 依赖的 Calculator 数量
         in_degree: dict[str, int] = {
             calc: len(deps) for calc, deps in graph.items()
         }
-        
+
         # 从 in_degree=0 的节点开始（没有依赖的，被其他 Calculator 依赖的）
         # 这些应该先执行
         queue = [calc for calc, degree in in_degree.items() if degree == 0]
         sorted_calcs = []
-        
+
         while queue:
             # 取出没有依赖的 Calculator（可以被计算了）
             current = queue.pop(0)
             sorted_calcs.append(current)
-            
+
             # 减少依赖该 Calculator 的节点的 in_degree
             if current in dependents:
                 for dependent in dependents[current]:
                     in_degree[dependent] -= 1
                     if in_degree[dependent] == 0:
                         queue.append(dependent)
-        
+
         # 处理循环依赖：剩余的节点按原始顺序返回
         remaining = [c for c in calc_items if c not in sorted_calcs and c in calc_registry]
-        
+
         return sorted_calcs + remaining
-    
+
     def _get_end_year(self) -> int:
         """获取查询结束年份
         
@@ -372,13 +372,13 @@ class QueryEngine:
         """
         if self.end_year is not None:
             return self.end_year
-        
+
         now = datetime.now()
         if now.month < 4:
             return now.year - 2
         else:
             return now.year - 1
-    
+
     def _infer_market(self, symbol: str) -> str:
         """从股票代码推断市场
         
@@ -399,7 +399,7 @@ class QueryEngine:
             return "US"
         # 默认尝试HK
         return "HK"
-    
+
     def _merge_dfs(self, dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
         """合并多个 DataFrame
         
@@ -411,32 +411,32 @@ class QueryEngine:
         """
         if not dfs:
             return None
-        
+
         fiscal_year = "fiscal_year"
-        
+
         # Start with first DataFrame
         result = dfs[0].copy()
-        
+
         # 确保 fiscal_year 是 index
         if fiscal_year in result.columns:
             result = result.set_index(fiscal_year)
-        
+
         # Merge remaining DataFrames
         for df in dfs[1:]:
             if df is None or df.empty:
                 continue
-            
+
             df_to_merge = df.copy()
-            
+
             if fiscal_year in df_to_merge.columns:
                 df_to_merge = df_to_merge.set_index(fiscal_year)
-            
+
             # 找出需要添加的新列
             cols_to_add = [c for c in df_to_merge.columns if c not in result.columns]
-            
+
             if not cols_to_add:
                 continue
-            
+
             # 特殊情况：单行数据（如 market_cap），广播到所有行
             if len(df_to_merge) == 1:
                 for col in cols_to_add:
@@ -448,9 +448,9 @@ class QueryEngine:
                     right_index=True,
                     how="left"
                 )
-        
+
         return result
-    
+
     def _df_to_result_dict(self, df: pd.DataFrame | None) -> dict[str, Any]:
         """将 DataFrame 转换为 {field: {year: value}} 格式
         
@@ -462,8 +462,8 @@ class QueryEngine:
         """
         if df is None or df.empty:
             return {}
-        
+
         # 删除 NaN 行
         df = df.dropna(how='all')
-        
+
         return df.to_dict()

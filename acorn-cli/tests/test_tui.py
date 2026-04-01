@@ -1,7 +1,6 @@
 """
 Tests for TUI module
 """
-import pytest
 from acorn_cli.tui import format_plugin_entry
 from acorn_cli.registry import PluginEntry
 

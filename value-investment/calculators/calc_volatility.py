@@ -21,7 +21,6 @@ def calculate(data):
         pd.Series - 仅最新年份有值的 Series
     """
     import pandas as pd
-    import numpy as np
 
     if "roe" not in data:
         return pd.Series(dtype=float)

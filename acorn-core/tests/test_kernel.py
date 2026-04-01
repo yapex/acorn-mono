@@ -1,7 +1,6 @@
 """
 Test for acorn-core kernel - entry point loading
 """
-import pytest
 from acorn_core import Acorn, Task
 
 

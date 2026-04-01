@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 import pluggy  # type: ignore[import]
-from acorn_core.specs import hookspec, hookimpl
 
 vi_hookspec = pluggy.HookspecMarker("value_investment")
 vi_hookimpl = pluggy.HookimplMarker("value_investment")

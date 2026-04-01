@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import patch
 
 from provider_market_a.plugin import plugin as provider_a_plugin
 from provider_market_a.provider import TushareProvider

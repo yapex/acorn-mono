@@ -8,7 +8,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 class ItemSource(Enum):
@@ -29,10 +28,10 @@ class Item:
 
 class ItemRegistry:
     """统一的数据项注册表"""
-    
+
     def __init__(self):
         self._items: dict[str, Item] = {}
-    
+
     def register_calculator(
         self,
         name: str,
@@ -48,7 +47,7 @@ class ItemRegistry:
             requires=requires,
             category=category,
         )
-    
+
     def register_field(
         self,
         name: str,
@@ -66,23 +65,23 @@ class ItemRegistry:
                 source=ItemSource.FIELD,
                 category=category,
             )
-    
+
     def get(self, name: str) -> Item | None:
         """获取 Item"""
         return self._items.get(name)
-    
+
     def list_all(self) -> list[str]:
         """列出所有 Item 名称"""
         return list(self._items.keys())
-    
+
     def list_by_source(self, source: ItemSource) -> list[str]:
         """按来源列出 Items"""
-        return [name for name, item in self._items.items() 
+        return [name for name, item in self._items.items()
                 if item.source == source]
-    
+
     def list_by_category(self, category: str) -> list[str]:
         """按分类列出 Items"""
-        return [name for name, item in self._items.items() 
+        return [name for name, item in self._items.items()
                 if item.category == category]
 
 

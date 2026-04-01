@@ -249,12 +249,12 @@ class TushareProvider(BaseDataProvider):
             )
             if df is None or df.empty:
                 return None
-            
+
             # 过滤年报 (end_date ends with 1231)
             df = df[df["end_date"].astype(str).str.endswith("1231")]
             if df.empty:
                 return None
-            
+
             # 按 update_flag 降序排序，保留第一条 (update_flag=1 是最终版)
             # 需要同时按 end_date 降序排序，确保同一 end_date 时 update_flag 高的在前
             if "update_flag" in df.columns:
@@ -263,13 +263,13 @@ class TushareProvider(BaseDataProvider):
             else:
                 df = df.sort_values("end_date", ascending=False)
                 df = df.drop_duplicates(subset=["end_date"], keep="first")
-            
+
             # 重置 index，确保后续合并时 index 正确对应
             df = df.reset_index(drop=True)
-            
+
             # 提取年份
             df[StandardFields.fiscal_year] = pd.to_datetime(df["end_date"]).dt.year
-            
+
             return df
         except Exception:
             return None
@@ -282,7 +282,7 @@ class TushareProvider(BaseDataProvider):
     ) -> pd.DataFrame | None:
         """获取财务指标数据"""
         today = datetime.now().strftime("%Y%m%d")
-        
+
         try:
             df = self.api.fina_indicator(
                 ts_code=symbol,
@@ -291,27 +291,27 @@ class TushareProvider(BaseDataProvider):
             )
             if df is None or df.empty:
                 return None
-            
+
             # 过滤年报 (end_date ends with 1231)
             df = df[df["end_date"].astype(str).str.endswith("1231")]
             if df.empty:
                 return None
-            
+
             # 按 ann_date 降序排序，保留第一条 (最新发布的)
             if "ann_date" in df.columns:
                 df = df.sort_values("ann_date", ascending=False)
                 df = df.drop_duplicates(subset=["end_date"], keep="first")
-            
+
             # 提取年份
             df = df.copy()
             df[StandardFields.fiscal_year] = pd.to_datetime(df["end_date"]).dt.year
-            
+
             # Tushare fina_indicator 同时返回 gross_margin(毛利润金额) 和
             # grossprofit_margin(毛利率)。我们只需要毛利率，需要在映射前
             # 删除 gross_margin 列避免列名冲突
             if "gross_margin" in df.columns and "grossprofit_margin" in df.columns:
                 df = df.drop(columns=["gross_margin"])
-            
+
             return df
         except Exception:
             return None
@@ -327,12 +327,12 @@ class TushareProvider(BaseDataProvider):
             df = self.api.daily_basic(ts_code=symbol)
             if df is None or df.empty:
                 return None
-            
+
             # 按交易日期降序排序，只取最新一条
             df = df.sort_values("trade_date", ascending=False).head(1)
-            
+
             df = df.copy()
-            
+
             # 使用最近财年而非交易日期年份
             # 年报通常在次年 4 月发布，所以：
             # - 1-3 月：最近财年是前年
@@ -344,7 +344,7 @@ class TushareProvider(BaseDataProvider):
             else:
                 fiscal_year = now.year - 1
             df[StandardFields.fiscal_year] = fiscal_year
-            
+
             return df
         except Exception:
             return None
@@ -360,7 +360,7 @@ class TushareProvider(BaseDataProvider):
         try:
             start_str = start_date.replace("-", "") if start_date else None
             end_str = end_date.replace("-", "") if end_date else None
-            
+
             adj_param = adjust if adjust else None
             df = ts.pro_bar(
                 ts_code=symbol,
@@ -369,16 +369,16 @@ class TushareProvider(BaseDataProvider):
                 adj=adj_param,
                 freq="D",
             )
-            
+
             if df is None or df.empty:
                 return None
-            
+
             df = df.rename(columns={
                 "trade_date": "date",
                 "vol": "volume",
             })
             df = df.sort_values("date", ascending=True)
-            
+
             return df
         except Exception:
             return None

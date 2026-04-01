@@ -51,9 +51,9 @@ def calculate(
     # 获取市值数据
     if "market_cap" not in data:
         return pd.Series(dtype=float)
-    
+
     market_cap_series = data["market_cap"]
-    
+
     # 处理市值可能是单个值的情况
     current_market_cap = None
     if len(market_cap_series) == 1:
@@ -65,10 +65,10 @@ def calculate(
             current_market_cap = float(market_cap_series.loc[latest_year])
         else:
             current_market_cap = float(market_cap_series.iloc[0])
-    
+
     if current_market_cap is None or current_market_cap <= 0:
         return pd.Series(dtype=float)
-    
+
     # 规范化市值单位（万元 -> 元）
     fcf_latest = fcf_series.iloc[0]  # 已经是排序的，最新年在最前
     if current_market_cap < fcf_latest:
@@ -76,11 +76,11 @@ def calculate(
 
     # 只计算最新一年的隐含增长率
     g = _calculate_implied_growth(fcf_latest, current_market_cap, wacc, g_terminal, n_years)
-    
+
     if g is not None:
         latest_year = max(fcf_series.index)
         return pd.Series({latest_year: g})
-    
+
     return pd.Series(dtype=float)
 
 
@@ -88,15 +88,15 @@ def _get_fcf(data: dict[str, pd.Series]) -> pd.Series:
     """获取自由现金流数据"""
     if "free_cash_flow" in data:
         return data["free_cash_flow"].dropna().loc[lambda x: x > 0]
-    
+
     if "operating_cash_flow" not in data:
         return pd.Series(dtype=float)
-    
+
     ocf = data["operating_cash_flow"]
-    
+
     if "capital_expenditure" not in data:
         return ocf.dropna().loc[lambda x: x > 0]
-    
+
     capex = data["capital_expenditure"]
     # 确保 capex 和 ocf 有相同的 index
     common_idx = ocf.index.intersection(capex.index)
@@ -112,17 +112,17 @@ def _normalize_market_cap(market_cap: pd.Series, fcf: pd.Series) -> pd.Series:
     """
     if market_cap.empty or fcf.empty:
         return market_cap
-    
+
     # 获取市值和 OCF 的中位数进行比较
     cap_median = market_cap.median()
     fcf_median = fcf.median()
-    
+
     # 如果市值中位数小于 OCF 中位数，说明市值是万元单位
     # 正常情况下市值 > OCF（比如 10-50 倍）
     if cap_median < fcf_median:
         # 市值是万元，转为元
         return market_cap * 10000
-    
+
     return market_cap
 
 

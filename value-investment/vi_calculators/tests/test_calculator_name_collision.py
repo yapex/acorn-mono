@@ -5,7 +5,6 @@ Requirements:
 - Only project-level calculators (user/dynamic) use this strategy
 - Builtin calculators are NOT affected (loaded once at startup)
 """
-import pytest
 import pluggy
 
 from vi_core import ValueInvestmentSpecs
@@ -30,12 +29,12 @@ class TestCalculatorNameCollision:
     def setup_method(self):
         """Setup plugin manager with CalculatorEngine"""
         from vi_calculators import plugin as calculators_plugin
-        
+
         self.pm = pluggy.PluginManager("value_investment")
         self.pm.add_hookspecs(ValueInvestmentSpecs)
         self.pm.register(plugin, name="vi_core")
         self.pm.register(calculators_plugin, name="calculators")
-        
+
         # Get calculator plugin instance
         self.calc_plugin = calculators_plugin
         # Save original calculator names for teardown
@@ -45,7 +44,7 @@ class TestCalculatorNameCollision:
         ]
         # Reset calculators to empty for clean test state
         self.calc_plugin._calculators = []
-    
+
     def teardown_method(self):
         """Restore original calculators state by name"""
         # Reload calculators from original paths
@@ -68,12 +67,12 @@ class TestCalculatorNameCollision:
             description="First version",
         )
         assert result1["success"] is True
-        
+
         # Verify first registration
         calcs = self.calc_plugin.vi_list_calculators()
         assert len(calcs) == 1
         assert calcs[0]["namespace"] == "dynamic"
-        
+
         # Register second calculator with same name/namespace
         result2 = self.calc_plugin.vi_register_calculator(
             name="test_calc",
@@ -83,7 +82,7 @@ class TestCalculatorNameCollision:
             description="Second version - should overwrite",
         )
         assert result2["success"] is True
-        
+
         # Should still be 1 calculator (overwritten)
         calcs = self.calc_plugin.vi_list_calculators()
         assert len(calcs) == 1
@@ -100,7 +99,7 @@ class TestCalculatorNameCollision:
             description="Dynamic version",
         )
         assert result1["success"] is True
-        
+
         # Register in user namespace with same name
         result2 = self.calc_plugin.vi_register_calculator(
             name="test_calc",
@@ -110,11 +109,11 @@ class TestCalculatorNameCollision:
             description="User version",
         )
         assert result2["success"] is True
-        
+
         # Should have 2 calculators (different namespaces)
         calcs = self.calc_plugin.vi_list_calculators()
         assert len(calcs) == 2
-        
+
         # Both should exist
         namespaces = [c["namespace"] for c in calcs]
         assert "dynamic" in namespaces
@@ -134,7 +133,7 @@ class TestCalculatorNameCollision:
             namespace="builtin",
             description="Should not be allowed",
         )
-        
+
         # Registration should fail or builtin should be protected
         # This is a design decision - builtin is loaded from files at startup
         # We document that builtin calculators follow different rules
@@ -150,19 +149,19 @@ class TestCalculatorNameCollision:
             description="To be removed",
         )
         assert result["success"] is True
-        
+
         # Verify it exists
         calcs = self.calc_plugin.vi_list_calculators()
         assert len(calcs) == 1
-        
+
         # Unregister
         unreg_result = self.calc_plugin.vi_unregister_calculator(name="to_remove")
         assert unreg_result["success"] is True
-        
+
         # Should be gone
         calcs = self.calc_plugin.vi_list_calculators()
         assert len(calcs) == 0
-        
+
         # Running should return None
         run_result = self.calc_plugin.vi_run_calculator(
             name="to_remove",
@@ -182,10 +181,10 @@ class TestCalculatorNameCollision:
             namespace="dynamic",
             description="Original",
         )
-        
+
         # Unregister
         self.calc_plugin.vi_unregister_calculator(name="overwrite_me")
-        
+
         # Register new version
         result = self.calc_plugin.vi_register_calculator(
             name="overwrite_me",
@@ -195,7 +194,7 @@ class TestCalculatorNameCollision:
             description="Overwritten version",
         )
         assert result["success"] is True
-        
+
         # Verify overwrite
         calcs = self.calc_plugin.vi_list_calculators()
         assert len(calcs) == 1

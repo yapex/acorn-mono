@@ -49,54 +49,54 @@ class AcornEvents:
     - 业务领域事件（如 vi.*）由各业务插件自行定义
     - 核心框架不依赖任何业务概念
     """
-    
+
     # ─────────────────────────────────────────────────────────────────────
     # 系统生命周期事件 (sys.*)
     # ─────────────────────────────────────────────────────────────────────
-    
+
     #: 系统启动完成
     SYS_STARTUP = "sys.startup"
-    
+
     #: 系统关闭
     SYS_SHUTDOWN = "sys.shutdown"
-    
+
     # ─────────────────────────────────────────────────────────────────────
     # 插件生命周期事件 (sys.*)
     # ─────────────────────────────────────────────────────────────────────
-    
+
     #: 插件加载完成
     SYS_PLUGIN_LOADED = "sys.plugin.loaded"
-    
+
     #: 插件卸载
     SYS_PLUGIN_UNLOADED = "sys.plugin.unloaded"
-    
+
     # ─────────────────────────────────────────────────────────────────────
     # 演化相关事件 (evo.*)
     # ─────────────────────────────────────────────────────────────────────
-    
+
     #: 能力缺失（核心能力不足，需要进化）
     #: 由业务插件发布，sender 标识能力缺失的模块
     #: payload: capability_type, name, context
     EVO_CAPABILITY_MISSING = "evo.capability.missing"
-    
+
     #: 进化请求（Evolution Manager 开始处理）
     EVO_REQUEST = "evo.request"
-    
+
     #: 进化开始（发送规范给 LLM）
     EVO_START = "evo.start"
-    
+
     #: 进化成功（LLM 完成部署）
     EVO_SUCCESS = "evo.success"
-    
+
     #: 进化失败（LLM 交互或部署失败）
     EVO_FAILED = "evo.failed"
-    
+
     #: 进化冲突（多个插件响应同一能力）
     EVO_CONFLICT = "evo.conflict"
-    
+
     #: 进化已入队
     EVO_QUEUED = "evo.queued"
-    
+
     #: 固化完成（进化结果持久化）
     EVO_COMMITTED = "evo.committed"
 
@@ -110,27 +110,27 @@ class EventBus:
     - on(event_type): 装饰器订阅事件
     - register_event(event_type): 注册事件类型
     """
-    
+
     _instance: EventBus | None = None
     _initialized: bool = False
-    
+
     def __new__(cls) -> EventBus:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._wrapped_handlers = []
         return cls._instance
-    
+
     def __init__(self) -> None:
         if EventBus._initialized:
             return
         EventBus._initialized = True
         self._signals: dict[str, Signal] = {}
         self._wrapped_handlers: list[Callable[..., Any]] = []  # 保持 strong reference 防止 GC
-    
+
     def __call__(self) -> EventBus:
         """允许 EventBus() 返回单例实例"""
         return self
-    
+
     def publish(self, event_type: str, sender: Any, **data: Any) -> None:
         """
         发布事件
@@ -144,11 +144,11 @@ class EventBus:
         if s is None:
             s = signal(event_type)
             self._signals[event_type] = s
-        
+
         # 传递 trace_id 给接收者
         data["_trace_id"] = get_trace_id()
         s.send(sender, **data)
-    
+
     def _wrap_handler(self, event_type: str, handler: Callable[..., Any]) -> Callable[..., Any]:
         """
         包装 handler，使其符合 blinker 签名 (sender, **kwargs)
@@ -164,11 +164,11 @@ class EventBus:
             except Exception:
                 # 吞下异常，不影响其他 handler
                 pass
-        
+
         # 保持 strong reference 防止 GC (blinker 使用弱引用)
         self._wrapped_handlers.append(wrapped)
         return wrapped
-    
+
     def on(self, event_type: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """
         事件订阅装饰器
@@ -184,13 +184,13 @@ class EventBus:
             if s is None:
                 s = signal(event_type)
                 self._signals[event_type] = s
-            
+
             # 包装 handler 以匹配 blinker 签名
             wrapped = self._wrap_handler(event_type, handler)
             s.connect(wrapped)
             return handler
         return decorator
-    
+
     def register_event(self, event_type: str) -> None:
         """
         注册事件类型

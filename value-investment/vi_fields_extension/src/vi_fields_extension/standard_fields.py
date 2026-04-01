@@ -167,9 +167,6 @@ FIELD_DEFINITIONS: dict[str, dict] = {
     "investment_in_joint_ventures": {"description": "合营公司权益", "category": "balance_sheet", "source": "hk"},
     "non_current_assets": {"description": "非流动资产", "category": "balance_sheet", "source": "hk"},
     "non_current_liabilities": {"description": "非流动负债", "category": "balance_sheet", "source": "hk"},
-    "short_term_debt": {"description": "短期贷款", "category": "balance_sheet", "source": "hk"},
-    "long_term_debt": {"description": "长期贷款", "category": "balance_sheet", "source": "hk"},
-
     # HK Income Statement 特有字段
     "gross_profit": {"description": "毛利", "category": "income_statement", "source": "hk"},
     "profit_before_tax": {"description": "除税前溢利", "category": "income_statement", "source": "hk"},

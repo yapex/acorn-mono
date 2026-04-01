@@ -290,14 +290,14 @@ class USProvider(BaseDataProvider):
                 ]
             ]
             cols_to_keep = [c for c in cols_to_keep if c in df.columns]
-            
+
             df = df[cols_to_keep].copy()
             df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
-            
+
             # 转换 REPORT_DATE 为 fiscal_year
             df[StandardFields.fiscal_year] = df["REPORT_DATE"].dt.year
             df = df.drop(columns=["REPORT_DATE"])
-            
+
             return df
         except Exception:
             return None
@@ -316,15 +316,15 @@ class USProvider(BaseDataProvider):
             import yfinance as yf
             ticker = yf.Ticker(symbol)
             info = ticker.info
-            
+
             market_cap = info.get("marketCap")
             if market_cap is None:
                 return None
-            
+
             # 返回包含 year 和 market_cap 的 DataFrame
             from datetime import datetime
             current_year = datetime.now().year
-            
+
             df = pd.DataFrame({
                 StandardFields.fiscal_year: [current_year],
                 "market_cap": [market_cap],
@@ -360,19 +360,19 @@ class USProvider(BaseDataProvider):
             # AKShare 美股接口只支持 "" 和 "qfq"，不支持 "hfq"
             if adjust == "hfq":
                 adjust = "qfq"
-            
+
             df = ak.stock_us_daily(symbol=symbol, adjust=adjust)
             if df is None or df.empty:
                 return None
-            
+
             # AKShare 返回列名: date, open, high, low, close, volume
             expected_cols = ["date", "open", "high", "low", "close", "volume"]
             if not all(col in df.columns for col in expected_cols):
                 return None
-            
+
             # 按日期排序（升序）
             df = df.sort_values("date", ascending=True)
-            
+
             return df
         except Exception:
             return None

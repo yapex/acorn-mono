@@ -12,7 +12,7 @@ import pluggy
 from acorn_core.specs import hookimpl
 
 if TYPE_CHECKING:
-    from acorn_events import EventBus, AcornEvents
+    from acorn_events import EventBus
 
 
 class EvoManager:
@@ -72,13 +72,13 @@ class EvoManager:
                         return spec
                 except Exception:
                     pass
-        
+
         # 如果 PluginManager 中没有，尝试从 vi_core 获取
         # 通过遍历所有插件查找
         return self._find_evolution_spec_from_plugins(
             capability_type, name, context
         )
-    
+
     def _find_evolution_spec_from_plugins(
         self,
         capability_type: str,
@@ -99,9 +99,9 @@ class EvoManager:
                 )
             except Exception:
                 pass
-        
+
         return None
-    
+
     def _find_plugin_by_name(self, name: str) -> Any:
         """根据名称查找插件"""
         for plugin_name, plugin in self._pm.list_name_plugin():
@@ -119,7 +119,7 @@ class EvoManager:
         capability_type = kwargs.get("capability_type", "unknown")
         name = kwargs.get("name", "unknown")
         context = kwargs.get("context", {})
-        
+
         # 记录能力缺失
         self.capability_missing.append({
             "capability_type": capability_type,
@@ -129,10 +129,10 @@ class EvoManager:
         })
         if len(self.capability_missing) > self.max_log:
             self.capability_missing = self.capability_missing[-self.max_log:]
-        
+
         # 通过 Hook 获取进化规范
         spec = self._get_evolution_spec(capability_type, name, context)
-        
+
         if spec:
             # 打印进化规范（供 LLM 读取）
             print(f"\n{'='*60}")
@@ -144,7 +144,7 @@ class EvoManager:
             # 没有插件能提供进化规范
             print(f"\n{'='*60}")
             print(f"EVO_CAPABILITY_MISSING: {capability_type}/{name}")
-            print(f"没有插件能提供进化规范")
+            print("没有插件能提供进化规范")
             print(f"{'='*60}\n")
 
     @property
@@ -178,7 +178,7 @@ class EvoManager:
         # 延迟初始化事件总线
         if self._event_bus is None:
             self._event_bus = self._get_default_event_bus()
-        
+
         # 订阅系统级演化事件
         from acorn_events import AcornEvents
         self._event_bus.on(AcornEvents.EVO_CAPABILITY_MISSING)(self._on_capability_missing)

@@ -6,7 +6,6 @@ Acorn CLI + VI Plugin Integration Tests
 """
 
 import subprocess
-import sys
 
 
 class TestAcornCLI:

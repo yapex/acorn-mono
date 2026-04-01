@@ -1,5 +1,5 @@
 """Stub for pandas package"""
-from typing import Any, Literal
+from typing import Any
 
 class Series:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...

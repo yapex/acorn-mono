@@ -3,7 +3,6 @@ SUPPORTED_MARKETS = ["A", "HK", "US"]
 REQUIRED_FIELDS = ["operating_cost", "inventory"]
 
 def calculate(data):
-    import pandas as pd
     cost = data["operating_cost"]
     inv = data["inventory"]
     # 平均存货 = (本期存货 + 上期存货) / 2，首年无上期则用当年存货
