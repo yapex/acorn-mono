@@ -6,6 +6,8 @@ FCF = 经营活动现金流量净额 - 资本支出
 REQUIRED_FIELDS = ["operating_cash_flow", "capital_expenditure"]
 SUPPORTED_MARKETS = ["HK", "US"]
 
+FORMAT_TYPE = "absolute"
+
 def calculate(data):
     """
     计算自由现金流 (Free Cash Flow)

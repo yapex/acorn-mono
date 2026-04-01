@@ -85,12 +85,26 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
                 description = getattr(module, "__doc__", "") or ""
                 name = file.stem.replace("calc_", "")
 
+                # 支持两种声明方式：
+                # - FORMAT_TYPE = "ratio"       (单指标)
+                # - FORMAT_TYPES = {"a": "ratio", "b": "percentage"}  (多指标)
+                format_type_single = getattr(module, "FORMAT_TYPE", None)
+                format_type_multi = getattr(module, "FORMAT_TYPES", None)
+
+                if format_type_multi is not None:
+                    format_type = format_type_multi  # dict for multi-metric
+                elif format_type_single is not None:
+                    format_type = format_type_single  # str for single-metric
+                else:
+                    format_type = "absolute"  # 默认
+
                 calculators.append({
                     "name": name,
                     "module": module,
                     "required_fields": required_fields,
                     "field_aliases": field_aliases,
                     "supported_markets": supported_markets,
+                    "format_type": format_type,
                     "description": description.strip().split("\n")[0],
                     "namespace": namespace,
                 })
@@ -167,11 +181,29 @@ class CalculatorEngine:
                 "required_fields": c["required_fields"],
                 "field_aliases": c.get("field_aliases", {}),
                 "supported_markets": c.get("supported_markets", ["A", "HK", "US"]),
+                "format_type": c.get("format_type", "absolute"),
                 "description": c["description"],
                 "namespace": c.get("namespace", "unknown"),
             }
             for c in self._calculators
         ]
+
+    def get_format_types_for_query(self) -> dict[str, str]:
+        """获取所有 calculator 的 format_type（用于查询结果）
+
+        展平多指标 calculator 的 format_types 到单层 dict。
+        """
+        result: dict[str, str] = {}
+        for c in self._calculators:
+            fmt = c.get("format_type", "absolute")
+            if isinstance(fmt, dict):
+                # 多指标：展开每个 metric
+                for metric, metric_fmt in fmt.items():
+                    result[metric] = metric_fmt
+            else:
+                # 单指标
+                result[c["name"]] = fmt
+        return result
 
     @vi_hookimpl
     def get_evolution_spec(
@@ -210,7 +242,16 @@ class CalculatorEngine:
 '''
 
     def _run_in_sandbox(self, calc: dict, data: dict[str, pd.Series]) -> pd.Series | dict:
-        """在沙箱中运行 Calculator"""
+        """在沙箱中运行 Calculator
+
+        支持两种返回格式：
+        1. pd.Series: 单指标结果（如 return ocf / np_）
+        2. dict: 多指标结果（含 format_types）
+           {
+               "values": pd.Series({"metric_a": ..., "metric_b": ...}),
+               "format_types": {"metric_a": "ratio", "metric_b": "percentage"},
+           }
+        """
         from .sandbox import execute_sandbox
 
         # 获取源代码
@@ -219,6 +260,9 @@ class CalculatorEngine:
             # 内置 calculator 没有保存源代码，需要反编译（简化处理：直接运行）
             try:
                 result = calc["module"].calculate(data)
+                # 处理多指标返回格式
+                if isinstance(result, dict) and "values" in result:
+                    return result
                 return result
             except Exception as e:
                 return {
@@ -240,6 +284,9 @@ class CalculatorEngine:
                 }
 
             result = local_vars["calculate"](data)
+            # 处理多指标返回格式
+            if isinstance(result, dict) and "values" in result:
+                return result
             return result
 
         except Exception as e:
@@ -332,7 +379,17 @@ class CalculatorEngine:
                     "error": {"code": "INVALID_CODE", "message": "Missing 'calculate' function in code"},
                 }
 
-            # 4. 包装为类实例（保持接口一致）
+            # 4. 提取 format_type（支持单指标和多指标）
+            fmt_single = getattr(module, "FORMAT_TYPE", None)
+            fmt_multi = getattr(module, "FORMAT_TYPES", None)
+            if fmt_multi is not None:
+                calc_format_type = fmt_multi  # dict for multi-metric
+            elif fmt_single is not None:
+                calc_format_type = fmt_single  # str for single-metric
+            else:
+                calc_format_type = "absolute"  # 默认
+
+            # 5. 包装为类实例（保持接口一致）
             calc_fn = module.calculate
 
             class DynamicCalculator:
@@ -357,6 +414,7 @@ class CalculatorEngine:
                 "module": dynamic_module,
                 "required_fields": required_fields,
                 "supported_markets": supported_markets or ["A", "HK", "US"],
+                "format_type": calc_format_type,
                 "description": description,
                 "namespace": namespace,
                 "module_id": unique_id,
@@ -387,7 +445,25 @@ class CalculatorEngine:
                 "error": {"code": "REGISTRATION_FAILED", "message": str(e)},
             }
 
-    def _find_calculator(self, name: str) -> dict | None:
+    @vi_hookimpl
+    def vi_get_field_metadata(self, items: list[str]) -> dict[str, Any]:
+        """返回指定计算器的 format_type（支持多指标）"""
+        format_types: dict[str, str] = {}
+        item_set = set(items)
+
+        for calc in self._calculators:
+            fmt = calc.get("format_type", "absolute")
+            if isinstance(fmt, dict):
+                # 多指标 calculator：匹配其任意一个 metric
+                for metric, metric_fmt in fmt.items():
+                    if metric in item_set:
+                        format_types[metric] = metric_fmt
+            else:
+                # 单指标 calculator：匹配 calc 名称
+                if calc["name"] in item_set:
+                    format_types[calc["name"]] = fmt
+
+        return {"format_types": format_types}
         """查找计算器"""
         for calc in self._calculators:
             if calc["name"] == name:

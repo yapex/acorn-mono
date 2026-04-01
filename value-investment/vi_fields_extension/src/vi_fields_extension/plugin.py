@@ -24,12 +24,13 @@ class FieldRegistrySpec:
                 "source": str,       # "ifrs", "custom", "provider_name"
                 "fields": set,       # Set of field names
                 "description": str,   # Description
+                "format_types": dict, # {field_name: "percentage"|"ratio"|...}
             }
         """
-        return {"source": "", "fields": set(), "description": ""}
+        return {"source": "", "fields": set(), "description": "", "format_types": {}}
 
 
-from .standard_fields import FIELD_DEFINITIONS
+from .standard_fields import FIELD_DEFINITIONS, FIELD_FORMAT_TYPES
 
 
 class ViFieldsExtensionPlugin(FieldRegistrySpec):
@@ -51,6 +52,7 @@ class ViFieldsExtensionPlugin(FieldRegistrySpec):
             "source": "extension",
             "fields": all_fields,
             "description": "Extension fields",
+            "format_types": FIELD_FORMAT_TYPES,
         }
 
 

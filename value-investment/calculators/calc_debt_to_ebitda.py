@@ -7,6 +7,8 @@
 REQUIRED_FIELDS = ["interest_bearing_debt", "ebitda"]
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算债务/EBITDA比率

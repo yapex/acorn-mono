@@ -658,6 +658,7 @@ class ViCorePlugin:
                 "years": years,
                 "data": result_data,
                 "fields_fetched": list(result_data.keys()),
+                "format_types": self._collect_format_types(),
             }
         }
 
@@ -801,6 +802,62 @@ class ViCorePlugin:
                     pass
 
         return None
+
+    def _collect_format_types(self) -> dict[str, str]:
+        """从所有插件收集 format_type 元信息
+
+        合并 vi_fields() 和 vi_list_calculators() 中的 format_types。
+        用于 CLI 统一格式化显示，无需硬编码字段名。
+
+        支持单指标和多指标 calculator：
+        - 单指标：format_type = "ratio" 等字符串
+        - 多指标：format_types = {"metric_a": "ratio", "metric_b": "percentage"}
+
+        Returns:
+            {item_name: "percentage"|"ratio"|"absolute"|"yoy"|"market", ...}
+        """
+        pm = self._get_plugin_manager()
+        if not pm:
+            return {}
+
+        format_types: dict[str, str] = {}
+
+        # 1. 从 vi_fields hook 收集（Provider/Raw fields）
+        for result in pm.hook.vi_fields():
+            if result:
+                for item, fmt in result.get("format_types", {}).items():
+                    if item not in format_types:
+                        format_types[item] = fmt
+
+        # 2. 从 vi_list_calculators hook 收集（Calculator 结果）
+        calc_list = pm.hook.vi_list_calculators()
+        if calc_list:
+            if isinstance(calc_list[0], list):
+                calc_list = calc_list[0]
+            for calc in calc_list:
+                name = calc.get("name", "")
+                if not name:
+                    continue
+
+                # 支持两种格式：
+                # - format_type: "ratio" (单指标)
+                # - format_types: {"metric_a": "ratio", ...} (多指标)
+                calc_fmt = calc.get("format_type")
+                if isinstance(calc_fmt, dict):
+                    # 多指标：展开每个 metric 的 format_type
+                    for metric_name, metric_fmt in calc_fmt.items():
+                        if metric_name not in format_types:
+                            format_types[metric_name] = metric_fmt
+                elif calc_fmt:
+                    # 单指标
+                    if name not in format_types:
+                        format_types[name] = calc_fmt
+                else:
+                    # 无声明，默认 absolute
+                    if name not in format_types:
+                        format_types[name] = "absolute"
+
+        return format_types
 
     def _list_calculators(self, args: dict[str, Any]) -> dict[str, Any]:
         """List all available calculators"""

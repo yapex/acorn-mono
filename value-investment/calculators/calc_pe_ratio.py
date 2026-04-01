@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["market_cap", "parent_net_profit"]
 SUPPORTED_MARKETS = ["US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算市盈率

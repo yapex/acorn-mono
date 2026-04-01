@@ -257,3 +257,60 @@ ALL_BUILTIN_FIELDS = set(FIELD_DEFINITIONS.keys())
 FIELD_TO_SOURCE: dict[str, str] = {
     name: info.get("source", "unknown") for name, info in FIELD_DEFINITIONS.items()
 }
+
+
+# =============================================================================
+# 字段格式类型映射（用于统一格式化显示）
+# =============================================================================
+#
+# 格式类型定义：
+#   percentage  - 存储为小数(0-1)，显示时 *100 并加 % 后缀
+#                 示例: roe=0.3843 → "38.43%"
+#   ratio       - 存储为实数，显示时不加 %，保留 2 位小数
+#                 示例: current_ratio=4.45 → "4.45"
+#   absolute    - 金额类，显示时按数量级加 亿/万 后缀
+#                 示例: total_assets=2.989e12 → "2989.45亿"
+#   yoy         - 同比增长率，存储为小数，显示时 *100 并加 %
+#                 示例: revenue_yoy=0.15 → "15.00%"
+#
+# 注意：
+#   - ratio 类字段（如 current_ratio=4.45）不要加 %，会混淆
+#   - 计算器输出的格式类型由计算器脚本自己声明（见 calculators/ 目录）
+#   - 本映射仅覆盖从 Provider 直接获取的原始字段
+# =============================================================================
+
+FIELD_FORMAT_TYPES: dict[str, str] = {
+    # --- 百分比（存储为 0-1，显示时 *100%）---
+    "roe": "percentage",
+    "roa": "percentage",
+    "gross_margin": "percentage",
+    "net_profit_margin": "percentage",
+    "debt_ratio": "percentage",
+    "operating_profit_margin": "percentage",
+    "revenue_yoy": "yoy",
+    "net_profit_yoy": "yoy",
+    "total_assets_yoy": "yoy",
+    "equity_yoy": "yoy",
+    "operating_cash_flow_yoy": "yoy",
+
+    # --- 比率（存储为实数，显示时不加 %）---
+    "current_ratio": "ratio",
+    "quick_ratio": "ratio",
+    "cash_ratio": "ratio",
+    "ocf_to_debt": "ratio",
+    "ocf_to_short_debt": "ratio",
+    "asset_turnover": "ratio",
+    "receivable_turnover": "ratio",
+    "debt_to_equity": "ratio",
+    "currentdebt_to_debt": "ratio",
+    "roic": "ratio",
+    "long_term_debt_ratio": "ratio",
+    "current_assets_ratio": "ratio",
+    "selling_expense_ratio": "ratio",
+    "admin_expense_ratio": "ratio",
+    "finance_expense_ratio": "ratio",
+
+    # --- 市盈市净率（显示时不加 %）---
+    "pe_ratio": "ratio",
+    "pb_ratio": "ratio",
+}

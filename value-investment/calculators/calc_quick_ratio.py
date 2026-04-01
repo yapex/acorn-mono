@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["current_assets", "inventory", "current_liabilities"]
 SUPPORTED_MARKETS = ["HK"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算速动比率

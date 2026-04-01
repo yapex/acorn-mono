@@ -7,6 +7,8 @@
 REQUIRED_FIELDS = ["operating_profit", "interest_expense"]
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算利息保障倍数

@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["total_revenue", "accounts_receivable"]
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算应收账款周转率

@@ -26,25 +26,29 @@ def _execute(command: str, args: dict[str, Any]) -> dict[str, Any]:
     return client.execute(command, args)
 
 
-def _format_value(value: Any, field: str) -> str:
-    """格式化单个值"""
+def _format_value(value: Any, field: str, format_type: str | None = None) -> str:
+    """格式化单个值
+
+    Args:
+        value: 数值
+        field: 字段名（仅用于日志/debug）
+        format_type: 格式类型，来自 format_types 元信息
+    """
     if value is None:
         return "N/A"
 
     if isinstance(value, float):
-        # 百分比字段
-        if field in ("roe", "roa", "gross_margin", "net_profit_margin", "current_ratio",
-                     "quick_ratio", "debt_ratio", "cash_ratio", "ocf_to_debt",
-                     "operating_profit_margin", "revenue_yoy", "net_profit_yoy",
-                     "total_assets_yoy", "equity_yoy", "operating_cash_flow_yoy"):
-            return f"{value:.2f}%"
-        # 比率字段
-        if field in ("pe_ratio", "pb_ratio"):
+        # 有明确 format_type 时直接按类型格式化
+        if format_type == "percentage":
+            return f"{value * 100:.2f}%"
+        if format_type == "yoy":
+            return f"{value * 100:.2f}%"
+        if format_type == "ratio":
             return f"{value:.2f}"
-        # 市值（亿元）
-        if field == "market_cap":
-            return f"{value/10000:.2f}亿"
-        # 大数字
+        if format_type == "market":
+            return f"{value:.2f}"
+
+        # 无 format_type 或 "absolute"：按数量级判断
         if abs(value) >= 1e8:
             return f"{value/1e8:.2f}亿"
         elif abs(value) >= 1e4:
@@ -68,6 +72,9 @@ def _print_table(data: dict[str, Any]) -> None:
     if not data_fields:
         print("No data available")
         return
+
+    # 获取 format_types 元信息
+    format_types: dict[str, str] = data.get("format_types", {})
 
     # 分离数据类型
     all_years: set[int] = set()
@@ -95,7 +102,7 @@ def _print_table(data: dict[str, Any]) -> None:
             for field in time_series_data:
                 field_data = time_series_data[field]
                 row = [field] + [
-                    _format_value(field_data.get(y), field)
+                    _format_value(field_data.get(y), field, format_types.get(field))
                     for y in sorted(all_years, reverse=True)
                 ]
                 rows.append(row)
@@ -112,7 +119,7 @@ def _print_table(data: dict[str, Any]) -> None:
     if single_values:
         print("\n市场数据:")
         for field, val in single_values.items():
-            print(f"  {field}: {_format_value(val, field)}")
+            print(f"  {field}: {_format_value(val, field, format_types.get(field))}")
 
     # 计算器结果
     if calculator_results:
@@ -120,7 +127,7 @@ def _print_table(data: dict[str, Any]) -> None:
         for field, values in calculator_results:
             for key, val in values.items():
                 label = f"{field}" if len(values) == 1 else f"{field} ({key})"
-                print(f"  {label}: {_format_value(val, field)}")
+                print(f"  {label}: {_format_value(val, field, format_types.get(field))}")
 
 
 @app.command("query")

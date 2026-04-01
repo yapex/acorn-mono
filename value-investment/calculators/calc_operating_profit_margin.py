@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["operating_profit", "total_revenue"]
 SUPPORTED_MARKETS = ["HK", "US"]
 
+FORMAT_TYPE = "percentage"
+
 def calculate(data):
     """
     计算营业利润率

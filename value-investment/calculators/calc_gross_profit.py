@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["total_revenue", "operating_cost"]
 SUPPORTED_MARKETS = ["A"]
 
+FORMAT_TYPE = "absolute"
+
 def calculate(data):
     """
     计算毛利

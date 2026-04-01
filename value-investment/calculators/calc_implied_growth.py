@@ -22,6 +22,8 @@ DEFAULT_CONFIG = {
 }
 
 
+FORMAT_TYPE = "percentage"
+
 def calculate(
     data: dict[str, pd.Series],
     config: dict[str, Any] | None = None,

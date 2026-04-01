@@ -7,6 +7,8 @@
 REQUIRED_FIELDS = ["roe"]
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 
+FORMAT_TYPE = "percentage"
+
 def calculate(data):
     """
     计算波动率（变异系数）

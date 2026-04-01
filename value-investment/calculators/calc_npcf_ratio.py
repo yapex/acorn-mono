@@ -6,6 +6,8 @@
 
 REQUIRED_FIELDS = ["operating_cash_flow", "net_profit"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算净现比

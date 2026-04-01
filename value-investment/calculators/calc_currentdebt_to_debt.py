@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["current_liabilities", "total_liabilities"]
 SUPPORTED_MARKETS = ["US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算流动负债占总负债比例

@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["total_equity", "total_shares"]
 SUPPORTED_MARKETS = ["US"]
 
+FORMAT_TYPE = "absolute"
+
 def calculate(data):
     """
     计算每股净资产

@@ -259,9 +259,26 @@ class QueryEngine:
             if isinstance(calc_result, dict) and calc_result.get("__error__"):
                 continue
 
-            # 接受 pd.Series 或 dict
-            if isinstance(calc_result, pd.Series):
-                # 安全转换年份键为整数
+            # 处理 Calculator 返回格式
+            if isinstance(calc_result, dict) and "values" in calc_result:
+                # 多指标返回: {"values": pd.Series({metric: value}), "format_types": {...}}
+                values_series = calc_result["values"]
+                if isinstance(values_series, pd.Series):
+                    def _safe_key(k: Any) -> Any:
+                        if isinstance(k, int):
+                            return k
+                        if isinstance(k, str) and k.isdigit():
+                            return int(k)
+                        return k
+                    for metric_name, metric_value in values_series.items():
+                        safe_name = _safe_key(metric_name)
+                        if isinstance(metric_value, dict):
+                            # metric 本身是 {year: value} dict
+                            results[safe_name] = {_safe_key(k): v for k, v in metric_value.items()}
+                        else:
+                            results[safe_name] = {safe_name: metric_value}
+            elif isinstance(calc_result, pd.Series):
+                # 单指标返回: pd.Series({year: value})
                 def _series_key(k: Any) -> Any:
                     if isinstance(k, int):
                         return k
@@ -269,19 +286,30 @@ class QueryEngine:
                         return int(k)
                     return k
                 result_dict = {_series_key(year): val for year, val in calc_result.items()}
+                results[calc_name] = result_dict
             elif isinstance(calc_result, dict):
+                # 旧格式: {metric: {year: value}} 或 {year: value}
                 def _safe_int_key(k: Any) -> Any:
-                    """安全转换为整数年份键"""
                     if isinstance(k, int):
                         return k
                     if isinstance(k, str) and k.isdigit():
                         return int(k)
                     return k
-                result_dict = {_safe_int_key(year): val for year, val in calc_result.items()}
+
+                # 判断是 {year: value} 还是 {metric: {year: value}}
+                first_val = next(iter(calc_result.values()), None)
+                if isinstance(first_val, dict):
+                    # 多指标旧格式: {metric: {year: value}}
+                    for metric_name, metric_data in calc_result.items():
+                        if isinstance(metric_data, dict):
+                            results[metric_name] = {_safe_int_key(k): v for k, v in metric_data.items()}
+                        else:
+                            results[metric_name] = metric_data
+                else:
+                    # 单指标旧格式: {year: value}
+                    results[calc_name] = {_safe_int_key(k): v for k, v in calc_result.items()}
             else:
                 continue
-
-            results[calc_name] = result_dict
 
             # 将计算结果加入 DataFrame，供后续 Calculator 使用
             for year, value in result_dict.items():

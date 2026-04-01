@@ -36,12 +36,13 @@ class FieldRegistrySpec:
 
         Returns:
             {
-                "source": str,       # "ifrs", "custom", "provider_name"
-                "fields": set,       # Set of field names
-                "description": str,   # Description
+                "source": str,               # "ifrs", "custom", "provider_name"
+                "fields": set,                # Set of field names
+                "description": str,           # Description
+                "format_types": dict,        # {field_name: "percentage"|"ratio"|"absolute"|"yoy"|"market"}
             }
         """
-        return {"source": "", "fields": set(), "description": ""}
+        return {"source": "", "fields": set(), "description": "", "format_types": {}}
 
 
 # =============================================================================
@@ -285,6 +286,19 @@ class CalculatorSpec:
             {"success": bool, "data": {}, "error": str} or None if not implemented
         """
         return None
+
+    @vi_hookspec
+    def vi_get_field_metadata(self, items: list[str]) -> dict[str, Any]:
+        """获取指定字段/计算器的元信息
+
+        Args:
+            items: 字段名或计算器名列表
+
+        Returns:
+            {"format_types": {item_name: "percentage"|"ratio"|"absolute"|"yoy"|"market", ...}}
+            只返回已知的 items，未知的 items 不包含在返回结果中。
+        """
+        return {"format_types": {}}
 
 
 # =============================================================================

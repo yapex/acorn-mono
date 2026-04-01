@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["total_liabilities", "total_equity"]
 SUPPORTED_MARKETS = ["HK", "US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算产权比率

@@ -7,6 +7,8 @@ ROIC = 税后营业利润 / 投入资本
 REQUIRED_FIELDS = ["operating_profit", "income_tax", "total_equity", "short_term_debt", "long_term_debt"]
 SUPPORTED_MARKETS = ["US"]
 
+FORMAT_TYPE = "percentage"
+
 def calculate(data):
     """
     计算投入资本回报率

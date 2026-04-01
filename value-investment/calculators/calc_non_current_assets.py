@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["total_assets", "current_assets"]
 SUPPORTED_MARKETS = ["A"]
 
+FORMAT_TYPE = "absolute"
+
 def calculate(data):
     """
     计算非流动资产

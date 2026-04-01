@@ -2,6 +2,8 @@
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 REQUIRED_FIELDS = ["operating_cost", "inventory"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     cost = data["operating_cost"]
     inv = data["inventory"]

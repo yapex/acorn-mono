@@ -6,6 +6,8 @@
 REQUIRED_FIELDS = ["market_cap", "total_equity"]
 SUPPORTED_MARKETS = ["US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算市净率

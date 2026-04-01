@@ -7,6 +7,8 @@ CAGR = (终值/初值)^(1/n) - 1
 REQUIRED_FIELDS = ["total_revenue"]
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 
+FORMAT_TYPE = "percentage"
+
 def calculate(data):
     """
     计算复合年增长率 CAGR

@@ -7,6 +7,8 @@
 REQUIRED_FIELDS = ["interest_bearing_debt", "cash_and_equivalents", "total_equity"]
 SUPPORTED_MARKETS = ["A", "HK", "US"]
 
+FORMAT_TYPE = "ratio"
+
 def calculate(data):
     """
     计算净负债率
