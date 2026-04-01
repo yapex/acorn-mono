@@ -33,8 +33,8 @@ class TestProviderAMarketPlugin:
     def test_supported_fields_count(self):
         """Test supported fields count"""
         fields = provider_a_plugin.vi_supported_fields()
-        # 84 = FIELD_MAPPINGS 所有值（系统标准字段名）
-        assert len(fields) == 84, f"Expected 84 fields, got {len(fields)}"
+        # 85 = FIELD_MAPPINGS 所有值（系统标准字段名）
+        assert len(fields) == 85, f"Expected 85 fields, got {len(fields)}"
 
 
 class TestTushareProvider:

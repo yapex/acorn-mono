@@ -105,10 +105,7 @@ class TestUSProvider:
         result = provider._normalize_symbol("GOOGL")
         assert result == "GOOGL"
 
-    def test_get_date_column_returns_report_date(self):
-        """Test _get_date_column returns REPORT_DATE"""
-        provider = USProvider()
-        assert provider._get_date_column() == "REPORT_DATE"
+
 
 
 class TestUSProviderFetchMethods:

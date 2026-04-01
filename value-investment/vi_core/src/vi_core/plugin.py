@@ -230,7 +230,7 @@ class ViCorePlugin:
     @property
     def commands(self) -> list[str]:
         """Return supported commands for Acorn Core"""
-        return ["vi_query", "vi_list_fields", "vi_list_calculators", "vi_register_calculator"]
+        return ["vi_query", "vi_list_fields", "vi_list_calculators", "vi_register_calculator", "vi_reload_calculator"]
 
     def handle(self, task: Any) -> dict[str, Any]:
         """Handle task for Acorn Core"""
@@ -327,6 +327,8 @@ class ViCorePlugin:
             return self._list_calculators(args)
         elif internal_cmd == "register_calculator":
             return self._register_calculator(args)
+        elif internal_cmd == "reload_calculator":
+            return self._reload_calculator(args)
         return {"success": False, "error": f"Unknown command: {command}"}
 
     def _infer_market(self, symbol: str) -> str:
@@ -867,6 +869,25 @@ class ViCorePlugin:
         )
 
         return result if result else {"success": True, "data": {"message": f"Calculator '{name}' registered"}}
+
+    def _reload_calculator(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Reload calculator(s) by rescanning filesystem"""
+        if not self._get_plugin_manager():
+            return {"success": False, "error": "Plugin manager not initialized"}
+
+        name = args.get("name")  # None = reload all
+        code = args.get("code")
+        required_fields = args.get("required_fields")
+        description = args.get("description")
+
+        result = self._get_plugin_manager().hook.vi_reload_calculator(
+            name=name,
+            code=code,
+            required_fields=required_fields,
+            description=description,
+        )
+
+        return result if result else {"success": True, "data": {"message": "Reload complete"}}
 
     def _generate_calculator_extension_prompt(self, calculator_name: str) -> str:
         """

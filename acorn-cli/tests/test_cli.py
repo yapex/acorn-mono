@@ -17,10 +17,11 @@ def test_cli_help_shows_core_commands():
 
 
 def test_cli_list_shows_plugins():
-    """acorn list 显示已安装插件"""
+    """acorn list 显示已安装插件或暂无提示"""
     result = runner.invoke(app, ["list"])
     assert result.exit_code == 0
-    assert "已安装插件" in result.stdout
+    # 当有插件时显示"已安装插件"，无插件时显示"暂无"
+    assert "已安装插件" in result.stdout or "暂无" in result.stdout
 
 
 def test_cli_install_command_exists():

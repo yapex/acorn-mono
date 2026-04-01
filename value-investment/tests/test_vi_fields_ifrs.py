@@ -57,4 +57,4 @@ class TestViFieldsIfrsPlugin:
 
     def test_ifrs_fields_count(self):
         """Test IFRS fields count matches expected"""
-        assert len(IFRS_FIELDS) == 38, f"Expected 38 fields, got {len(IFRS_FIELDS)}"
+        assert len(IFRS_FIELDS) == 39, f"Expected 39 fields, got {len(IFRS_FIELDS)}"

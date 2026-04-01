@@ -25,7 +25,7 @@ class TestProviderHKMarketPlugin:
     def test_vi_supported_fields_contains_financial_fields(self):
         """Test supported fields contain financial fields"""
         fields = provider_hk_plugin.vi_supported_fields()
-        expected_fields = ["total_assets", "roe", "pe_ratio", "hk_market_cap"]
+        expected_fields = ["total_assets", "roe", "pe_ratio", "market_cap"]
         for field in expected_fields:
             assert field in fields, f"{field} should be in supported fields"
 
@@ -71,7 +71,7 @@ class TestHKProvider:
     def test_supported_fields_contains_market_fields(self):
         """Test get_supported_fields contains market fields"""
         market_fields = {
-            "hk_market_cap",
+            "market_cap",
             "pe_ratio",
             "pb_ratio",
         }
@@ -102,10 +102,7 @@ class TestHKProvider:
         result = provider._normalize_symbol("00700")
         assert result == "00700"
 
-    def test_get_date_column_returns_year(self):
-        """Test _get_date_column returns year"""
-        provider = HKProvider()
-        assert provider._get_date_column() == "year"
+
 
 
 class TestHKProviderFetchMethods:

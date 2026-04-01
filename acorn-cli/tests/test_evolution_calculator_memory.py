@@ -83,7 +83,7 @@ class TestCalculatorCLIStringInput:
             ],
             capture_output=True,
             text=True,
-            cwd="acorn-cli/src",
+            cwd=".",
         )
         
         output = result.stdout
