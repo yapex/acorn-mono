@@ -33,6 +33,9 @@ def _format_value(value: Any, field: str, format_type: str | None = None) -> str
         value: 数值
         field: 字段名（仅用于日志/debug）
         format_type: 格式类型，来自 format_types 元信息
+                      percentage/yoy: 值域 0-100，直接加 % 后缀
+                      ratio/market:   实数，不加 % 后缀
+                      absolute:       按数量级加 亿/万 后缀
     """
     if value is None:
         return "N/A"
@@ -40,9 +43,9 @@ def _format_value(value: Any, field: str, format_type: str | None = None) -> str
     if isinstance(value, float):
         # 有明确 format_type 时直接按类型格式化
         if format_type == "percentage":
-            return f"{value * 100:.2f}%"
+            return f"{value:.2f}%"
         if format_type == "yoy":
-            return f"{value * 100:.2f}%"
+            return f"{value:.2f}%"
         if format_type == "ratio":
             return f"{value:.2f}"
         if format_type == "market":
