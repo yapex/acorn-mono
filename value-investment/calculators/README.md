@@ -45,13 +45,14 @@ calculators/
 # calc_xxx.py
 """计算器描述（第一行作为简短描述）"""
 
-from typing import Any
-
 # ✅ 必需：依赖的字段列表
 REQUIRED_FIELDS = [
     "field_a",
     "field_b",
 ]
+
+# ✅ 必需：显示格式类型（见下方格式类型说明）
+FORMAT_TYPE = "ratio"  # 或 FORMAT_TYPES = {"metric_a": "ratio", "metric_b": "percentage"}
 
 # ❌ 可选：默认配置
 DEFAULT_CONFIG = {
@@ -59,19 +60,64 @@ DEFAULT_CONFIG = {
 }
 
 # ✅ 必需：计算函数
-def calculate(
-    results: dict[str, dict[int, Any]],
-    config: dict[str, Any] | None = None,
-) -> dict[int, Any]:
+def calculate(data):
     """
     Args:
-        results: 已获取的字段数据 {field: {year: value}}
-        config: 用户传入的配置
+        data: dict[str, pd.Series] - 字段数据，{field: Series(index=年份)}
 
     Returns:
-        {year: value} 计算结果
+        pd.Series - 单指标结果，Series(index=年份)
+        或 dict: {"values": pd.Series, "format_types": {"metric": "ratio", ...}}  多指标结果
     """
-    pass
+    return data["field_a"] / data["field_b"].replace(0, float('nan'))
+```
+
+### 显示格式类型（FORMAT_TYPE）
+
+Calculator 必须声明自己的显示格式，影响 CLI 输出时的格式：
+
+| FORMAT_TYPE | 示例 | 含义 |
+|---|---|---|
+| `"percentage"` | `38.43%` | 百分比，显示时加 % 后缀 |
+| `"yoy"` | `15.00%` | 同比增长率，显示时加 % 后缀 |
+| `"ratio"` | `4.45` | 比率，显示时不加 % |
+| `"market"` | `25.0` | 估值指标（PE/PB 等） |
+| `"absolute"` | `1741.44亿` | 金额，按数量级加 亿/万 后缀（默认） |
+
+```python
+# 单指标 calculator
+FORMAT_TYPE = "ratio"
+
+# 多指标 calculator（每个 metric 独立声明格式）
+FORMAT_TYPES = {
+    "graham_value": "market",
+    "margin_of_safety": "percentage",
+}
+```
+
+### 返回值规范
+
+```python
+# ✅ 单指标：返回 pd.Series
+return data["field_a"] / data["field_b"].replace(0, float('nan'))
+
+# ✅ 多指标：返回 dict（含 format_types）
+return {
+    "values": pd.Series({
+        "graham_value": graham_value,
+        "margin_of_safety": margin_of_safety,
+    }),
+    "format_types": {
+        "graham_value": "market",
+        "margin_of_safety": "percentage",
+    },
+}
+
+# ✅ 无数据：返回空 Series
+return pd.Series(dtype=float)
+
+# ❌ 不要返回 None
+# ❌ 不要抛出异常（会显示为错误）
 ```
 
 ### 返回值规范
@@ -117,57 +163,6 @@ result = vi_handle("query", {
 # result["data"]["implied_growth"] = {2023: 0.12}
 ```
 
-### laotang_valuation - 老唐估值法
-
-基于唐朝《手把手教你读财报》的估值方法。
-
-**计算逻辑**：
-1. 计算最近5年净利润年化增长率 (CAGR)
-2. 预估3年后净利润 = 当前净利润 × (1 + CAGR)³
-3. 合理市值 = 3年后净利润 × 25倍PE
-4. 理想买入价 = 合理市值 × 50%（安全边际已包含）
-5. 卖出价 = 合理市值 × 200%
-
-**必需字段**：
-- `net_profit` - 净利润
-- `basic_eps` - 每股收益
-- `close` - 当前股价
-
-**配置参数**：
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `pe_ratio` | 25 | 合理PE倍数 |
-| `buy_ratio` | 0.50 | 买入折扣（安全边际） |
-| `sell_ratio` | 2.00 | 卖出倍数 |
-| `min_years` | 5 | 计算CAGR所需最小年数 |
-
-**使用示例**：
-```bash
-# CLI
-acorn vi query 600519 --items net_profit,basic_eps,close,laotang_valuation --years 5
-```
-
-```python
-# Python
-result = vi_handle("query", {
-    "symbol": "600519",
-    "items": "net_profit,basic_eps,close,laotang_valuation",
-    "years": 5,
-})
-# 返回:
-# {
-#   "buy_price": 1335.5,      # 理想买入价（每股）
-#   "sell_price": 5342.02,    # 卖出价（每股）
-#   "current_price": 1407.33, # 当前股价
-#   "gap": -5.1,              # 与买入价差距 (%)
-#   ...
-# }
-```
-
-**gap 解读**：
-- 正值：当前股价低于买入价，可以考虑买入
-- 负值：当前股价高于买入价，需要等待
-
 ## 添加新计算器
 
 ### 1. 创建脚本文件
@@ -176,19 +171,17 @@ result = vi_handle("query", {
 # calculators/calc_roe_avg.py
 """计算 ROE 平均值"""
 
-from typing import Any
+import pandas as pd
 
 REQUIRED_FIELDS = ["roe"]
+FORMAT_TYPE = "percentage"
 
-def calculate(results, config=None):
-    roe_data = results.get("roe", {})
-    if not roe_data:
-        return {}
-
-    avg = sum(roe_data.values()) / len(roe_data)
-    # 返回最新年份的结果
-    latest_year = max(roe_data.keys())
-    return {latest_year: avg}
+def calculate(data):
+    roe = data["roe"].dropna()
+    if roe.empty:
+        return pd.Series(dtype=float)
+    # 返回最新年份的平均值
+    return pd.Series(roe.mean())
 ```
 
 ### 2. 重启应用
@@ -197,8 +190,8 @@ vi_calculators 会在启动时自动发现新脚本。
 
 ### 3. 验证
 
-```python
-result = vi_handle("list_calculators", {})
+```bash
+acorn vi list --category calculators
 # 应该看到 {"name": "roe_avg", "required_fields": ["roe"], ...}
 ```
 

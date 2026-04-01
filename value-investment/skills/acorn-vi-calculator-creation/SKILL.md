@@ -34,13 +34,13 @@ Use standard field names in `REQUIRED_FIELDS`. Do NOT invent field names that do
 """计算我的自定义指标"""
 
 REQUIRED_FIELDS = ["field_a", "field_b"]
+FORMAT_TYPE = "ratio"  # or "percentage", "market", "absolute"
 
-def calculate(data, config):
+def calculate(data):
     """Calculate my indicator
 
     Args:
         data: dict[str, pd.Series] - field data
-        config: dict - user configuration
 
     Returns:
         pd.Series - result with year as index
@@ -62,8 +62,32 @@ Loading order: builtin → cwd (cwd overrides builtin if same name).
 | Element | Required | Description |
 |---------|----------|-------------|
 | `REQUIRED_FIELDS` | ✅ | List of field names this calculator needs |
-| `calculate(data, config)` | ✅ | Function with exact signature |
+| `FORMAT_TYPE` | ✅ | Display format type (see below) |
+| `calculate(data)` | ✅ | Function with exact signature |
 | Docstring | ❌ | First line used as description |
+
+## Display Format Type (FORMAT_TYPE)
+
+Determines how the value appears in CLI output:
+
+| FORMAT_TYPE | Example | Meaning |
+|-------------|---------|---------|
+| `"percentage"` | `38.43%` | Percentage (ROE, gross margin, etc.) |
+| `"yoy"` | `15.00%` | Year-over-year growth rate |
+| `"ratio"` | `4.45` | Ratio (current ratio, interest coverage, etc.) |
+| `"market"` | `25.0` | Valuation metric (PE/PB, graham value) |
+| `"absolute"` | `1741.44亿` | Monetary amount (default) |
+
+```python
+# Single-metric calculator
+FORMAT_TYPE = "ratio"
+
+# Multi-metric calculator (each metric has its own format)
+FORMAT_TYPES = {
+    "graham_value": "market",
+    "margin_of_safety": "percentage",
+}
+```
 
 ## Naming Convention
 
@@ -113,19 +137,21 @@ return data["a"].sum()
 
 ## Configuration (config parameter)
 
+Currently the `config` parameter is reserved for future use. For now, hardcode defaults inside `calculate`:
+
 ```python
-def calculate(data, config):
-    # Access config with defaults
-    wacc = config.get("wacc", 0.10)
-    g_terminal = config.get("g_terminal", 0.03)
+def calculate(data):
+    wacc = 0.10
+    g_terminal = 0.03
     # ... use in calculation
 ```
 
 ## Edge Cases
 
 - **Division by zero**: Use `.replace(0, float('nan'))`
-- **Missing data**: Return Series with NaN values (pandas handles this)
+- **Missing data**: Return `pd.Series(dtype=float)` (empty Series)
 - **Empty data**: Check `data["field"].dropna()` before calculating
+- **No data**: Always return a Series (empty or with values), never None
 
 ## Verification
 
@@ -144,8 +170,9 @@ acorn vi list --category calculators
 """Calculate gross profit margin = (revenue - cost) / revenue"""
 
 REQUIRED_FIELDS = ["gross_profit", "total_revenue"]
+FORMAT_TYPE = "percentage"
 
-def calculate(data, config):
+def calculate(data):
     gp = data["gross_profit"]
     rev = data["total_revenue"]
     return ((rev - gp) / rev).replace(0, float('nan'))
@@ -157,8 +184,9 @@ def calculate(data, config):
 """Calculate debt-to-equity ratio"""
 
 REQUIRED_FIELDS = ["interest_bearing_debt", "total_equity"]
+FORMAT_TYPE = "ratio"
 
-def calculate(data, config):
+def calculate(data):
     debt = data["interest_bearing_debt"]
     equity = data["total_equity"]
     return debt / equity.replace(0, float('nan'))
@@ -170,13 +198,41 @@ def calculate(data, config):
 """Calculate 5-year average ROE"""
 
 REQUIRED_FIELDS = ["roe"]
+FORMAT_TYPE = "percentage"
 
-def calculate(data, config):
-    min_years = config.get("min_years", 5)
+def calculate(data):
     roe = data["roe"].dropna()
-    if len(roe) < min_years:
+    if len(roe) < 5:
         return pd.Series(dtype=float)
-    return pd.Series({"avg_roe": roe.mean()})
+    return pd.Series(roe.mean())
+```
+
+### Example 4: Multi-metric Calculator
+
+```python
+"""Graham value with margin of safety"""
+
+REQUIRED_FIELDS = ["basic_eps", "book_value_per_share", "close"]
+
+# Each metric has its own format type
+FORMAT_TYPES = {
+    "graham_value": "market",
+    "margin_of_safety": "percentage",
+}
+
+def calculate(data):
+    eps = data["basic_eps"]
+    bps = data["book_value_per_share"]
+    close = data["close"]
+    graham_value = (22.5 * eps * bps) ** 0.5
+    margin_of_safety = (graham_value - close) / graham_value
+    return {
+        "values": pd.Series({
+            "graham_value": graham_value,
+            "margin_of_safety": margin_of_safety,
+        }),
+        "format_types": FORMAT_TYPES,
+    }
 ```
 
 ## Extending SUPPORTED_MARKETS to New Markets
