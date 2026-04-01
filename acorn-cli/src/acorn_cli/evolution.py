@@ -160,7 +160,7 @@ def handle_create(
     # -------------------------------------------------------------------------
     # 阶段 3: 确认应用
     # -------------------------------------------------------------------------
-    if confirm:
+    if confirm and field_name:
         apply_calculator(field_name, code)
         print("done", file=sys.stdout, flush=True)
     else:

@@ -130,6 +130,7 @@ def main() -> int:
         return 1
 
     uvicorn.run(app, host="0.0.0.0", port=port)
+    return 0  # uvicorn.run blocks until server stops
 
 
 if __name__ == "__main__":
