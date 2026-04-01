@@ -73,7 +73,6 @@ vi_fields_ifrs
 | 字段名 | 描述 |
 |--------|------|
 | market_cap | 总市值 |
-| total_shares | 总股本 |
 | pe_ratio | 市盈率 (P/E) |
 | pb_ratio | 市净率 (P/B) |
 | basic_eps | 基本每股收益 |

@@ -6,9 +6,29 @@
 
 ```
 calculators/
-├── calc_implied_growth.py   # 隐含增长率计算器
-├── calc_peg.py              # (待添加) PEG 计算器
-└── calc_dcf.py              # (待添加) DCF 估值计算器
+├── calc_asset_turnover.py      # 资产周转率
+├── calc_book_value_per_share.py # 每股净资产
+├── calc_cagr.py                 # 年复合增长率
+├── calc_currentdebt_to_debt.py  # 流动负债/总负债
+├── calc_debt_to_ebitda.py      # 债务/EBITDA
+├── calc_debt_to_equity.py      # 产权比率
+├── calc_free_cash_flow.py       # 自由现金流
+├── calc_graham_value.py         # 格雷厄姆估值
+├── calc_gross_profit.py        # 毛利
+├── calc_implied_growth.py       # 隐含增长率
+├── calc_interest_coverage.py   # 利息保障倍数
+├── calc_inventory_turnover.py  # 存货周转率
+├── calc_net_debt_ratio.py      # 净债务率
+├── calc_non_current_assets.py  # 非流动资产
+├── calc_non_current_liabilities.py # 非流动负债
+├── calc_npcf_ratio.py          # NPCF比率
+├── calc_operating_profit_margin.py # 营业利润率
+├── calc_pb_ratio.py            # 市净率
+├── calc_pe_ratio.py            # 市盈率
+├── calc_quick_ratio.py         # 速动比率
+├── calc_receivable_turnover.py # 应收账款周转率
+├── calc_roic.py                # 投入资本回报率
+└── calc_volatility.py          # 盈利波动率
 ```
 
 ## 脚本规范

@@ -58,6 +58,7 @@ FIELD_MAPPINGS = {
 | 字段 | 说明 | 来源 |
 |------|------|------|
 | `hk_market_cap` | 港股市值(港元) | market |
+| `total_shares` | 总股本 | market |
 | `hk_dividend_per_share` | 每股股息TTM(港元) | market |
 | `hk_dividend_yield_ttm` | 股息率TTM(%) | market |
 | `hk_dividend_payout_ratio` | 派息比率(%) | market |
