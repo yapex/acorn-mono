@@ -126,20 +126,20 @@ def _print_table(data: dict[str, Any]) -> None:
 @app.command("query")
 def query(
     symbol: str = typer.Argument(..., help="股票代码 (如 600519, AAPL)"),
-    items: str = typer.Option("all", "-i", "--items", help="逗号分隔的字段/计算器列表，或 'all'"),
+    items: str = typer.Option("all", "-i", "--items", help="逗号分隔的数据项/计算器列表，或 'all'"),
     years: int = typer.Option(10, "-y", "--years", help="查询年数"),
-    calculators: str = typer.Option("", "-c", "--calculators", help="要运行的计算器"),
     wacc: float = typer.Option(0.08, "--wacc", help="DCF 计算中的 WACC"),
     g_terminal: float = typer.Option(0.03, "--g-terminal", help="永续增长率"),
 ) -> None:
     """查询股票财务数据"""
     # 构建计算器配置
     calc_config: dict[str, Any] = {}
-    if calculators:
-        for calc in calculators.split(","):
-            calc = calc.strip()
-            if calc == "implied_growth":
-                calc_config[calc] = {
+    if items != "all" and items:
+        # 解析 items 中的计算器，注入默认配置
+        for item in items.split(","):
+            item = item.strip()
+            if item == "implied_growth":
+                calc_config[item] = {
                     "wacc": wacc,
                     "g_terminal": g_terminal,
                     "n_years": years,
@@ -150,7 +150,6 @@ def query(
             "symbol": symbol,
             "items": items,
             "years": years,
-            "calculators": calculators,
             "calculator_config": calc_config,
         })
 

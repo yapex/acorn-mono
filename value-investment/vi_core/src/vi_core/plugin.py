@@ -454,10 +454,8 @@ class ViCorePlugin:
         Args:
             symbol: Stock code (e.g. "600519", "000001")
             items: Comma-separated items (fields and calculators) or "all"
-            fields: Comma-separated field names (legacy, use items instead)
             end_year: End year (default current year)
             years: Number of years to fetch (default 10)
-            calculators: Comma-separated calculator names (legacy, use items instead)
             calculator_config: Dict of {calculator_name: config_dict}
 
         Returns:
@@ -467,10 +465,7 @@ class ViCorePlugin:
         if not symbol:
             return {"success": False, "error": "Missing required argument: symbol"}
 
-        # 支持统一的 items 参数，同时兼容 legacy fields/calculators
         items_str = args.get("items") or ""
-        fields_str = args.get("fields") or ""
-        calculators_str = args.get("calculators") or ""
         end_year = args.get("end_year")
         years = args.get("years", 10)
         calculator_config = args.get("calculator_config") or {}
@@ -514,17 +509,14 @@ class ViCorePlugin:
         # 避免港股缺失字段被 A 股 Provider "掩盖"
         provider_fields: set[str] = self._get_provider_fields_for_market(market)
 
-        # 解析 items: 统一 items 参数
+        # 解析 items
         if items_str:
             if items_str.lower() == "all":
                 requested_items = standard_fields | calculator_names
             else:
                 requested_items = set(i.strip() for i in items_str.split(",") if i.strip())
         else:
-            # Legacy: 从 fields 和 calculators 合并
-            field_items = set(f.strip() for f in fields_str.split(",") if f.strip())
-            calc_items = set(c.strip() for c in calculators_str.split(",") if c.strip())
-            requested_items = field_items | calc_items
+            requested_items = set()
 
         # 分离 fields 和 calculators
         requested_calculators = requested_items & calculator_names

@@ -297,13 +297,13 @@ def status(
     else:
         typer.echo("  (无)")
 
-    typer.echo(f"\n📋 可用字段 ({len(all_fields)})")
-    typer.echo("  使用 'acorn vi list-fields' 查看完整列表")
+    typer.echo(f"\n📋 可用数据项 ({len(all_fields)})")
+    typer.echo("  使用 'acorn vi list' 查看完整列表")
 
     typer.echo("\n" + "─" * 60)
     typer.echo("💡 提示: 查询示例")
-    typer.echo("  acorn vi query 600519 --fields net_profit,operating_cash_flow --years 10")
-    typer.echo("  acorn vi query 600519 --calculators implied_growth")
+    typer.echo("  acorn vi query 600519 --items net_profit,operating_cash_flow --years 10")
+    typer.echo("  acorn vi query 600519 --items implied_growth")
 
 
 # 动态加载插件命令

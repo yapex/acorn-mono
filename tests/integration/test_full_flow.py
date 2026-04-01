@@ -46,10 +46,10 @@ class TestAcornCLI:
 class TestVITPlugin:
     """VI Plugin 命令测试"""
 
-    def test_vi_list_fields_command(self):
-        """acorn vi list-fields 显示字段列表"""
+    def test_vi_list_command(self):
+        """acorn vi list 显示字段和计算器列表"""
         result = subprocess.run(
-            ["uv", "run", "acorn", "vi", "list-fields"],
+            ["uv", "run", "acorn", "vi", "list"],
             capture_output=True,
             text=True,
         )
@@ -57,10 +57,10 @@ class TestVITPlugin:
         # 可能返回成功或空数据，但不应该是错误
         assert result.returncode == 0 or "success" in result.stdout
 
-    def test_vi_list_calculators_command(self):
-        """acorn vi list-calculators 显示计算器列表"""
+    def test_vi_list_fields_category(self):
+        """acorn vi list --category fields 只显示字段"""
         result = subprocess.run(
-            ["uv", "run", "acorn", "vi", "list-calculators"],
+            ["uv", "run", "acorn", "vi", "list", "--category", "fields"],
             capture_output=True,
             text=True,
         )
