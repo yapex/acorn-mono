@@ -76,7 +76,6 @@ FIELD_DEFINITIONS: dict[str, dict] = {
 
     # Market Data
     "market_cap": {"description": "总市值", "category": "market", "source": "ifrs"},
-    "total_shares": {"description": "总股本", "category": "market", "source": "ifrs"},
     "pe_ratio": {"description": "市盈率 (P/E)", "category": "market", "source": "ifrs"},
     "pb_ratio": {"description": "市净率 (P/B)", "category": "market", "source": "ifrs"},
     "basic_eps": {"description": "基本每股收益", "category": "market", "source": "ifrs"},
@@ -152,6 +151,7 @@ FIELD_DEFINITIONS: dict[str, dict] = {
 
     # HK 特有市场数据
     "hk_market_cap": {"description": "港股市值(港元)", "category": "market", "source": "hk"},
+    "total_shares": {"description": "总股本", "category": "market", "source": "hk"},
     "hk_dividend_per_share": {"description": "每股股息TTM(港元)", "category": "market", "source": "hk"},
     "hk_dividend_yield_ttm": {"description": "股息率TTM(%)", "category": "market", "source": "hk"},
     "hk_dividend_payout_ratio": {"description": "派息比率(%)", "category": "market", "source": "hk"},
