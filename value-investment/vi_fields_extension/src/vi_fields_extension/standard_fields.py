@@ -160,6 +160,9 @@ FIELD_DEFINITIONS: dict[str, dict] = {
 
     # HK Balance Sheet 特有字段
     "shareholders_equity": {"description": "股东权益", "category": "balance_sheet", "source": "hk"},
+    "accounts_receivable_related_party": {"description": "应收关联方款项", "category": "balance_sheet", "source": "hk"},
+    "accounts_payable_related_party": {"description": "应付关联方款项", "category": "balance_sheet", "source": "hk"},
+    "goodwill_impairment": {"description": "商誉减值", "category": "income_statement", "source": "hk"},
     "share_capital": {"description": "股本", "category": "balance_sheet", "source": "hk"},
     "share_premium": {"description": "股本溢价", "category": "balance_sheet", "source": "hk"},
     "retained_earnings": {"description": "保留溢利(累计亏损)", "category": "balance_sheet", "source": "hk"},

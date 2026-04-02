@@ -39,14 +39,18 @@ class HKProvider(BaseDataProvider):
             "无形资产": StandardFields.intangible_assets,
             "在建工程": StandardFields.construction_in_progress,
             "预付款项": StandardFields.prepayment,
+            "预付款按金及其他应收款": StandardFields.prepayment,
             "合同资产": StandardFields.contract_assets,
             "联营公司权益": StandardFields.investment_in_associates,
             "合营公司权益": StandardFields.investment_in_joint_ventures,
+            # 关联交易
+            "应收关联方款项": StandardFields.accounts_receivable_related_party,
             # 负债类
             "总负债": StandardFields.total_liabilities,
             "流动负债合计": StandardFields.current_liabilities,
             "非流动负债合计": StandardFields.non_current_liabilities,
             "应付帐款": StandardFields.accounts_payable,
+            "应付关联方款项": StandardFields.accounts_payable_related_party,
             "短期贷款": StandardFields.short_term_debt,
             "长期贷款": StandardFields.long_term_debt,
             "合同负债": StandardFields.contract_liab,
