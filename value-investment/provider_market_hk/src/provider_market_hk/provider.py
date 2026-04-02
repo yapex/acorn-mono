@@ -76,7 +76,7 @@ class HKProvider(BaseDataProvider):
             "销售成本": StandardFields.operating_cost,
             "行政开支": StandardFields.administrative_expenses,
             "销售及分销费用": StandardFields.selling_distribution_expenses,
-            "融资成本": StandardFields.finance_cost,
+            "融资成本": StandardFields.interest_expense,  # 港股无单独利息支出，用融资成本代替
             "税项": StandardFields.income_tax,
             # 其他
             "利息收入": StandardFields.interest_income,
