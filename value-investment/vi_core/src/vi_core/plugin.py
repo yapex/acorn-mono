@@ -512,7 +512,7 @@ class ViCorePlugin:
         # 解析 items
         if items_str:
             if items_str.lower() == "all":
-                requested_items = standard_fields | calculator_names
+                return {"success": False, "error": "items=all 已被禁用，请指定具体字段以节省上下文空间"}
             else:
                 requested_items = set(i.strip() for i in items_str.split(",") if i.strip())
         else:

@@ -1,10 +1,10 @@
 """
-速动比率计算器（港股）
+速动比率计算器
 速动比率 = (流动资产 - 存货) / 流动负债
 """
 
 REQUIRED_FIELDS = ["current_assets", "inventory", "current_liabilities"]
-SUPPORTED_MARKETS = ["HK"]
+SUPPORTED_MARKETS = ["A", "HK", "US"]
 
 FORMAT_TYPE = "ratio"
 

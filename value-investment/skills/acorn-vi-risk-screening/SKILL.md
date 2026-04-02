@@ -49,7 +49,7 @@ description: 企业财务排雷系统 — 排雷（造假）+ 排险（生存）
 acorn vi query {股票代码} \
   --items gross_margin,net_profit_margin,roe,ebitda,cash_ratio,current_ratio,quick_ratio,debt_ratio,ocf_to_debt,operating_cash_flow,net_profit,total_revenue,total_assets,total_liabilities,total_equity,cash_and_equivalents,interest_bearing_debt,interest_expense,current_liabilities,current_assets,inventory,accounts_receivable,other_receivables,prepayment,goodwill,construction_in_progress,operating_cost,operating_profit,capital_expenditure,investing_cash_flow,financing_cash_flow,interest_income,finance_cost,revenue_yoy,net_profit_yoy \
   --calculators inventory_turnover,receivable_turnover,npcf_ratio,asset_turnover,free_cash_flow,interest_coverage,net_debt_ratio,debt_to_ebitda,cagr,volatility \
-  --years 10
+  --years 5
 ```
 
 ### 港股注意事项

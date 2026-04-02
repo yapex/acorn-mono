@@ -4,7 +4,7 @@
 """
 
 REQUIRED_FIELDS = ["total_assets", "current_assets"]
-SUPPORTED_MARKETS = ["A"]
+SUPPORTED_MARKETS = ["A", "HK", "US"]
 
 FORMAT_TYPE = "absolute"
 
