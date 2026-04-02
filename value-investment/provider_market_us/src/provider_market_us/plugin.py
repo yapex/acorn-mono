@@ -12,17 +12,24 @@ from __future__ import annotations
 import pandas as pd
 
 from vi_core.spec import vi_hookimpl
+from vi_core import SmartCache
 
 from .provider import USProvider
 
 
 # Provider instance (lazy init)
 _provider: USProvider | None = None
+_cache: SmartCache | None = None
 
 
 def _get_provider() -> USProvider:
-    """Get or create USProvider instance"""
-    global _provider
+    """Get or create USProvider instance with cache"""
+    global _provider, _cache
+    if _provider is None:
+        if _cache is None:
+            _cache = SmartCache(cache_dir=".cache")
+        _provider = USProvider(cache=_cache)
+    return _provider
     if _provider is None:
         _provider = USProvider()
     return _provider

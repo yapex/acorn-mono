@@ -27,6 +27,9 @@ htmlcov/
 # Lock files (optional, often committed in monorepos)
 # uv.lock
 
+# Cache
+.cache/
+
 # OS
 .DS_Store
 Thumbs.db

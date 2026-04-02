@@ -12,19 +12,23 @@ from __future__ import annotations
 import pandas as pd
 
 from vi_core.spec import vi_hookimpl
+from vi_core import SmartCache
 
 from .provider import HKProvider
 
 
 # Provider instance (lazy init)
 _provider: HKProvider | None = None
+_cache: SmartCache | None = None
 
 
 def _get_provider() -> HKProvider:
-    """Get or create HKProvider instance"""
-    global _provider
+    """Get or create HKProvider instance with cache"""
+    global _provider, _cache
     if _provider is None:
-        _provider = HKProvider()
+        if _cache is None:
+            _cache = SmartCache(cache_dir=".cache")
+        _provider = HKProvider(cache=_cache)
     return _provider
 
 
@@ -167,7 +171,13 @@ class ProviderHKPlugin:
         return self._merge_dfs(dfs)
 
     def _merge_dfs(self, dfs: list[pd.DataFrame]) -> pd.DataFrame | None:
-        """合并多个 DataFrame"""
+        """合并多个 DataFrame
+        
+        策略：
+        1. 保留第一个 DataFrame 的所有行（通常是 financial 数据，年份最全）
+        2. 对于重复列，填充第一个 DataFrame 中的空值（使用其他 DataFrame 的非空值）
+        3. 对于新列，直接添加
+        """
         if not dfs:
             return None
 
@@ -186,22 +196,21 @@ class ProviderHKPlugin:
             if fiscal_year in df_to_merge.columns:
                 df_to_merge = df_to_merge.set_index(fiscal_year)
 
-            # 找出新列
-            cols_to_add = [c for c in df_to_merge.columns if c not in result.columns]
-            if not cols_to_add:
-                continue
-
-            # 单行数据广播
-            if len(df_to_merge) == 1:
-                for col in cols_to_add:
-                    result[col] = df_to_merge[col].iloc[0]
-            else:
-                result = result.merge(
-                    df_to_merge[cols_to_add],
-                    left_index=True,
-                    right_index=True,
-                    how="left"
-                )
+            for col in df_to_merge.columns:
+                if col == fiscal_year:
+                    continue
+                
+                if col not in result.columns:
+                    # 新列：左连接添加
+                    result = result.merge(
+                        df_to_merge[[col]],
+                        left_index=True,
+                        right_index=True,
+                        how="left"
+                    )
+                else:
+                    # 重复列：用 df_to_merge 的非空值填充 result 的空值
+                    result[col] = result[col].fillna(df_to_merge[col])
 
         return result
 

@@ -67,7 +67,8 @@ class HKProvider(BaseDataProvider):
             "经营溢利": StandardFields.operating_profit,
             "除税前溢利": StandardFields.profit_before_tax,
             "除税后溢利": StandardFields.profit_after_tax,
-            "股东应占溢利": StandardFields.parent_net_profit,
+            "股东应占溢利": StandardFields.net_profit,  # 归母净利润直接映射为 net_profit
+            # EPS
             # EPS
             "每股基本盈利": StandardFields.basic_eps,
             # 费用
@@ -221,6 +222,16 @@ class HKProvider(BaseDataProvider):
                 result["营业成本"] = result["营业额"] - result["毛利"]
 
         return result
+
+    def _apply_mapping(self, df: pd.DataFrame) -> pd.DataFrame:
+        """应用字段映射"""
+        if df is None or df.empty:
+            return df
+
+        # 调用父类方法进行标准映射
+        df = super()._apply_mapping(df)
+
+        return df
 
     def _fetch_indicators_impl(
         self,
