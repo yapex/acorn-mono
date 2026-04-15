@@ -4,6 +4,7 @@ workspace = { members = [
     "acorn-events",
     "acorn-cli",
     "examples-plugin",
+    "pdf2txt",
     "value-investment/vi_cli",
     "value-investment/vi_core",
     "value-investment/vi_fields_extension",
@@ -19,6 +20,7 @@ acorn-core = { workspace = true }
 acorn-events = { workspace = true }
 acorn-cli = { workspace = true }
 examples-plugin = { workspace = true }
+pdf2txt = { workspace = true }
 vi-core = { workspace = true }
 vi-fields-extension = { workspace = true }
 vi-calculators = { workspace = true }

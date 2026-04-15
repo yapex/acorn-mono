@@ -35,3 +35,7 @@ htmlcov/
 Thumbs.db
 .brv/
 
+# pdf2txt - Generated data
+pdf2txt/downloads/
+pdf2txt/outputs/
+

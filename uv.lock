@@ -8,6 +8,7 @@ members = [
     "acorn-core",
     "acorn-events",
     "examples-plugin",
+    "pdf2txt",
     "provider-market-a",
     "provider-market-hk",
     "provider-market-us",
@@ -400,6 +401,18 @@ version = "0.1.0"
 source = { editable = "examples-plugin" }
 
 [[package]]
+name = "extractous"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/12/36c9422feee01461d4db1a915857df21e431ef88ddf9d84e689dd4a984b5/extractous-0.3.0.tar.gz", hash = "sha256:ebccc7778137d6be7680660f1e880e8a1898dedca7f64ab4b354a68d22359e84", size = 179234, upload-time = "2024-12-21T09:27:56.534Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/50/99d6e8982ced454cc7a0e184988b63c65e199587626c45404fc7b6ab9d90/extractous-0.3.0-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9f513d8da78b74ab655e659c64e287ddd653009f5af011cef0d2c8467a931e38", size = 49149827, upload-time = "2024-12-21T09:27:23.764Z" },
+    { url = "https://files.pythonhosted.org/packages/66/91/7debbfabadb88d34687bf93e23d176692bdae7e82c51180b2481710bb709/extractous-0.3.0-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:6e43d9dee26e7cb322b6f9059f3e3565252f444b80d2f4ff2007a002fdd00727", size = 48476433, upload-time = "2024-12-21T09:27:31.835Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/d9/1a3838e24f78902ca1a594110a00812134102c5cad13f889141509062481/extractous-0.3.0-cp38-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:01ef136a5901aed0e813f747989bbeaff60e4777cc77b933bef8f10de80b7dfd", size = 42277794, upload-time = "2024-12-21T09:27:39.915Z" },
+    { url = "https://files.pythonhosted.org/packages/07/a1/dd01a3abb4c4af89cf3775735948d76522233ae3550a166b8c2f7c849a52/extractous-0.3.0-cp38-abi3-win_amd64.whl", hash = "sha256:d86754320beba736f33c10227a641cce473cfb690c9e2d5ae823c917110c98ab", size = 41106822, upload-time = "2024-12-21T09:27:53.143Z" },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.135.2"
 source = { registry = "https://pypi.org/simple" }
@@ -790,6 +803,33 @@ sdist = { url = "https://files.pythonhosted.org/packages/76/f1/4594f5e0fcddb6953
 wheels = [
     { url = "https://files.pythonhosted.org/packages/aa/18/a8444036c6dd65ba3624c63b734d3ba95ba63ace513078e1580590075d21/pastel-0.2.1-py2.py3-none-any.whl", hash = "sha256:4349225fcdf6c2bb34d483e523475de5bb04a5c10ef711263452cb37d7dd4364", size = 5955, upload-time = "2020-09-16T19:21:11.409Z" },
 ]
+
+[[package]]
+name = "pdf2txt"
+version = "0.1.0"
+source = { editable = "pdf2txt" }
+dependencies = [
+    { name = "acorn-cli" },
+    { name = "extractous" },
+    { name = "loguru" },
+    { name = "typer" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "acorn-cli", editable = "acorn-cli" },
+    { name = "extractous", specifier = ">=0.3.0" },
+    { name = "loguru", specifier = ">=0.7.0" },
+    { name = "typer", specifier = ">=0.15.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "pluggy"
