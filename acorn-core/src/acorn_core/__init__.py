@@ -8,6 +8,7 @@ from .kernel import Acorn
 from .models import TaskContext
 from .specs import Genes, hookimpl, hookspec
 from .types import Capabilities, ErrorInfo, Response, Task
+from .config import AcornConfig, get_user_config_path
 
 __all__ = [
     "Acorn",
@@ -19,4 +20,6 @@ __all__ = [
     "Genes",
     "hookimpl",
     "hookspec",
+    "AcornConfig",
+    "get_user_config_path",
 ]

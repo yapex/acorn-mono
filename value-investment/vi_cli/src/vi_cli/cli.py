@@ -10,6 +10,7 @@ from typing import Any
 import typer
 
 from acorn_cli.client import AcornClient  # type: ignore[import]
+from acorn_core import AcornConfig  # type: ignore[import]
 
 # Typer app
 app = typer.Typer(help="Value Investment - 财务数据查询")
@@ -137,29 +138,36 @@ def _print_table(data: dict[str, Any]) -> None:
 def query(
     symbol: str = typer.Argument(..., help="股票代码 (如 600519, AAPL)"),
     items: str = typer.Option("all", "-i", "--items", help="逗号分隔的数据项/计算器列表，或 'all'"),
-    years: int = typer.Option(10, "-y", "--years", help="查询年数"),
-    wacc: float = typer.Option(0.08, "--wacc", help="DCF 计算中的 WACC"),
-    g_terminal: float = typer.Option(0.03, "--g-terminal", help="永续增长率"),
+    years: int | None = typer.Option(None, "-y", "--years", help="查询年数"),
+    wacc: float | None = typer.Option(None, "--wacc", help="DCF 计算中的 WACC"),
+    g_terminal: float | None = typer.Option(None, "--g-terminal", help="永续增长率"),
 ) -> None:
     """查询股票财务数据"""
-    # 构建计算器配置
+    # Load config and use CLI args if provided, otherwise use config defaults
+    config = AcornConfig.load()
+    
+    # Use command-line args if provided, otherwise use config defaults
+    final_years = years if years is not None else config.vi_query.years
+    final_wacc = wacc if wacc is not None else config.vi_query.wacc
+    final_g_terminal = g_terminal if g_terminal is not None else config.vi_query.g_terminal
+    
+    # Build calculator config
     calc_config: dict[str, Any] = {}
     if items != "all" and items:
-        # 解析 items 中的计算器，注入默认配置
         for item in items.split(","):
             item = item.strip()
             if item == "implied_growth":
                 calc_config[item] = {
-                    "wacc": wacc,
-                    "g_terminal": g_terminal,
-                    "n_years": years,
+                    "wacc": final_wacc,
+                    "g_terminal": final_g_terminal,
+                    "n_years": final_years,
                 }
 
     try:
         result = _execute("vi_query", {
             "symbol": symbol,
             "items": items,
-            "years": years,
+            "years": final_years,
             "calculator_config": calc_config,
         })
 

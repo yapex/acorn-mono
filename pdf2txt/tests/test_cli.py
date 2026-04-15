@@ -121,18 +121,20 @@ class TestCli:
     def test_batch_with_skip_existing(self, tmp_path):
         """Test batch command with skip-existing option."""
         # Create PDF and existing output
-        pdf_file = tmp_path / "test.pdf"
+        pdf_file = tmp_path / "600519_贵州茅台_2023_an.pdf"
         pdf_file.write_bytes(b"%PDF-fake")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
-        output_file = output_dir / "test.txt"
+        output_file = output_dir / "贵州茅台" / "600519_贵州茅台_2023_an.txt"
+        output_file.parent.mkdir()
         output_file.write_text("existing")
         
         result = runner.invoke(app, [
             "batch", str(tmp_path),
             "-o", str(output_dir),
-            "--skip-existing"
+            "--skip-existing",
+            "-c"  # organize by company
         ])
-        # Should skip and report summary
+        # Should skip and report summary (exit 0 even with fake PDF because it's skipped)
         assert result.exit_code == 0
         assert "skipped" in result.stdout.lower()

@@ -7,6 +7,7 @@ import typer
 from loguru import logger
 
 from .extractor import PdfExtractor
+from acorn_core import AcornConfig  # type: ignore[import]
 
 # Typer app - will be registered as acorn.cli.commands entry point
 app = typer.Typer(
@@ -103,16 +104,16 @@ def batch_convert(
         None,
         "-o",
         "--output-dir",
-        help="Output directory (default: same as input directory)",
+        help="Output directory (default: same as input directory or config)",
     ),
-    organize_by_company: bool = typer.Option(
-        False,
+    organize_by_company: bool | None = typer.Option(
+        None,
         "--organize-by-company",
         "-c",
         help="Organize output by company name (e.g., output/贵州茅台/xxx.txt)",
     ),
-    skip_existing: bool = typer.Option(
-        False,
+    skip_existing: bool | None = typer.Option(
+        None,
         "--skip-existing",
         "-s",
         help="Skip conversion if output file already exists",
@@ -146,6 +147,14 @@ def batch_convert(
     """
     _setup_logger(verbose)
 
+    # Load config and use CLI args if provided, otherwise use config defaults
+    config = AcornConfig.load()
+    
+    # Use command-line args if provided, otherwise use config defaults
+    final_output_dir = output_dir if output_dir is not None else config.pdf2txt_batch.output_dir
+    final_organize = organize_by_company if organize_by_company is not None else config.pdf2txt_batch.organize_by_company
+    final_skip = skip_existing if skip_existing is not None else config.pdf2txt_batch.skip_existing
+
     if not input_dir.exists():
         typer.echo(f"❌ Error: Directory not found: {input_dir}", err=True)
         raise typer.Exit(1)
@@ -172,15 +181,15 @@ def batch_convert(
     for pdf_file in pdf_files:
         try:
             extractor = PdfExtractor(
-                output_dir=output_dir,
-                organize_by_company=organize_by_company,
-                skip_existing=skip_existing,
+                output_dir=final_output_dir,
+                organize_by_company=final_organize,
+                skip_existing=final_skip,
                 force=force,
             )
             
             # Check if should skip before converting
             was_skipped = False
-            if skip_existing and not force:
+            if final_skip and not force:
                 from .extractor import should_skip_conversion
                 if should_skip_conversion(pdf_file, extractor):
                     output_path = extractor._get_output_path(pdf_file)
