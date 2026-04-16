@@ -40,8 +40,8 @@ class HtmlConverter:
         if self.output_dir:
             output_dir = self.output_dir
         else:
-            # Default to outputs/ directory in current working directory
-            output_dir = Path.cwd() / "outputs"
+            # Default to same directory as input file
+            output_dir = html_file.parent
 
         # Extract company name from filename if organizing by company
         if self.organize_by_company:

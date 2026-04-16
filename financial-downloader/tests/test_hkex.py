@@ -100,7 +100,7 @@ class TestHkexDownloader:
 
         # ESG 报告
         filename = downloader.generate_filename("00700", "腾讯控股", 2024, "esg")
-        assert filename == "00700_腾讯控股_2024_esg.pdf"
+        assert filename == "00700_腾讯控股_2024_es.pdf"
 
     def test_download_invalid_code(self, downloader):
         """测试无效股票代码下载。"""

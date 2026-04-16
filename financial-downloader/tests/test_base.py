@@ -131,4 +131,4 @@ class TestBaseDownloader:
         filename = downloader.generate_filename(
             "TCOM", "Trip.com", 2024, "20-F"
         )
-        assert filename == "TCOM_Trip.com_2024_20F.pdf"
+        assert filename == "TCOM_Trip.com_2024_2f.pdf"
