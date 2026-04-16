@@ -114,7 +114,7 @@ def batch_convert(
         None,
         "-o",
         "--output-dir",
-        help="Output directory (default: same as input directory or config)",
+        help="Output directory (default: ./outputs/)",
     ),
     organize_by_company: bool | None = typer.Option(
         None,
@@ -172,7 +172,8 @@ def batch_convert(
         final_skip = skip_existing if skip_existing is not None else config.html2md_batch.skip_existing
     else:
         # Default values when acorn_core is not available
-        final_output_dir = output_dir
+        # Default to outputs/ for organized output
+        final_output_dir = output_dir or Path("outputs")
         final_organize = organize_by_company or False
         final_skip = skip_existing or False
 
