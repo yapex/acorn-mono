@@ -31,6 +31,7 @@ class TestHtmlConverter:
 
     def test_get_output_path_default(self, tmp_path):
         """Test output path with default settings."""
+        # Default should use same directory as input file
         converter = HtmlConverter()
         
         html_file = tmp_path / "test.html"
