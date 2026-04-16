@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional, Literal
 
 from loguru import logger
-from scrapling import Fetcher
+import httpx
 
 from .base import BaseDownloader, DownloadResult
 
@@ -21,8 +21,12 @@ from .base import BaseDownloader, DownloadResult
 CNINFO_BASE_URL = "https://www.cninfo.com.cn"
 CNINFO_QUERY_URL = f"{CNINFO_BASE_URL}/new/hisAnnouncement/query"
 
-# 创建 scrapling fetcher 实例（参考现有 skill）
-fetcher = Fetcher()
+# 创建 httpx 客户端
+client = httpx.Client(timeout=30.0, follow_redirects=True)
+client.headers.update({
+    'Referer': CNINFO_BASE_URL,
+    'X-Requested-With': 'XMLHttpRequest',
+})
 
 # 公告类型定义
 AnnouncementType = Literal['annual', 'ipo', 'listing', 'bond', 'all']
@@ -174,13 +178,8 @@ class CninfoDownloader(BaseDownloader):
             "isHLtitle": "true",
         }
 
-        # 设置正确的 Referer 头（参考现有 skill）
-        headers = {
-            'Referer': f'https://www.cninfo.com.cn/new/disclosure/stock?stockCode={stock_code}&orgId={org_id}',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-
-        response = fetcher.post(CNINFO_QUERY_URL, data=data, headers=headers, timeout=30)
+        # 使用 httpx 发送请求
+        response = client.post(CNINFO_QUERY_URL, data=data)
         result = response.json()
         return result.get("announcements", [])
 
@@ -295,15 +294,14 @@ class CninfoDownloader(BaseDownloader):
     def download_pdf(self, pdf_url: str, save_path: Path) -> bool:
         """下载 PDF 文件（参考现有 skill 实现）。"""
         try:
-            # 使用 scrapling 下载 PDF，添加 Referer 头
-            headers = {'Referer': 'https://www.cninfo.com.cn/'}
-            response = fetcher.get(pdf_url, headers=headers, timeout=120)
+            # 使用 httpx 下载 PDF
+            response = client.get(pdf_url)
             
             save_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # 使用 response.body 写入文件
+            # 写入文件
             with open(save_path, 'wb') as f:
-                f.write(response.body)
+                f.write(response.content)
 
             logger.debug(f"下载成功：{save_path}")
             return True

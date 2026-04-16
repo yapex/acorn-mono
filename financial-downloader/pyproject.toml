@@ -48,4 +48,5 @@ select = ["E", "F", "W", "I"]
 dev = [
     "pytest>=9.0.2",
     "pytest-cov>=5.0.0",
+    "scrapling>=0.4.6",
 ]

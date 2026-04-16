@@ -228,10 +228,10 @@ class HkexDownloader(BaseDownloader):
         for doc in documents:
             title = doc["title"]
 
-            if any(kw in title for kw in ["ESG", "環境", "社會", "Sustainability"]):
+            if any(kw in title for kw in ["ESG", "環境", "社會", "Sustainability", "可持續"]):
                 continue
 
-            if not any(kw in title for kw in ["年報", "年报", "Annual Report"]):
+            if not any(kw in title for kw in ["年報", "年报", "年度報告", "年度报告", "Annual Report"]):
                 continue
 
             doc_year = None
