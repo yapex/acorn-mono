@@ -39,3 +39,7 @@ Thumbs.db
 pdf2txt/downloads/
 pdf2txt/outputs/
 
+
+# Downloads directory
+downloads/
+outputs/
