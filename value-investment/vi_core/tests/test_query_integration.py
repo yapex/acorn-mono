@@ -1,6 +1,7 @@
 """Test QueryEngine with real data flow"""
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+import pandas as pd
 from vi_core.query import QueryEngine
 from vi_core.precheck import Prechecker
 from vi_core.items import ItemRegistry, ItemSource
@@ -97,6 +98,148 @@ def test_query_engine_precheck_before_fetch():
     def tracked_precheck(symbol, items):
         call_order.append("precheck")
         return original_precheck(symbol, items)
+
+
+def test_ensure_n_years_data_fetches_extra_when_needed():
+    """_ensure_n_years_data 应该在数据不足时获取更多年份
+    
+    场景：请求 10 年数据，但只返回 9 年，应该再获取 1 年
+    """
+    registry = ItemRegistry()
+    registry.register_field(name="revenue", description="营业收入")
+    
+    prechecker = Prechecker(
+        provider_fields={"revenue"},
+        registry=registry
+    )
+    
+    engine = QueryEngine(prechecker=prechecker, registry=registry, years=10)
+    
+    # 模拟只返回 9 年数据（2016-2024）
+    existing_data = {
+        "revenue": {year: 100.0 for year in range(2016, 2025)}  # 9 年
+    }
+    
+    # Mock 第二次获取 1 年数据（2015 年）
+    mock_df = pd.DataFrame({
+        "fiscal_year": [2015],
+        "revenue": [90.0]
+    }).set_index("fiscal_year")
+    
+    with patch.object(engine._pm.hook, 'vi_provide_items', return_value=[mock_df]):
+        result = engine._ensure_n_years_data(
+            symbol="600519",
+            items=["revenue"],
+            market="A",
+            existing_data=existing_data
+        )
+    
+    # 应该包含 10 年数据（2015-2024）
+    assert len(result["revenue"]) == 10
+    assert 2015 in result["revenue"]
+    assert 2024 in result["revenue"]
+
+
+def test_ensure_n_years_data_returns_existing_when_sufficient():
+    """_ensure_n_years_data 在数据足够时应该直接返回
+    
+    场景：请求 10 年数据，已返回 10 年，不应该再获取
+    """
+    registry = ItemRegistry()
+    registry.register_field(name="revenue", description="营业收入")
+    
+    prechecker = Prechecker(
+        provider_fields={"revenue"},
+        registry=registry
+    )
+    
+    engine = QueryEngine(prechecker=prechecker, registry=registry, years=10)
+    
+    # 模拟已返回 10 年数据（2015-2024）
+    existing_data = {
+        "revenue": {year: 100.0 for year in range(2015, 2025)}  # 10 年
+    }
+    
+    # Mock vi_provide_items，如果被调用说明逻辑错误
+    with patch.object(engine._pm.hook, 'vi_provide_items') as mock_provide:
+        result = engine._ensure_n_years_data(
+            symbol="600519",
+            items=["revenue"],
+            market="A",
+            existing_data=existing_data
+        )
+    
+    # 不应该再次调用 vi_provide_items
+    mock_provide.assert_not_called()
+    # 应该返回原始数据
+    assert result == existing_data
+    assert len(result["revenue"]) == 10
+
+
+def test_ensure_n_years_data_handles_empty_extra_result():
+    """_ensure_n_years_data 应该处理额外获取返回空的情况
+    
+    场景：请求补全数据，但 Provider 返回空，应该保留已有数据
+    """
+    registry = ItemRegistry()
+    registry.register_field(name="revenue", description="营业收入")
+    
+    prechecker = Prechecker(
+        provider_fields={"revenue"},
+        registry=registry
+    )
+    
+    engine = QueryEngine(prechecker=prechecker, registry=registry, years=10)
+    
+    # 模拟只返回 9 年数据
+    existing_data = {
+        "revenue": {year: 100.0 for year in range(2016, 2025)}  # 9 年
+    }
+    
+    # Mock 第二次获取返回空
+    with patch.object(engine._pm.hook, 'vi_provide_items', return_value=[None]):
+        result = engine._ensure_n_years_data(
+            symbol="600519",
+            items=["revenue"],
+            market="A",
+            existing_data=existing_data
+        )
+    
+    # 应该保留已有的 9 年数据
+    assert len(result["revenue"]) == 9
+    assert 2016 in result["revenue"]
+    assert 2024 in result["revenue"]
+
+
+def test_fetch_data_calls_ensure_n_years():
+    """_fetch_data 应该调用 _ensure_n_years_data 确保返回 N 份财报"""
+    registry = ItemRegistry()
+    registry.register_field(name="revenue", description="营业收入")
+    
+    prechecker = Prechecker(
+        provider_fields={"revenue"},
+        registry=registry
+    )
+    
+    engine = QueryEngine(prechecker=prechecker, registry=registry, years=10)
+    
+    # Mock DataFrame
+    mock_df = pd.DataFrame({
+        "fiscal_year": list(range(2016, 2025)),  # 9 年
+        "revenue": [100.0] * 9
+    }).set_index("fiscal_year")
+    
+    # Mock _merge_dfs 和 _df_to_result_dict
+    mock_data = {"revenue": {year: 100.0 for year in range(2016, 2025)}}
+    
+    with patch.object(engine._pm.hook, 'vi_provide_items', return_value=[mock_df]):
+        with patch.object(engine, '_merge_dfs', return_value=mock_df):
+            with patch.object(engine, '_df_to_result_dict', return_value=mock_data):
+                with patch.object(engine, '_ensure_n_years_data', wraps=engine._ensure_n_years_data) as mock_ensure:
+                    result = engine._fetch_data("600519", ["revenue"])
+                    
+                    # _ensure_n_years_data 应该被调用
+                    mock_ensure.assert_called_once()
 
     original_fetch = engine._fetch_data
     def tracked_fetch(symbol, items):

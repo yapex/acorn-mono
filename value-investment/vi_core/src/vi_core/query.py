@@ -165,7 +165,108 @@ class QueryEngine:
         merged_df = self._merge_dfs(dfs)
 
         # 转换为 {field: {year: value}} 格式
-        return self._df_to_result_dict(merged_df)
+        data = self._df_to_result_dict(merged_df)
+
+        # 动态调整：确保返回 N 份财报（不是 N 年）
+        # 如果返回的年份数 < years，继续往前获取
+        data = self._ensure_n_years_data(symbol, items, market, data)
+
+        return data
+
+    def _ensure_n_years_data(
+        self,
+        symbol: str,
+        items: list[str],
+        market: str,
+        existing_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """确保返回 N 份财报数据
+        
+        由于财报发布滞后，可能需要获取更多年份才能凑齐 N 份财报。
+        
+        Args:
+            symbol: 股票代码
+            items: 数据项列表
+            market: 市场代码
+            existing_data: 已有数据 {field: {year: value}}
+            
+        Returns:
+            包含 N 份财报的数据
+        """
+        if not existing_data:
+            return existing_data
+
+        # 获取已有数据的年份范围
+        sample_field = next(iter(existing_data.keys()))
+        sample_data = existing_data[sample_field]
+        years_fetched = len([k for k in sample_data.keys() if isinstance(k, int)])
+
+        # 如果已凑齐 N 份财报，直接返回
+        if years_fetched >= self.years:
+            return existing_data
+
+        # 需要获取更多年份
+        years_needed = self.years - years_fetched
+        min_year = min(k for k in sample_data.keys() if isinstance(k, int))
+
+        # 往前多获取 years_needed 年
+        extra_end_year = min_year - 1
+        results = self._pm.hook.vi_provide_items(
+            items=items,
+            symbol=symbol,
+            market=market,
+            end_year=extra_end_year,
+            years=years_needed,
+        )
+
+        # 合并新数据
+        extra_dfs = [r for r in results if r is not None and not r.empty]
+        if extra_dfs:
+            extra_merged = self._merge_dfs(extra_dfs)
+            # 将 existing_data 转换为 DataFrame 并合并
+            existing_df = self._merge_dfs([self._dict_to_result_df(existing_data)])
+            if existing_df is not None and extra_merged is not None:
+                combined_df = self._merge_dfs([existing_df, extra_merged])
+                return self._df_to_result_dict(combined_df)
+            # 如果转换失败，手动合并
+            for field in existing_data:
+                if field in extra_merged.columns:
+                    for year in extra_merged.index:
+                        if year not in existing_data[field]:
+                            existing_data[field][year] = extra_merged.loc(year, field)
+
+        return existing_data
+
+    def _dict_to_result_df(self, data: dict[str, Any]) -> pd.DataFrame:
+        """将 {field: {year: value}} 转换为 DataFrame
+        
+        Args:
+            data: {field: {year: value}} 格式的字典
+            
+        Returns:
+            DataFrame with fiscal_year as index
+        """
+        if not data:
+            return pd.DataFrame()
+        
+        # 获取所有年份
+        all_years = set()
+        for field_data in data.values():
+            if isinstance(field_data, dict):
+                all_years.update(k for k in field_data.keys() if isinstance(k, int))
+        
+        if not all_years:
+            return pd.DataFrame()
+        
+        # 构建 DataFrame
+        result_data = {}
+        for field, field_data in data.items():
+            if isinstance(field_data, dict):
+                result_data[field] = [field_data.get(y) for y in sorted(all_years, reverse=True)]
+        
+        df = pd.DataFrame(result_data, index=sorted(all_years, reverse=True))
+        df.index.name = "fiscal_year"
+        return df
 
     def _run_calculators(
         self,
