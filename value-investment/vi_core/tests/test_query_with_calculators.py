@@ -52,7 +52,7 @@ class TestQueryWithCalculators:
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "operating_cash_flow,market_cap",
+                "items": "operating_cash_flow,market_cap",
                 "years": 2,
             }
         )
@@ -68,8 +68,7 @@ class TestQueryWithCalculators:
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "operating_cash_flow,market_cap",
-                "calculators": "implied_growth",
+                "items": "operating_cash_flow,market_cap,implied_growth",
                 "years": 2,
             }
         )
@@ -89,8 +88,7 @@ class TestQueryWithCalculators:
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "operating_cash_flow,market_cap",
-                "calculators": "implied_growth",
+                "items": "operating_cash_flow,market_cap,implied_growth",
                 "calculator_config": {
                     "implied_growth": {
                         "wacc": 0.08,
@@ -112,8 +110,7 @@ class TestQueryWithCalculators:
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "operating_cash_flow,market_cap",
-                "calculators": "implied_growth,unknown_calc",
+                "items": "operating_cash_flow,market_cap,implied_growth",
                 "years": 2,
             }
         )
@@ -130,8 +127,7 @@ class TestQueryWithCalculators:
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "operating_cash_flow,market_cap",
-                "calculators": "unknown_calculator",
+                "items": "operating_cash_flow,market_cap,unknown_calculator",
                 "years": 2,
             }
         )
@@ -152,8 +148,7 @@ class TestQueryWithCalculators:
             command="query",
             args={
                 "symbol": "600519",
-                "fields": "total_assets",
-                "calculators": "implied_growth",
+                "items": "total_assets,implied_growth",
                 "years": 2,
             }
         )
