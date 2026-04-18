@@ -260,9 +260,9 @@ class QueryEngine:
         
         # 构建 DataFrame
         result_data = {}
-        for field, field_data in data.items():
+        for key, field_data in data.items():
             if isinstance(field_data, dict):
-                result_data[field] = [field_data.get(y) for y in sorted(all_years, reverse=True)]
+                result_data[key] = [field_data.get(y) for y in sorted(all_years, reverse=True)]
         
         df = pd.DataFrame(result_data, index=sorted(all_years, reverse=True))
         df.index.name = "fiscal_year"

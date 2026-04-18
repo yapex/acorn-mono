@@ -17,8 +17,6 @@ Actual behavior (BUG):
 from __future__ import annotations
 
 import pandas as pd
-import pytest
-from unittest.mock import patch, MagicMock
 
 from vi_core.base_provider import BaseDataProvider
 from vi_fields_extension import StandardFields

@@ -1,7 +1,6 @@
 """Test QueryEngine with real data flow"""
 import pytest
-from unittest.mock import patch, MagicMock
-import pandas as pd
+from unittest.mock import patch
 from vi_core.query import QueryEngine
 from vi_core.precheck import Prechecker
 from vi_core.items import ItemRegistry, ItemSource
