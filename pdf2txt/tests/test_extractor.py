@@ -6,7 +6,6 @@ from pdf2txt.extractor import (
     parse_company_name,
     parse_report_type,
     parse_year,
-    REPORT_TYPE_SUFFIXES,
 )
 
 
@@ -108,38 +107,38 @@ class TestPdfExtractor:
         """Test output path calculation."""
         pdf_file = tmp_path / "annual_report_2024.pdf"
         pdf_file.write_bytes(b"%PDF-fake")
-        
+
         extractor = PdfExtractor(output_dir=tmp_path)
         expected_txt = tmp_path / "annual_report_2024.txt"
-        
+
         assert extractor._get_output_path(pdf_file) == expected_txt
 
     def test_get_output_path_default_to_input_dir(self, tmp_path):
         """Test output path defaults to input directory when no output_dir set."""
         pdf_file = tmp_path / "report.pdf"
         pdf_file.write_bytes(b"%PDF-fake")
-        
+
         extractor = PdfExtractor()
         expected_txt = tmp_path / "report.txt"
-        
+
         assert extractor._get_output_path(pdf_file) == expected_txt
 
     def test_get_output_path_organize_by_company(self, tmp_path):
         """Test output path with organize_by_company enabled."""
         pdf_file = tmp_path / "600519_贵州茅台_2023_an.pdf"
         pdf_file.write_bytes(b"%PDF-fake")
-        
+
         extractor = PdfExtractor(output_dir=tmp_path, organize_by_company=True)
         expected_txt = tmp_path / "贵州茅台" / "600519_贵州茅台_2023_an.txt"
-        
+
         assert extractor._get_output_path(pdf_file) == expected_txt
 
     def test_get_output_path_organize_by_company_hk_stock(self, tmp_path):
         """Test output path with HK stock format."""
         pdf_file = tmp_path / "09961_携程集团_2023_an.pdf"
         pdf_file.write_bytes(b"%PDF-fake")
-        
+
         extractor = PdfExtractor(output_dir=tmp_path, organize_by_company=True)
         expected_txt = tmp_path / "携程集团" / "09961_携程集团_2023_an.txt"
-        
+
         assert extractor._get_output_path(pdf_file) == expected_txt

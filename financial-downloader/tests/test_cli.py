@@ -1,9 +1,10 @@
 """Tests for CLI commands."""
 
+
 import pytest
 import yaml
-from pathlib import Path
 from typer.testing import CliRunner
+
 from financial_downloader.cli import app
 
 runner = CliRunner()

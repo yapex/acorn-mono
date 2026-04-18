@@ -149,7 +149,7 @@ def batch_convert(
 
     # Load config and use CLI args if provided, otherwise use config defaults
     config = AcornConfig.load()
-    
+
     # Use command-line args if provided, otherwise use config defaults
     final_output_dir = output_dir if output_dir is not None else config.pdf2txt_batch.output_dir
     final_organize = organize_by_company if organize_by_company is not None else config.pdf2txt_batch.organize_by_company
@@ -186,7 +186,7 @@ def batch_convert(
                 skip_existing=final_skip,
                 force=force,
             )
-            
+
             # Check if should skip before converting
             was_skipped = False
             if final_skip and not force:
@@ -194,7 +194,7 @@ def batch_convert(
                 if should_skip_conversion(pdf_file, extractor):
                     output_path = extractor._get_output_path(pdf_file)
                     was_skipped = True
-            
+
             if was_skipped:
                 try:
                     rel_path = output_path.relative_to(output_dir or Path.cwd())

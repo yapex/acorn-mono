@@ -3,9 +3,11 @@
 所有测试使用内存文件系统（tmp_path），自动清理。
 """
 
-import pytest
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import pytest
+
 from financial_downloader.downloaders import CninfoDownloader, DownloadResult
 
 
@@ -70,10 +72,10 @@ class TestCninfoDownloader:
     def test_extract_year(self, downloader):
         """测试从标题提取年份。"""
         current_year = datetime.now().year
-        
+
         title1 = "2024" + chr(24180) + "年度报告"
         title2 = "2023" + chr(24180) + "年度报告全文"
-        
+
         assert downloader.extract_year(title1, current_year) == 2024
         assert downloader.extract_year(title2, current_year) == 2023
         assert downloader.extract_year("无年份", current_year) is None
@@ -109,7 +111,7 @@ class TestCninfoDownloader:
         # 创建一个假文件
         existing_file = tmp_path / "600519_贵州茅台_2024_an.pdf"
         existing_file.write_bytes(b"fake content")
-        
+
         # 下载应该跳过
         result = downloader.download(
             code="600519",
@@ -118,7 +120,7 @@ class TestCninfoDownloader:
             skip_existing=True,
             dry_run=True,
         )
-        
+
         # 干跑模式，验证逻辑
         assert isinstance(result, DownloadResult)
 

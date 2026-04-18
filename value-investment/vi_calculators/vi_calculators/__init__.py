@@ -464,11 +464,6 @@ class CalculatorEngine:
                     format_types[calc["name"]] = fmt
 
         return {"format_types": format_types}
-        """查找计算器"""
-        for calc in self._calculators:
-            if calc["name"] == name:
-                return calc
-        return None
 
     @vi_hookimpl
     def vi_unregister_calculator(

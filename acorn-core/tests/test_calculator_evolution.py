@@ -44,7 +44,7 @@ class TestCalculatorExtensionEvent:
         ViCorePlugin._pm = mock_pm
 
         # 调用 _run_calculators
-        result = plugin._run_calculators(
+        plugin._run_calculators(
             df=df,
             calculator_names={"debt_to_ebitda"},
             calculator_config={}

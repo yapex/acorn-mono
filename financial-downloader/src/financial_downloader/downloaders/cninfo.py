@@ -8,13 +8,12 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal, Optional
 
-from loguru import logger
 import httpx
+from loguru import logger
 
 from .base import BaseDownloader, DownloadResult
-
 
 # ── 常量 ──────────────────────────────────────────────
 
@@ -132,7 +131,7 @@ class CninfoDownloader(BaseDownloader):
 
         url = f"{CNINFO_BASE_URL}/new/disclosure/stock?stockCode={stock_code}"
         try:
-            response = fetcher.get(url, timeout=10)
+            response = client.get(url, timeout=10)
             match = re.search(r'orgId[=:]\s*["\']?([a-zA-Z0-9]+)["\']?', response.text)
             if match:
                 org_id = match.group(1)
@@ -204,7 +203,7 @@ class CninfoDownloader(BaseDownloader):
     def extract_year(self, title: str, current_year: int) -> Optional[int]:
         """从标题中提取年份（使用正则表达式）。"""
         clean_title = title.replace("<em>", "").replace("</em>", "")
-        
+
         # 使用正则表达式匹配年份（如 2024 年）
         import re
         match = re.search(r'(20\d{2})\s*年', clean_title)
@@ -212,7 +211,7 @@ class CninfoDownloader(BaseDownloader):
             year = int(match.group(1))
             if 2015 <= year <= current_year:
                 return year
-        
+
         return None
 
     def fetch_documents(
@@ -296,9 +295,9 @@ class CninfoDownloader(BaseDownloader):
         try:
             # 使用 httpx 下载 PDF
             response = client.get(pdf_url)
-            
+
             save_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # 写入文件
             with open(save_path, 'wb') as f:
                 f.write(response.content)

@@ -94,7 +94,6 @@ def convert(
             plain_text=plain_text,
         )
         output_path = converter.convert(html_file)
-        ext = "txt" if plain_text else "md"
         typer.echo(f"✅ Converted: {html_file} → {output_path}")
     except FileNotFoundError as e:
         typer.echo(f"❌ Error: {e}", err=True)
@@ -217,7 +216,6 @@ def batch_convert(
                 if output_path.exists():
                     was_skipped = True
 
-            ext = "txt" if plain_text else "md"
             if was_skipped:
                 try:
                     rel_path = output_path.relative_to(output_dir or Path.cwd())

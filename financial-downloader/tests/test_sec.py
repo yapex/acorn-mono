@@ -3,10 +3,11 @@
 所有测试使用内存文件系统（tmp_path），自动清理。
 """
 
-import pytest
 from pathlib import Path
-from datetime import datetime
-from financial_downloader.downloaders import SecDownloader, DownloadResult
+
+import pytest
+
+from financial_downloader.downloaders import DownloadResult, SecDownloader
 
 
 class TestSecDownloader:
@@ -66,7 +67,7 @@ class TestSecDownloader:
             years=1,
             dry_run=True,
         )
-        
+
         assert isinstance(result, DownloadResult)
         assert result.success is True
 
@@ -78,7 +79,7 @@ class TestSecDownloader:
             years=1,
             dry_run=True,
         )
-        
+
         assert isinstance(result, DownloadResult)
         assert result.success is True
 
@@ -90,7 +91,7 @@ class TestSecDownloader:
             doc_type="20-F",
             dry_run=True,
         )
-        
+
         assert result.success is False
         assert len(result.errors) > 0
 
@@ -102,7 +103,7 @@ class TestSecDownloader:
             doc_type="invalid_type",
             dry_run=True,
         )
-        
+
         assert result.success is False
         assert len(result.errors) > 0
 
@@ -135,7 +136,7 @@ class TestSecDownloaderWithCIK:
             doc_type="20-F",
             dry_run=True,
         )
-        
+
         assert isinstance(result, DownloadResult)
         assert result.success is True
 

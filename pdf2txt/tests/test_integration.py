@@ -4,7 +4,7 @@ These tests use actual PDF files from the downloads directory.
 """
 import pytest
 from pathlib import Path
-from pdf2txt.extractor import PdfExtractor, convert_pdf_to_txt, parse_company_name
+from pdf2txt.extractor import PdfExtractor, convert_pdf_to_txt
 
 # Path to test fixtures (downloads directory)
 DOWNLOADS_DIR = Path(__file__).parent.parent / "downloads"
@@ -39,18 +39,18 @@ class TestIntegrationWithRealPDF:
         """Test extraction with Moutai annual report."""
         if sample_moutai_pdf is None:
             pytest.skip("Moutai PDF not available")
-        
+
         extractor = PdfExtractor(output_dir=tmp_path)
         output_path = extractor.extract(sample_moutai_pdf)
-        
+
         # Verify output exists
         assert output_path.exists()
         assert output_path.suffix == ".txt"
-        
+
         # Verify content is not empty
         content = output_path.read_text(encoding="utf-8")
         assert len(content) > 10000  # Annual reports should be substantial
-        
+
         # Verify expected content
         assert "贵州茅台" in content
         assert "2023" in content
@@ -64,14 +64,14 @@ class TestIntegrationWithRealPDF:
         """Test extraction with Ctrip annual report."""
         if sample_ctrip_pdf is None:
             pytest.skip("Ctrip PDF not available")
-        
+
         extractor = PdfExtractor(output_dir=tmp_path)
         output_path = extractor.extract(sample_ctrip_pdf)
-        
+
         # Verify output exists
         assert output_path.exists()
         assert output_path.suffix == ".txt"
-        
+
         # Verify content
         content = output_path.read_text(encoding="utf-8")
         assert len(content) > 10000
@@ -86,20 +86,20 @@ class TestIntegrationWithRealPDF:
         """Test organizing output by company name."""
         if sample_moutai_pdf is None or sample_ctrip_pdf is None:
             pytest.skip("PDF files not available")
-        
+
         # Extract both files with organize_by_company=True
         extractor = PdfExtractor(output_dir=tmp_path, organize_by_company=True)
-        
+
         moutai_output = extractor.extract(sample_moutai_pdf)
         ctrip_output = extractor.extract(sample_ctrip_pdf)
-        
+
         # Verify directory structure
         assert moutai_output.parent.name == "贵州茅台"
         assert ctrip_output.parent.name == "携程集团"
-        
+
         # Verify files are in different directories
         assert moutai_output.parent != ctrip_output.parent
-        
+
         # Verify content
         assert "贵州茅台" in moutai_output.read_text(encoding="utf-8")
         # Ctrip PDF uses traditional Chinese: 攜程集團
@@ -114,9 +114,9 @@ class TestIntegrationWithRealPDF:
         """Test convenience function with real PDF."""
         if sample_moutai_pdf is None:
             pytest.skip("Moutai PDF not available")
-        
+
         output_path = convert_pdf_to_txt(sample_moutai_pdf, output_dir=tmp_path)
-        
+
         assert output_path.exists()
         content = output_path.read_text(encoding="utf-8")
         assert "贵州茅台" in content

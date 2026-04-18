@@ -23,11 +23,11 @@ Examples:
     cninfo 300750 --type all
 """
 
-from scrapling import Fetcher  # type: ignore[import-untyped]
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Literal
-import os
+from typing import Literal, Optional
+
+from scrapling import Fetcher  # type: ignore[import-untyped]
 
 try:
     from ..config import get_default_download_dir
@@ -81,7 +81,7 @@ ANNOUNCEMENT_CONFIGS = {
 def get_org_id(stock_code: str) -> str:
     """根据股票代码生成 orgId"""
     code = stock_code.strip()
-    
+
     if code.startswith(('600', '601', '603', '605')):
         return f'gssh0{code}'
     elif code.startswith(('000', '001', '002', '003')):
@@ -109,11 +109,11 @@ def get_column(stock_code: str) -> str:
     return 'sse' if plate == 'sh' else 'szse'
 
 
-def fetch_announcements(stock_code: str, org_id: str, page_num: int = 1, 
+def fetch_announcements(stock_code: str, org_id: str, page_num: int = 1,
                        page_size: int = 30, search_key: str = '') -> dict:
     """获取公告列表"""
     url = 'https://www.cninfo.com.cn/new/hisAnnouncement/query'
-    
+
     data = {
         'stock': f'{stock_code},{org_id}',
         'tabName': 'fulltext',
@@ -129,25 +129,25 @@ def fetch_announcements(stock_code: str, org_id: str, page_num: int = 1,
         'sortType': 'desc',
         'isHLtitle': 'true'
     }
-    
+
     headers = {
         'Referer': f'https://www.cninfo.com.cn/new/disclosure/stock?stockCode={stock_code}&orgId={org_id}',
         'X-Requested-With': 'XMLHttpRequest'
     }
-    
+
     # 使用 scrapling 发送请求
     response = fetcher.post(url, data=data, headers=headers, timeout=30)
-    
+
     return response.json()
 
 
 def get_chi_next_org_id(stock_code: str) -> str:
     """获取创业板的 orgId"""
     import re
-    
+
     # 尝试 1: 使用 scrapling 发送 HTTP 请求
     url = f'https://www.cninfo.com.cn/new/disclosure/stock?stockCode={stock_code}'
-    
+
     try:
         response = fetcher.get(url, timeout=10)
         html = response.text
@@ -158,16 +158,16 @@ def get_chi_next_org_id(stock_code: str) -> str:
                 return org_id
     except Exception:
         pass
-    
+
     known_chi_next = {
         '300750': 'GD165627',  # 宁德时代
         '300059': 'GD165626',  # 东方财富
         '300124': 'GD165630',  # 汇川技术
     }
-    
+
     if stock_code in known_chi_next:
         return known_chi_next[stock_code]
-    
+
     raise ValueError(
         f"无法获取创业板 orgId，请手动提供。\n"
         f"访问 https://www.cninfo.com.cn/new/disclosure/stock?stockCode={stock_code}\n"
@@ -187,30 +187,30 @@ def filter_announcement(title: str, config: dict) -> bool:
         是否应该包含该公告
     """
     clean_title = title.replace('<em>', '').replace('</em>', '')
-    
+
     # 检查排除关键字
     if any(x in clean_title for x in config['exclude']):
         return False
-    
+
     # 检查必须包含关键字
     if not any(x in clean_title for x in config['include']):
         return False
-    
+
     return True
 
 
 def extract_year(title: str, current_year: int) -> Optional[int]:
     """从标题中提取年份"""
     clean_title = title.replace('<em>', '').replace('</em>', '')
-    
+
     for y in range(2015, current_year + 1):
         if f'{y}年' in clean_title:
             return y
-    
+
     return None
 
 
-def fetch_documents(stock_code: str, doc_type: AnnouncementType, 
+def fetch_documents(stock_code: str, doc_type: AnnouncementType,
                    years: int = 10, target_year: Optional[int] = None) -> list[dict]:
     """
     获取指定类型的公告文档
@@ -226,41 +226,41 @@ def fetch_documents(stock_code: str, doc_type: AnnouncementType,
     """
     org_id = get_org_id(stock_code)
     current_year = datetime.now().year
-    
+
     # 如果指定了具体年份，优先使用 target_year
     if target_year is not None:
         start_year = target_year
     else:
         start_year = current_year - years
-    
+
     documents = []
-    
+
     # 确定要获取的类型
     if doc_type == 'all':
         types_to_fetch = ['annual', 'ipo', 'listing', 'bond']
     else:
         types_to_fetch = [doc_type]
-    
+
     for dtype in types_to_fetch:
         config = ANNOUNCEMENT_CONFIGS[dtype]
         page = 1
         max_pages = 10
-        
+
         while page <= max_pages:
-            result = fetch_announcements(stock_code, org_id, page_num=page, 
+            result = fetch_announcements(stock_code, org_id, page_num=page,
                                         page_size=30, search_key=config['search_key'])
-            
+
             announcements = result.get('announcements', [])
             if not announcements:
                 break
-            
+
             for a in announcements:
                 title = a['announcementTitle']
-                
+
                 # 筛选公告
                 if not filter_announcement(title, config):
                     continue
-                
+
                 # 对于年报，检查年份
                 report_year = None
                 if config['years']:
@@ -273,11 +273,11 @@ def fetch_documents(stock_code: str, doc_type: AnnouncementType,
                             continue
                     elif report_year < start_year:
                         continue
-                
+
                 # 构建文档信息
                 adjunct_url = a['adjunctUrl']
                 pdf_url = f"https://static.cninfo.com.cn/{adjunct_url}"
-                
+
                 doc = {
                     'type': dtype,
                     'type_name': config['name'],
@@ -285,17 +285,17 @@ def fetch_documents(stock_code: str, doc_type: AnnouncementType,
                     'date': datetime.fromtimestamp(a['announcementTime'] / 1000).strftime('%Y-%m-%d'),
                     'pdf_url': pdf_url,
                 }
-                
+
                 if report_year:
                     doc['year'] = report_year
-                
+
                 documents.append(doc)
-            
+
             if not result.get('hasMore', False):
                 break
-            
+
             page += 1
-    
+
     # 排序：年报按年份，其他按日期
     if doc_type in ['annual', 'all']:
         # 年报按年份去重并排序
@@ -311,11 +311,11 @@ def fetch_documents(stock_code: str, doc_type: AnnouncementType,
     else:
         # 其他类型按日期排序
         documents.sort(key=lambda x: x['date'], reverse=True)
-    
+
     return documents
 
 
-def generate_filename(stock_code: str, company_name: str, year: Optional[int], 
+def generate_filename(stock_code: str, company_name: str, year: Optional[int],
                      doc_type: str) -> str:
     """
     生成文件名（参考港股财报命名格式）
@@ -325,11 +325,11 @@ def generate_filename(stock_code: str, company_name: str, year: Optional[int],
     """
     type_code = ANNOUNCEMENT_CONFIGS.get(doc_type, {}).get('code', doc_type)
     year_str = f"_{year}" if year else ""
-    
+
     # 清理公司名中的特殊字符
     safe_name = company_name.replace('/', '_').replace('\\', '_')
     safe_name = safe_name.replace(' ', '').replace('"', '').replace("'", '')
-    
+
     return f"{stock_code}_{safe_name}{year_str}_{type_code}.pdf"
 
 
@@ -339,15 +339,15 @@ def download_pdf(url: str, save_path: Path) -> bool:
         headers = {
             'Referer': 'https://www.cninfo.com.cn/',
         }
-        
+
         # 使用 scrapling 下载 PDF
         response = fetcher.get(url, headers=headers, timeout=120)
-        
+
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(save_path, 'wb') as f:
             f.write(response.body)
-        
+
         return True
     except Exception as e:
         print(f"下载失败：{e}")
@@ -379,18 +379,18 @@ def download_documents(stock_code: str, company_name: str,
     # 使用默认下载目录
     if output_dir is None:
         output_dir = get_default_download_dir()
-    
+
     type_name = ANNOUNCEMENT_CONFIGS.get(doc_type, {}).get('name', '文档')
     print(f"正在获取 {stock_code} 的{type_name}...")
-    
+
     documents = fetch_documents(stock_code, doc_type, years, target_year)
-    
+
     if not documents:
         print("未找到符合条件的文档")
         return []
-    
+
     print(f"找到 {len(documents)} 份文档:\n")
-    
+
     if dry_run or output_dir is None:
         # 仅显示链接
         for doc in documents:
@@ -400,18 +400,18 @@ def download_documents(stock_code: str, company_name: str,
             print(f"  {doc['pdf_url']}")
             print()
         return documents
-    
+
     # 下载文件
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     print(f"开始下载到：{output_path.absolute()}\n")
-    
+
     for doc in documents:
         year = doc.get('year')
         filename = generate_filename(stock_code, company_name, year, doc_type)
         save_path = output_path / filename
-        
+
         # 检查文件是否已存在
         if skip_existing and save_path.exists():
             size_mb = save_path.stat().st_size / 1024 / 1024
@@ -419,9 +419,9 @@ def download_documents(stock_code: str, company_name: str,
             doc['downloaded'] = True
             doc['save_path'] = str(save_path)
             continue
-        
+
         print(f"下载 {doc['type_name']} ({year}年)...", end=" ")
-        
+
         if download_pdf(doc['pdf_url'], save_path):
             size_mb = save_path.stat().st_size / 1024 / 1024
             print(f"OK ({size_mb:.1f}MB)")
@@ -431,10 +431,10 @@ def download_documents(stock_code: str, company_name: str,
             print("FAILED")
             doc['downloaded'] = False
             doc['save_path'] = None
-    
+
     downloaded = sum(1 for d in documents if d.get('downloaded'))
     print(f"\n完成！共下载 {downloaded}/{len(documents)} 份文件")
-    
+
     return documents
 
 

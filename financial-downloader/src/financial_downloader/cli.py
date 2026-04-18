@@ -1,14 +1,13 @@
 """Command-line interface for financial-downloader."""
 
-import typer
 from pathlib import Path
 from typing import Optional
 
+import typer
 from rich.console import Console
 from rich.table import Table
 
 from .downloaders import CninfoDownloader, HkexDownloader, SecDownloader
-from .downloaders.base import DownloadResult
 
 app = typer.Typer(
     name="fin-down",
@@ -63,12 +62,12 @@ def download(
         )
 
         if result.success:
-            console.print(f"\n[green]✅ 下载完成！[/green]")
+            console.print("\n[green]✅ 下载完成！[/green]")
             console.print(f"  成功：{len(result.files)} 个文件")
             if result.total_size > 0:
                 console.print(f"  总大小：{result.total_size_mb:.2f} MB")
         else:
-            console.print(f"\n[red]❌ 下载失败！[/red]")
+            console.print("\n[red]❌ 下载失败！[/red]")
             for error in result.errors:
                 console.print(f"  • {error}")
             raise typer.Exit(code=1)
@@ -164,7 +163,7 @@ def batch(
                 fail_count += 1
                 console.print(f"[red]✗ {task.get('code')} 失败：{e}[/red]")
 
-        console.print(f"\n[bold]下载摘要:[/bold]")
+        console.print("\n[bold]下载摘要:[/bold]")
         console.print(f"  成功：[green]{success_count}[/green]")
         console.print(f"  失败：[red]{fail_count}[/red]")
 

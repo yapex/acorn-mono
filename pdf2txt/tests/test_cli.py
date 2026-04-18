@@ -1,5 +1,4 @@
 """Tests for CLI commands."""
-import pytest
 from typer.testing import CliRunner
 from pdf2txt.cli import app
 
@@ -39,7 +38,7 @@ class TestCli:
         fake_pdf.write_bytes(b"%PDF-fake")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
-        
+
         result = runner.invoke(app, ["convert", str(fake_pdf), "-o", str(output_dir)])
         # Will fail on fake PDF but tests the option parsing
         assert "pdf" in result.stdout.lower() or result.exit_code != 0
@@ -50,7 +49,7 @@ class TestCli:
         fake_pdf.write_bytes(b"%PDF-fake")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
-        
+
         result = runner.invoke(app, [
             "convert", str(fake_pdf),
             "-o", str(output_dir),
@@ -70,7 +69,7 @@ class TestCli:
         fake_pdf.write_bytes(b"%PDF-fake")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
-        
+
         result = runner.invoke(app, [
             "batch", str(tmp_path),
             "-o", str(output_dir),
@@ -85,11 +84,11 @@ class TestCli:
         fake_pdf.write_bytes(b"%PDF-fake")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
-        
+
         # Create existing output
         output_file = output_dir / "test.txt"
         output_file.write_text("existing")
-        
+
         result = runner.invoke(app, [
             "convert", str(fake_pdf),
             "-o", str(output_dir),
@@ -105,11 +104,11 @@ class TestCli:
         fake_pdf.write_bytes(b"%PDF-fake")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
-        
+
         # Create existing output
         output_file = output_dir / "test.txt"
         output_file.write_text("existing")
-        
+
         result = runner.invoke(app, [
             "convert", str(fake_pdf),
             "-o", str(output_dir),
@@ -128,7 +127,7 @@ class TestCli:
         output_file = output_dir / "贵州茅台" / "600519_贵州茅台_2023_an.txt"
         output_file.parent.mkdir()
         output_file.write_text("existing")
-        
+
         result = runner.invoke(app, [
             "batch", str(tmp_path),
             "-o", str(output_dir),

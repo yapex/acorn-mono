@@ -25,12 +25,12 @@ def get_user_config_path() -> Path:
     # Check XDG_CONFIG_HOME environment variable
     import os
     xdg_config = os.environ.get("XDG_CONFIG_HOME")
-    
+
     if xdg_config:
         base = Path(xdg_config)
     else:
         base = Path.home() / ".config"
-    
+
     return base / "acorn" / "config.toml"
 
 
@@ -61,33 +61,33 @@ class AcornConfig:
     """
     vi_query: ViQueryConfig = field(default_factory=ViQueryConfig)
     pdf2txt_batch: Pdf2txtBatchConfig = field(default_factory=Pdf2txtBatchConfig)
-    
+
     # Convenience properties for vi_query
     @property
     def vi_query_years(self) -> int:
         return self.vi_query.years
-    
+
     @property
     def vi_query_wacc(self) -> float:
         return self.vi_query.wacc
-    
+
     @property
     def vi_query_g_terminal(self) -> float:
         return self.vi_query.g_terminal
-    
+
     # Convenience properties for pdf2txt_batch
     @property
     def pdf2txt_batch_output_dir(self) -> Path | None:
         return self.pdf2txt_batch.output_dir
-    
+
     @property
     def pdf2txt_batch_organize_by_company(self) -> bool:
         return self.pdf2txt_batch.organize_by_company
-    
+
     @property
     def pdf2txt_batch_skip_existing(self) -> bool:
         return self.pdf2txt_batch.skip_existing
-    
+
     @classmethod
     def load(cls) -> "AcornConfig":
         """
@@ -97,12 +97,12 @@ class AcornConfig:
             AcornConfig instance with loaded values
         """
         config_file = get_user_config_path()
-        
+
         if config_file.exists():
             return cls.load_from_file(config_file)
-        
+
         return cls()
-    
+
     @classmethod
     def load_from_file(cls, path: Path) -> "AcornConfig":
         """
@@ -116,7 +116,7 @@ class AcornConfig:
         """
         data = ConfigLoader._load_file(path)
         return cls.load_from_dict(data)
-    
+
     @classmethod
     def load_from_dict(cls, data: dict[str, Any]) -> "AcornConfig":
         """
@@ -129,7 +129,7 @@ class AcornConfig:
             AcornConfig instance
         """
         config = cls()
-        
+
         # Load vi.query config
         if "vi" in data and "query" in data["vi"]:
             vi_data = data["vi"]["query"]
@@ -139,7 +139,7 @@ class AcornConfig:
                 config.vi_query.wacc = float(vi_data["wacc"])
             if "g_terminal" in vi_data:
                 config.vi_query.g_terminal = float(vi_data["g_terminal"])
-        
+
         # Load pdf2txt.batch config
         if "pdf2txt" in data and "batch" in data["pdf2txt"]:
             batch_data = data["pdf2txt"]["batch"]
@@ -149,13 +149,13 @@ class AcornConfig:
                 config.pdf2txt_batch.organize_by_company = bool(batch_data["organize_by_company"])
             if "skip_existing" in batch_data:
                 config.pdf2txt_batch.skip_existing = bool(batch_data["skip_existing"])
-        
+
         return config
 
 
 class ConfigLoader:
     """Configuration file loader utilities."""
-    
+
     @staticmethod
     def _load_file(path: Path) -> dict[str, Any]:
         """
@@ -169,13 +169,13 @@ class ConfigLoader:
         """
         if not path.exists():
             return {}
-        
+
         try:
             with open(path, "rb") as f:
                 return tomllib.load(f)
         except (tomllib.TOMLDecodeError, IOError):
             return {}
-    
+
     @staticmethod
     def save(config: AcornConfig, path: Path) -> None:
         """
@@ -186,7 +186,7 @@ class ConfigLoader:
             path: Path to save to
         """
         import tomli_w
-        
+
         data = {
             "vi": {
                 "query": {
@@ -203,7 +203,7 @@ class ConfigLoader:
                 }
             }
         }
-        
+
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             tomli_w.dump(data, f)

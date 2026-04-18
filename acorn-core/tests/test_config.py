@@ -1,7 +1,4 @@
 """Tests for Acorn configuration system."""
-import pytest
-import tempfile
-from pathlib import Path
 from acorn_core.config import AcornConfig, ConfigLoader
 
 
@@ -44,12 +41,12 @@ class TestAcornConfig:
     def test_default_values(self):
         """Test default configuration values."""
         config = AcornConfig()
-        
+
         # vi.query defaults
         assert config.vi_query_years == 10
         assert config.vi_query_wacc == 0.08
         assert config.vi_query_g_terminal == 0.03
-        
+
         # pdf2txt.batch defaults
         assert config.pdf2txt_batch_output_dir is None
         assert config.pdf2txt_batch_organize_by_company is False
@@ -62,7 +59,7 @@ class TestAcornConfig:
             "pdf2txt": {"batch": {"organize_by_company": True}}
         }
         config = AcornConfig.load_from_dict(data)
-        
+
         assert config.vi_query_years == 20
         assert config.vi_query_wacc == 0.10
         assert config.vi_query_g_terminal == 0.03  # default
@@ -81,7 +78,7 @@ g_terminal = 0.04
 skip_existing = true
 """)
         config = AcornConfig.load_from_file(config_file)
-        
+
         assert config.vi_query_years == 15
         assert config.vi_query_wacc == 0.08  # default
         assert config.vi_query_g_terminal == 0.04
@@ -96,7 +93,7 @@ skip_existing = true
         override_data = {
             "vi": {"query": {"years": 20}}
         }
-        
+
         # Merge: override takes precedence
         merged_data = {
             "vi": {
@@ -106,9 +103,9 @@ skip_existing = true
                 }
             }
         }
-        
+
         merged = AcornConfig.load_from_dict(merged_data)
-        
+
         assert merged.vi_query_years == 20  # from override
         assert merged.vi_query_wacc == 0.08  # from base
 
@@ -119,7 +116,7 @@ class TestConfigPaths:
     def test_get_user_config_path(self):
         """Test user config path follows XDG spec."""
         from acorn_core.config import get_user_config_path
-        
+
         path = get_user_config_path()
         assert path.name == "config.toml"
         assert "acorn" in str(path)
@@ -145,9 +142,9 @@ output_dir = "./financial_reports"
 organize_by_company = true
 skip_existing = true
 """)
-        
+
         config = AcornConfig.load_from_file(config_file)
-        
+
         assert config.vi_query_years == 20
         assert config.vi_query_wacc == 0.10
         assert config.vi_query_g_terminal == 0.03

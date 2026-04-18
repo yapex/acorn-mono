@@ -3,10 +3,12 @@
 所有测试使用内存文件系统（tmp_path），自动清理。
 """
 
-import pytest
-from pathlib import Path
 from datetime import datetime
-from financial_downloader.downloaders import HkexDownloader, DownloadResult
+from pathlib import Path
+
+import pytest
+
+from financial_downloader.downloaders import DownloadResult, HkexDownloader
 
 
 class TestHkexDownloader:
@@ -77,18 +79,18 @@ class TestHkexDownloader:
     def test_extract_year_from_doc(self, downloader):
         """测试从文档提取财报年份（标题年份必须 < 当前年份）。"""
         current_year = datetime.now().year
-        
+
         # 标题中的年份就是财报年份
         doc1 = {"date": "15/04/2025", "title": "2024 年報"}
         assert downloader._extract_year_from_doc(doc1) == 2024
-        
+
         doc2 = {"date": "16/04/2024", "title": "2023 年報"}
         assert downloader._extract_year_from_doc(doc2) == 2023
-        
+
         # 标题中的年份 >= 当前年份，应该返回 0（无效）
         doc3 = {"date": "15/04/2026", "title": f"{current_year} 年報"}
         assert downloader._extract_year_from_doc(doc3) == 0
-        
+
         # 无年份信息
         doc4 = {"date": "", "title": "無年份"}
         assert downloader._extract_year_from_doc(doc4) == 0
@@ -128,7 +130,7 @@ class TestHkexDownloader:
         # 创建一个假文件
         existing_file = tmp_path / "00700_腾讯控股_2024_an.pdf"
         existing_file.write_bytes(b"fake content")
-        
+
         # 下载应该跳过
         result = downloader.download(
             code="00700",
@@ -137,7 +139,7 @@ class TestHkexDownloader:
             skip_existing=True,
             dry_run=True,
         )
-        
+
         assert isinstance(result, DownloadResult)
 
 

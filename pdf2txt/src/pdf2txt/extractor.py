@@ -1,6 +1,5 @@
 """PDF to TXT extraction using Extractous."""
 
-import re
 from pathlib import Path
 from typing import Optional
 from loguru import logger

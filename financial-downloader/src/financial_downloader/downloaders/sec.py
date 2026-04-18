@@ -12,17 +12,14 @@
     downloads/{code}_{name}_{year}_{type}.htm
 """
 
-import time
-from datetime import date, timedelta, datetime
+import shutil
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-import os
-import shutil
 
 from loguru import logger
 
 from .base import BaseDownloader, DownloadResult
-
 
 # ── 常量 ──────────────────────────────────────────────
 
@@ -59,10 +56,10 @@ class SecDownloader(BaseDownloader):
     ):
         """初始化下载器。"""
         super().__init__(output_dir)
-        
+
         if sec_user_agent is None:
             sec_user_agent = DEFAULT_SEC_USER_AGENT
-        
+
         self.sec_user_agent = sec_user_agent
         self._downloader = None
 
@@ -72,7 +69,7 @@ class SecDownloader(BaseDownloader):
         if self._downloader is None:
             try:
                 from sec_edgar_downloader import Downloader
-                
+
                 parts = self.sec_user_agent.split()
                 if len(parts) >= 2:
                     company_name = parts[0]
@@ -80,7 +77,7 @@ class SecDownloader(BaseDownloader):
                 else:
                     company_name = "TestCompany"
                     email = "test@example.com"
-                
+
                 self._downloader = Downloader(
                     company_name=company_name,
                     email_address=email,
@@ -90,7 +87,7 @@ class SecDownloader(BaseDownloader):
                 raise ImportError(
                     "sec-edgar-downloader 未安装，请运行：uv add sec-edgar-downloader"
                 )
-        
+
         return self._downloader
 
     def _get_default_output_dir(self) -> Path:
@@ -107,7 +104,7 @@ class SecDownloader(BaseDownloader):
             return False
 
         code = code.strip().upper()
-        
+
         import re
         if not re.match(r'^[A-Z][A-Z0-9-]{0,4}$', code):
             return False
@@ -123,7 +120,7 @@ class SecDownloader(BaseDownloader):
             return False
 
         cik = cik.strip()
-        
+
         import re
         if not re.match(r'^\d{6,10}$', cik):
             return False
@@ -180,7 +177,7 @@ class SecDownloader(BaseDownloader):
 
         try:
             from datetime import date
-            
+
             if year:
                 after_date = date(year, 1, 1)
                 before_date = date(year, 12, 31)
@@ -208,7 +205,7 @@ class SecDownloader(BaseDownloader):
 
             # 处理下载的文件
             base_dir = self.output_dir / "sec-edgar-filings" / code / doc_type
-            
+
             if not base_dir.exists():
                 result.metadata["count"] = count
                 result.success = True

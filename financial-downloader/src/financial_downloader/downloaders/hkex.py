@@ -17,7 +17,6 @@ from loguru import logger
 
 from .base import BaseDownloader, DownloadResult
 
-
 # ── 常量 ──────────────────────────────────────────────
 
 HKEX_BASE_URL = "https://www1.hkexnews.hk"
@@ -117,7 +116,7 @@ class HkexDownloader(BaseDownloader):
 
         match = re.search(r"\((.+)\)", response.text)
         if not match:
-            raise ValueError(f"无法解析 stockId 响应")
+            raise ValueError("无法解析 stockId 响应")
 
         data = json.loads(match.group(1))
         stock_info = data.get("stockInfo", [])
@@ -258,7 +257,7 @@ class HkexDownloader(BaseDownloader):
     def _extract_year_from_doc(self, doc: dict) -> int:
         """从文档信息中提取财报年份。"""
         title = doc.get("title", "")
-        
+
         import re
         match = re.search(r"(20\d{2})", title)
         if match:
@@ -266,7 +265,7 @@ class HkexDownloader(BaseDownloader):
             current_year = datetime.now().year
             if year < current_year:
                 return year
-        
+
         return 0
 
     def filter_documents_by_type(
