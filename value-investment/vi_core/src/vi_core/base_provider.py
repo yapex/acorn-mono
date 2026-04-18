@@ -153,9 +153,10 @@ class BaseDataProvider(ABC):
             cached = self._cache.get(cache_key)
             if cached is not None:
                 df = cached
-                # 仍然需要映射、去重、过滤
+                # 仍然需要映射、去重、年份过滤
                 df = self._apply_mapping(df)
                 df = self._deduplicate(df)
+                df = self._filter_years(df, start_year, end_year)
                 return self._filter_to_mapped_fields(df, fields)
 
         # 获取数据
@@ -172,6 +173,9 @@ class BaseDataProvider(ABC):
 
         # 去重
         df = self._deduplicate(df)
+
+        # 按年份过滤（设计原则：查全量缓存，返回时过滤）
+        df = self._filter_years(df, start_year, end_year)
 
         # 过滤：只保留映射后的字段和日期列，返回拷贝
         return self._filter_to_mapped_fields(df, fields)
@@ -212,6 +216,7 @@ class BaseDataProvider(ABC):
                 df = cached
                 df = self._apply_mapping(df)
                 df = self._deduplicate(df)
+                df = self._filter_years(df, start_year, end_year)
                 return self._filter_to_mapped_fields(df, fields)
 
         df = self._fetch_indicators_impl(normalized_symbol, start_year, end_year)
@@ -224,6 +229,9 @@ class BaseDataProvider(ABC):
 
         df = self._apply_mapping(df)
         df = self._deduplicate(df)
+
+        # 按年份过滤（设计原则：查全量缓存，返回时过滤）
+        df = self._filter_years(df, start_year, end_year)
 
         # 过滤：只保留映射后的字段和日期列，返回拷贝
         return self._filter_to_mapped_fields(df, fields)
@@ -539,6 +547,36 @@ class BaseDataProvider(ABC):
         df = df.drop_duplicates(subset=[fiscal_year], keep="first")
 
         return df
+
+    def _filter_years(
+        self,
+        df: pd.DataFrame,
+        start_year: int,
+        end_year: int,
+    ) -> pd.DataFrame:
+        """按年份过滤数据（模板方法）
+
+        设计原则：查询时尽量多查并缓存全量，返回时按 N 年过滤。
+        子类可覆盖此方法以实现自定义年份过滤逻辑。
+
+        Args:
+            df: 待过滤的 DataFrame
+            start_year: 起始年份（闭区间）
+            end_year: 结束年份（闭区间）
+
+        Returns:
+            过滤后的 DataFrame 拷贝
+        """
+        if df is None or df.empty:
+            return df
+
+        fiscal_year_col = StandardFields.fiscal_year
+        if fiscal_year_col not in df.columns:
+            return df
+
+        return df[
+            (df[fiscal_year_col] >= start_year) & (df[fiscal_year_col] <= end_year)
+        ].copy()
 
     def _filter_to_mapped_fields(
         self,
