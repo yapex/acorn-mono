@@ -90,9 +90,9 @@ class ProviderAPlugin:
     def vi_fetch_historical(
         self,
         symbol: str,
-        start_date: str | None = None,
-        end_date: str | None = None,
-        adjust: str = "hfq",
+        start_date: str | None,
+        end_date: str | None,
+        adjust: str,
     ) -> pd.DataFrame | None:
         """Fetch historical trading data (OHLCV) for A-share"""
         provider = _get_provider()

@@ -90,9 +90,9 @@ class ProviderUSPlugin:
     def vi_fetch_historical(
         self,
         symbol: str,
-        start_date: str | None = None,
-        end_date: str | None = None,
-        adjust: str = "qfq",
+        start_date: str | None,
+        end_date: str | None,
+        adjust: str,
     ) -> pd.DataFrame | None:
         """Fetch historical trading data (OHLCV) for US stock
         
