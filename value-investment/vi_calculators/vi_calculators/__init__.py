@@ -98,6 +98,9 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
                 else:
                     format_type = "absolute"  # 默认
 
+                # 每日数据需求（如不复权收盘价）
+                daily_fields = getattr(module, "DAILY_FIELDS", [])
+
                 calculators.append({
                     "name": name,
                     "module": module,
@@ -105,6 +108,7 @@ def load_calculators_from_path(path: Path, namespace: str) -> list[dict]:
                     "field_aliases": field_aliases,
                     "supported_markets": supported_markets,
                     "format_type": format_type,
+                    "daily_fields": daily_fields,
                     "description": description.strip().split("\n")[0],
                     "namespace": namespace,
                 })
@@ -182,6 +186,7 @@ class CalculatorEngine:
                 "field_aliases": c.get("field_aliases", {}),
                 "supported_markets": c.get("supported_markets", ["A", "HK", "US"]),
                 "format_type": c.get("format_type", "absolute"),
+                "daily_fields": c.get("daily_fields", []),
                 "description": c["description"],
                 "namespace": c.get("namespace", "unknown"),
             }

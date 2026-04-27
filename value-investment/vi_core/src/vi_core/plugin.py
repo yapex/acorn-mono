@@ -522,13 +522,35 @@ class ViCorePlugin:
         requested_calculators = requested_items & calculator_names
         requested_fields = requested_items - calculator_names
 
-        # 自动收集 calculator 依赖的字段
+        # 自动收集 calculator 依赖的字段（年度 + 每日）
+        daily_fields_needed: set[str] = set()
         if requested_calculators and calc_list:
             calc_registry = {c["name"]: c for c in calc_list}
             for calc_name in requested_calculators:
                 calc_spec = calc_registry.get(calc_name, {})
+                # 年度数据依赖
                 for field in calc_spec.get("required_fields", []):
                     requested_fields.add(field)
+                # 每日数据依赖
+                for field in calc_spec.get("daily_fields", []):
+                    daily_fields_needed.add(field)
+
+        # 获取每日数据（如不复权收盘价）
+        daily_data: dict[str, pd.DataFrame] = {}
+        if daily_fields_needed and self._get_plugin_manager():
+            daily_df = self._get_plugin_manager().hook.vi_fetch_historical(
+                symbol=symbol,
+                start_date=None,
+                end_date=None,
+                adjust="",
+            )
+            # vi_fetch_historical 返回 list (pluggy broadcast)，取第一个有效结果
+            if not isinstance(daily_df, list):
+                daily_df = [daily_df]
+            for df in daily_df:
+                if df is not None and not df.empty:
+                    daily_data["close"] = df
+                    break
 
         # 检查未知的 calculators（不在 calculator_names 中，也不在标准字段中）
         # 这些可能是用户想要创建的新计算器，触发 evolution
@@ -637,18 +659,15 @@ class ViCorePlugin:
 
         # Run calculators - 直接传入 DataFrame
         if requested_calculators:
-            calc_results = self._run_calculators(merged_df, requested_calculators, calculator_config, market=market)
+            calc_results = self._run_calculators(merged_df, requested_calculators, calculator_config, market=market, daily_data=daily_data)
             for calc_name, series in calc_results.items():
                 if series is not None and not series.empty:
                     # 尝试将 index 转换为整数年份
                     try:
                         result_data[calc_name] = {int(year): val for year, val in series.items()}
                     except (ValueError, TypeError):
-                        # 如果 index 不是整数年份（如 'current'），直接返回整个 series
-                        # 使用第一个值的年份作为 key，如果没有则用 "latest"
-                        if len(series) > 0:
-                            first_val = list(series.values())[0]
-                            result_data[calc_name] = {"latest": first_val}
+                        # index 不是整数年份（如 'pe_current'），作为多指标快照展开
+                        result_data[calc_name] = {str(k): float(v) for k, v in series.items()}
 
         return {
             "success": True,
@@ -668,6 +687,7 @@ class ViCorePlugin:
         calculator_names: set[str],
         calculator_config: dict[str, Any],
         market: str | None = None,
+        daily_data: dict[str, pd.DataFrame] | None = None,
     ) -> dict[str, pd.Series]:
         """Run calculators via hook and return results
         
@@ -675,6 +695,7 @@ class ViCorePlugin:
             df: DataFrame with financial data (index=year, columns=field names)
             calculator_names: Calculator names to run
             calculator_config: Calculator-specific config
+            daily_data: 每日数据 (e.g. {"close": DataFrame})，框架自动注入 calculator 的 data
             
         Returns:
             {calculator_name: pd.Series} dict
@@ -744,6 +765,13 @@ class ViCorePlugin:
                 for req_field, actual_field in resolved_fields.items()
             }
 
+            # 注入每日数据（框架自动：daily_fields 声明的字段直接放入 data）
+            if daily_data:
+                calc_spec_daily = calc_spec.get("daily_fields", [])
+                for df_key in calc_spec_daily:
+                    if df_key in daily_data:
+                        calc_data[df_key] = daily_data[df_key]
+
             # Call hook to run calculator
             config = calculator_config.get(calc_name, {})
             calc_result = self._get_plugin_manager().hook.vi_run_calculator(
@@ -762,7 +790,10 @@ class ViCorePlugin:
 
             # Accept pd.Series or dict
             if calc_result is not None:
-                if isinstance(calc_result, pd.Series):
+                if isinstance(calc_result, dict) and "values" in calc_result and isinstance(calc_result.get("values"), pd.Series):
+                    # 多指标返回: {"values": pd.Series({metric: value}), "format_types": {...}}
+                    results[calc_name] = calc_result["values"]
+                elif isinstance(calc_result, pd.Series):
                     results[calc_name] = calc_result
                 elif isinstance(calc_result, dict):
                     results[calc_name] = pd.Series(calc_result)
