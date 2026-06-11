@@ -279,12 +279,34 @@ class HKProvider(BaseDataProvider):
     ) -> pd.DataFrame | None:
         """获取市场数据
         
-        从日线数据获取年末收盘价。
-        如果指定了年份范围，返回每年最后一个交易日的收盘价。
-        如果未指定年份，返回每年最后一个交易日的收盘价（最多10年）。
+        从日线数据获取年末收盘价，并补充最新估值数据（市值、PE、PB）。
+        估值数据来自 stock_hk_financial_indicator_em 接口（仅最新一条）。
         """
+        # --- Part 1: 年末收盘价（多年历史） ---
+        close_df = self._fetch_close_history(symbol, end_year, years)
+
+        if close_df is None or close_df.empty:
+            return None
+
+        # --- Part 2: 最新估值数据（市值、PE、PB） ---
+        valuation_data = self._fetch_latest_valuation(symbol)
+
+        if valuation_data:
+            # 将估值数据合并到最新年份的行
+            latest_year_idx = 0  # close_df 已按年份降序排列
+            for col, val in valuation_data.items():
+                close_df.at[latest_year_idx, col] = val
+
+        return close_df
+
+    def _fetch_close_history(
+        self,
+        symbol: str,
+        end_year: int | None = None,
+        years: int = 10,
+    ) -> pd.DataFrame | None:
+        """从日线数据获取年末收盘价"""
         try:
-            # 获取历史日线数据
             df = ak.stock_hk_daily(symbol=symbol, adjust="qfq")
             if df is None or df.empty:
                 return None
@@ -334,6 +356,51 @@ class HKProvider(BaseDataProvider):
             return pd.DataFrame(result_rows)
         except Exception:
             return None
+
+    def _fetch_latest_valuation(self, symbol: str) -> dict[str, float]:
+        """从 stock_hk_financial_indicator_em 获取最新估值数据
+        
+        Returns:
+            dict with Chinese column names matching FIELD_MAPPINGS["market"] keys,
+            e.g. {"总市值(港元)": 485581530785, "市盈率": 25.74, "市净率": 8.80}
+        """
+        try:
+            df = ak.stock_hk_financial_indicator_em(symbol=symbol)
+            if df is None or df.empty:
+                return {}
+
+            row = df.iloc[0]
+            result = {}
+
+            # 市值
+            for col in ["总市值(港元)", "港股市值(港元)"]:
+                if col in row.index and pd.notna(row[col]):
+                    result[col] = float(row[col])
+                    break
+
+            # 市盈率
+            if "市盈率" in row.index and pd.notna(row["市盈率"]):
+                result["市盈率"] = float(row["市盈率"])
+
+            # 市净率
+            if "市净率" in row.index and pd.notna(row["市净率"]):
+                result["市净率"] = float(row["市净率"])
+
+            # 股息率 TTM
+            if "股息率TTM(%)" in row.index and pd.notna(row["股息率TTM(%)"]):
+                result["股息率TTM(%)"] = float(row["股息率TTM(%)"])
+
+            # 派息比率
+            if "派息比率(%)" in row.index and pd.notna(row["派息比率(%)"]):
+                result["派息比率(%)"] = float(row["派息比率(%)"])
+
+            # 每股股息 TTM
+            if "每股股息TTM(港元)" in row.index and pd.notna(row["每股股息TTM(港元)"]):
+                result["每股股息TTM(港元)"] = float(row["每股股息TTM(港元)"])
+
+            return result
+        except Exception:
+            return {}
 
     def _fetch_historical_impl(
         self,

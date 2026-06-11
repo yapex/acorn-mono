@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+import pandas as pd
 
 from provider_market_hk.plugin import plugin as provider_hk_plugin
 from provider_market_hk.provider import HKProvider
@@ -142,6 +143,100 @@ class TestHKProviderFetchMethods:
             fields=set()
         )
         assert result is None
+
+
+class TestHKProviderFetchMarketImpl:
+    """Test _fetch_market_impl returns valuation data (market_cap, pe_ratio, pb_ratio)"""
+
+    @pytest.fixture
+    def provider(self):
+        return HKProvider()
+
+    def test_fetch_market_impl_returns_close(self, provider):
+        """_fetch_market_impl should return close price"""
+        df = provider._fetch_market_impl("00388", years=5)
+        assert df is not None
+        assert "close" in df.columns or "收盘" in df.columns
+
+    def test_fetch_market_impl_returns_market_cap(self, provider):
+        """_fetch_market_impl should return 总市值(港元) column"""
+        df = provider._fetch_market_impl("00388", years=1)
+        assert df is not None
+        assert "总市值(港元)" in df.columns or "market_cap" in df.columns
+
+    def test_fetch_market_impl_returns_pe_ratio(self, provider):
+        """_fetch_market_impl should return 市盈率 column"""
+        df = provider._fetch_market_impl("00388", years=1)
+        assert df is not None
+        assert "市盈率" in df.columns or "pe_ratio" in df.columns
+
+    def test_fetch_market_impl_returns_pb_ratio(self, provider):
+        """_fetch_market_impl should return 市净率 column"""
+        df = provider._fetch_market_impl("00388", years=1)
+        assert df is not None
+        assert "市净率" in df.columns or "pb_ratio" in df.columns
+
+    def test_fetch_market_valuation_values_not_nan(self, provider):
+        """Valuation values should not be NaN"""
+        df = provider._fetch_market_impl("00388", years=1)
+        assert df is not None
+        # Check the latest year row
+        latest = df.iloc[0]
+        # 市值应该是正数
+        mc_col = "总市值(港元)" if "总市值(港元)" in df.columns else "market_cap"
+        assert pd.notna(latest[mc_col])
+        assert latest[mc_col] > 0
+
+    def test_fetch_market_multi_year_close(self, provider):
+        """Multi-year fetch should return multiple rows with close prices"""
+        df = provider._fetch_market_impl("00388", years=5)
+        assert df is not None
+        # Should have at least 3 years of close data
+        close_col = "close" if "close" in df.columns else "收盘"
+        assert len(df) >= 3
+        assert df[close_col].notna().all()
+
+
+class TestHKProviderFetchMarketIntegration:
+    """Integration: fetch_market (public method with mapping) should return standard fields"""
+
+    @pytest.fixture
+    def provider(self):
+        return HKProvider()
+
+    def test_fetch_market_returns_mapped_market_cap(self, provider):
+        """fetch_market should return market_cap after field mapping"""
+        df = provider.fetch_market("00388", fields={"market_cap"})
+        assert df is not None
+        assert "market_cap" in df.columns
+        latest = df.iloc[0]
+        assert pd.notna(latest["market_cap"])
+        assert latest["market_cap"] > 0
+
+    def test_fetch_market_returns_mapped_pe_ratio(self, provider):
+        """fetch_market should return pe_ratio after field mapping"""
+        df = provider.fetch_market("00388", fields={"pe_ratio"})
+        assert df is not None
+        assert "pe_ratio" in df.columns
+        latest = df.iloc[0]
+        assert pd.notna(latest["pe_ratio"])
+
+    def test_fetch_market_returns_mapped_pb_ratio(self, provider):
+        """fetch_market should return pb_ratio after field mapping"""
+        df = provider.fetch_market("00388", fields={"pb_ratio"})
+        assert df is not None
+        assert "pb_ratio" in df.columns
+        latest = df.iloc[0]
+        assert pd.notna(latest["pb_ratio"])
+
+    def test_fetch_market_returns_multiple_fields(self, provider):
+        """fetch_market should return close + market_cap + pe_ratio together"""
+        df = provider.fetch_market("00388", fields={"close", "market_cap", "pe_ratio", "pb_ratio"})
+        assert df is not None
+        assert "close" in df.columns
+        assert "market_cap" in df.columns
+        assert "pe_ratio" in df.columns
+        assert "pb_ratio" in df.columns
 
 
 class TestHKProviderIntegration:
